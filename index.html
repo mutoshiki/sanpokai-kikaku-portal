@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="山歩会の企画作成・企画管理・提出書類作成をつなぐ入口サイトです。">
+  <meta name="theme-color" content="#161616">
+  <title>山歩会企画ツール</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">メインコンテンツへ移動</a>
+
+  <header class="app-header" aria-label="山歩会企画ツール">
+    <a class="brand" href="index.html" aria-label="山歩会企画ツール ホーム">
+      <span class="brand-prefix">山歩会</span>
+      <span class="brand-name">企画ツール</span>
+    </a>
+    <nav class="header-nav" aria-label="メインナビゲーション">
+      <a href="index.html" aria-current="page">ホーム</a>
+      <a href="guide.html">使い方</a>
+    </nav>
+  </header>
+
+  <main id="main" class="main-content">
+    <section class="hero carbon-grid" aria-labelledby="page-title">
+      <div class="hero-copy col-lg-10 col-md-7 col-sm-4">
+        <h1 id="page-title">山歩会企画ツール</h1>
+        <p class="hero-lead">企画の募集、当日の調整、提出書類の作成まで。必要なツールへここから進めます。</p>
+      </div>
+    </section>
+
+    <section class="tool-section carbon-grid" aria-labelledby="tool-heading">
+      <div class="section-heading col-lg-16 col-md-8 col-sm-4">
+        <h2 id="tool-heading">やることを選ぶ</h2>
+      </div>
+
+      <div class="tool-grid col-lg-16 col-md-8 col-sm-4">
+        <a class="tool-tile" href="https://script.google.com/macros/s/AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj/exec" target="_blank" rel="noopener noreferrer">
+          <div>
+            <p class="tile-kicker">01</p>
+            <h3>募集フォームを作る</h3>
+            <p>企画名や日程などを入力して、参加募集用のGoogleフォームを作成します。</p>
+          </div>
+          <svg class="tile-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.3 3.3 8.2 4.4 11 7.2H2v1.6h9l-2.8 2.8 1.1 1.1L14 8z"/></svg>
+        </a>
+
+        <a class="tool-tile" href="https://mutoshiki.github.io/circle-kikaku-tools/" target="_blank" rel="noopener noreferrer">
+          <div>
+            <p class="tile-kicker">02</p>
+            <h3>企画一覧を開く</h3>
+            <p>これまでの企画を開き、車割・班割・共有・精算などを行います。</p>
+          </div>
+          <svg class="tile-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.3 3.3 8.2 4.4 11 7.2H2v1.6h9l-2.8 2.8 1.1 1.1L14 8z"/></svg>
+        </a>
+
+        <a class="tool-tile" href="guide.html">
+          <div>
+            <p class="tile-kicker">03</p>
+            <h3>提出書類を作る</h3>
+            <p>Windowsアプリを使って、参加者名簿・登山計画書・登山等届を作成します。</p>
+          </div>
+          <svg class="tile-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.3 3.3 8.2 4.4 11 7.2H2v1.6h9l-2.8 2.8 1.1 1.1L14 8z"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <section class="workflow-section carbon-grid" aria-labelledby="workflow-heading">
+      <div class="workflow-intro col-lg-5 col-md-3 col-sm-4">
+        <h2 id="workflow-heading">企画の流れ</h2>
+        <p>各ツールは独立したまま、企画の進行に合わせて使い分けます。</p>
+      </div>
+      <ol class="workflow-list col-lg-11 col-md-5 col-sm-4">
+        <li><span>1</span><div><strong>募集</strong><p>フォームを作成して参加者を募集</p></div></li>
+        <li><span>2</span><div><strong>調整</strong><p>企画一覧から車割・班割などを作成</p></div></li>
+        <li><span>3</span><div><strong>実施・精算</strong><p>共有画面を使い、実施後に費用を精算</p></div></li>
+        <li><span>4</span><div><strong>提出</strong><p>提出書類作成アプリで学務提出書類を生成</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="carbon-grid">
+      <p class="col-lg-16 col-md-8 col-sm-4">山歩会企画ツール</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
