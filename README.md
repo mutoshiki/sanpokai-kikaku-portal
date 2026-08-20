@@ -1,28 +1,16 @@
-# 山歩会企画ツール ポータル
+# 山歩会企画ツール
 
-既存の各ツールには手を加えず、リンクだけでつなぐ静的ポータルです。
+山歩会の企画作業を1か所から開くための静的ポータルです。
 
-## 構成
+既存ツールのコードは統合せず、リンクだけで接続します。
 
-- `index.html` — トップページ
-- `guide.html` — 提出書類作成アプリの使い方ガイド
-- `assets/css/styles.css` — Carbon Design Systemに沿ったレイアウト/トークン
-- `assets/js/main.js` — ガイド目次の現在位置表示
+- 新しい企画を作る: Google Apps Script のフォームメーカー
+- 過去に開いた企画: `circle-kikaku-tools` が同一オリジンの `localStorage` に保存した企画データを一覧表示
+- 提出書類: `sampokai-submission-builder` の使い方ガイドとダウンロード導線
 
-## 外部リンク
+## 企画一覧の仕組み
 
-- フォーム作成: Google Apps Script Web App
-- 企画一覧: `https://mutoshiki.github.io/circle-kikaku-tools/`
-- 提出書類作成: `sampokai-submission-builder` の最新GitHub Release
+GitHub Pages 上では、このサイトと `circle-kikaku-tools` はどちらも `https://mutoshiki.github.io` オリジンになります。
+そのため、このサイトは `circle-kikaku-tools` が保存している `sampokai_v10_split_<roomId>` を読み取り、企画名と最終更新日時を表示できます。
 
-## ローカル確認
-
-単純な静的ファイルなので `index.html` を直接開けます。ローカルサーバーを使う場合:
-
-```bash
-python -m http.server 8080
-```
-
-## デザイン方針
-
-Carbon Design SystemのUI Shell Header、16-column grid、2x spacing、g10相当のカラー、Clickable Tile、Buttonの仕様を基礎にしています。角丸や装飾を増やさず、タスクへの導線を優先しています。
+既存の `circle-kikaku-tools` 側は変更しません。
