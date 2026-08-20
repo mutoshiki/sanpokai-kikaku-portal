@@ -3,105 +3,153 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="山歩会の企画作成・企画管理・提出書類作成への入口です。">
+  <meta name="description" content="山歩会の企画ツールとフォーム作成ツールへの入口です。">
   <meta name="color-scheme" content="light">
   <title>山歩会企画ツール</title>
   <style>
     :root {
-      --background:#f4f4f4;
-      --layer:#ffffff;
-      --layer-hover:#e8e8e8;
-      --text-primary:#161616;
-      --text-secondary:#525252;
-      --border:#e0e0e0;
-      --focus:#0f62fe;
-      --blue:#0f62fe;
-      --blue-hover:#0353e9;
-      --gray:#393939;
-      --gray-hover:#4c4c4c;
+      --cds-background:#f4f4f4;
+      --cds-layer:#ffffff;
+      --cds-layer-hover:#e8e8e8;
+      --cds-text-primary:#161616;
+      --cds-text-secondary:#525252;
+      --cds-border-subtle:#c6c6c6;
+      --cds-border-strong:#8d8d8d;
+      --cds-link-primary:#0f62fe;
+      --cds-link-primary-hover:#0043ce;
+      --cds-focus:#0f62fe;
     }
     *{box-sizing:border-box}
-    html{background:var(--background)}
+    html{background:var(--cds-background)}
     body{
       margin:0;
-      background:var(--background);
-      color:var(--text-primary);
+      background:var(--cds-background);
+      color:var(--cds-text-primary);
       font-family:"IBM Plex Sans","Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",Arial,sans-serif;
       font-size:16px;
       line-height:1.5;
     }
     a{color:inherit}
-    button,a{font:inherit}
-    .skip-link{position:fixed;left:0;top:0;z-index:100;padding:8px 16px;background:#fff;color:var(--blue);transform:translateY(-120%)}
+    .skip-link{
+      position:fixed;top:0;left:0;z-index:100;
+      padding:8px 16px;background:#fff;color:var(--cds-link-primary);
+      transform:translateY(-120%);
+    }
     .skip-link:focus{transform:none}
+
+    /* Carbon UI Shell: header base for a simple, single-page product. */
     .app-header{
       position:sticky;top:0;z-index:10;
-      height:48px;
-      display:flex;align-items:stretch;justify-content:space-between;
+      display:flex;align-items:center;
+      min-height:48px;
       background:#161616;color:#f4f4f4;
+      border-bottom:1px solid #393939;
     }
-    .app-name,.header-nav a{
-      min-height:48px;display:flex;align-items:center;
-      padding:0 16px;text-decoration:none;font-size:14px;
+    .app-name{
+      display:flex;align-items:center;min-height:48px;
+      padding:0 16px;text-decoration:none;
+      font-size:14px;font-weight:600;
     }
-    .app-name{font-weight:600}
-    .header-nav{display:flex}
-    .header-nav a:hover{background:#353535}
-    .page-shell{width:min(100%,1056px);margin:0 auto;padding:64px 32px 96px}
-    .page-heading{
-      display:grid;grid-template-columns:minmax(0,1fr) auto;
-      gap:32px;align-items:end;padding-bottom:48px;
+    .app-name:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+
+    .page{
+      width:min(100%,1584px);
+      margin:0 auto;
+      padding:64px 16px 96px;
     }
     h1,h2,h3,p{margin-top:0}
-    h1{margin-bottom:12px;font-size:42px;font-weight:400;line-height:1.1;letter-spacing:-.02em}
-    .page-heading p{margin-bottom:0;color:var(--text-secondary)}
-    h2{margin-bottom:0;font-size:20px;font-weight:400;line-height:1.4}
-    h3{margin-bottom:4px;font-size:16px;font-weight:600}
-    .button{
-      min-height:48px;min-width:192px;
-      display:inline-flex;align-items:center;justify-content:space-between;gap:32px;
-      padding:12px 16px;border:0;text-decoration:none;font-size:14px;line-height:1.25;
+    h1{
+      margin-bottom:48px;
+      font-size:clamp(2rem,5vw,3rem);
+      line-height:1.1;font-weight:400;letter-spacing:-.02em;
     }
-    .button svg,.project-arrow{display:block;flex:0 0 auto;fill:currentColor}
-    .button-primary{background:var(--blue);color:#fff}
-    .button-primary:hover{background:var(--blue-hover)}
-    .button-secondary{background:var(--gray);color:#fff}
-    .button-secondary:hover{background:var(--gray-hover)}
-    .project-section,.utility-section{border-top:1px solid var(--border)}
-    .section-bar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .text-button{height:40px;padding:0 16px;border:0;background:transparent;color:var(--blue);cursor:pointer;font-size:14px}
-    .text-button:hover{background:var(--layer-hover)}
-    .project-list{border-top:1px solid var(--border)}
-    .project-row{
-      min-height:72px;
-      display:grid;grid-template-columns:minmax(0,1fr) 180px 20px;
-      gap:16px;align-items:center;
-      padding:12px 16px;background:var(--layer);border-bottom:1px solid var(--border);
+    h2{margin:0;font-size:20px;line-height:1.4;font-weight:400}
+    h3{margin:0 0 8px;font-size:20px;line-height:1.4;font-weight:400}
+
+    /* Carbon Clickable Tile: each entire tile is one navigation target. */
+    .tool-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:1px;
+      margin-bottom:64px;
+      background:var(--cds-border-subtle);
+      border:1px solid var(--cds-border-subtle);
+    }
+    .tool-tile{
+      position:relative;
+      display:flex;flex-direction:column;
+      min-height:208px;
+      padding:24px;
+      background:var(--cds-layer);
       text-decoration:none;
     }
-    .project-row:hover{background:var(--layer-hover)}
-    .project-main{display:flex;min-width:0;flex-direction:column}
-    .project-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-    .project-meta,.project-date{color:var(--text-secondary);font-size:14px}
-    .empty-state{padding:40px 16px;background:var(--layer)}
-    .empty-state h3{margin-bottom:8px}
-    .empty-state p{margin-bottom:0;color:var(--text-secondary)}
-    .utility-section{
-      margin-top:64px;padding-top:32px;
-      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:center;
+    .tool-tile:hover{background:var(--cds-layer-hover)}
+    .tool-tile:focus-visible{outline:2px solid var(--cds-focus);outline-offset:-2px;z-index:1}
+    .tool-description{
+      max-width:32rem;
+      margin:0 0 48px;
+      color:var(--cds-text-secondary);
+      font-size:14px;
     }
-    .utility-section p{margin:8px 0 0;color:var(--text-secondary)}
-    .notification{padding:16px;background:#fff;border-left:3px solid #da1e28}
-    :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-    @media(max-width:671px){
-      .page-shell{padding:40px 16px 72px}
-      .page-heading,.utility-section{grid-template-columns:1fr;align-items:start}
-      .page-heading{gap:24px;padding-bottom:40px}
-      h1{font-size:32px}
-      .page-heading .button,.utility-section .button{width:100%}
-      .project-row{grid-template-columns:minmax(0,1fr) 20px;min-height:80px}
-      .project-date{grid-column:1}
-      .project-arrow{grid-column:2;grid-row:1 / span 2;align-self:center}
+    .tool-arrow{
+      position:absolute;right:24px;bottom:24px;
+      width:20px;height:20px;
+      fill:var(--cds-link-primary);
+    }
+
+    /* Carbon Structured List: scannable rows of the same kind of information. */
+    .projects{border-top:1px solid var(--cds-border-strong)}
+    .section-heading{padding:24px 0 16px}
+    .structured-list{width:100%}
+    .structured-head,.structured-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(150px,220px) 64px;
+      gap:16px;
+      align-items:center;
+    }
+    .structured-head{
+      min-height:40px;
+      border-bottom:1px solid var(--cds-border-strong);
+      color:var(--cds-text-secondary);
+      font-size:12px;font-weight:600;
+    }
+    .structured-row{
+      min-height:64px;
+      padding:12px 0;
+      border-bottom:1px solid var(--cds-border-subtle);
+    }
+    .project-name{font-size:14px;font-weight:600}
+    .project-meta,.project-date{color:var(--cds-text-secondary);font-size:12px}
+    .project-main{min-width:0}
+    .project-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .project-meta{display:block;margin-top:2px}
+    .open-link{
+      color:var(--cds-link-primary);
+      text-decoration:none;
+      font-size:14px;
+    }
+    .open-link:hover{color:var(--cds-link-primary-hover);text-decoration:underline}
+    .open-link:focus-visible{outline:2px solid var(--cds-focus);outline-offset:2px}
+    .empty-state{
+      padding:32px 0;
+      border-bottom:1px solid var(--cds-border-subtle);
+      color:var(--cds-text-secondary);
+      font-size:14px;
+    }
+
+    @media (min-width:672px){.page{padding-inline:32px}}
+    @media (max-width:671px){
+      .page{padding-top:40px}
+      h1{margin-bottom:32px}
+      .tool-grid{grid-template-columns:1fr;margin-bottom:48px}
+      .tool-tile{min-height:176px}
+      .structured-head{display:none}
+      .structured-row{
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:8px 16px;
+      }
+      .project-date{grid-column:1;grid-row:2}
+      .open-link{grid-column:2;grid-row:1 / span 2;align-self:center}
     }
   </style>
 </head>
@@ -109,142 +157,118 @@
   <a class="skip-link" href="#main">本文へ移動</a>
 
   <header class="app-header">
-    <a class="app-name" href="./" aria-label="山歩会企画ツール トップ">山歩会企画ツール</a>
-    <nav class="header-nav" aria-label="メインナビゲーション">
-      <a href="guide.html">提出書類</a>
-    </nav>
+    <a class="app-name" href="./">山歩会企画ツール</a>
   </header>
 
-  <main id="main" class="page-shell">
-    <section class="page-heading" aria-labelledby="page-title">
-      <div>
-        <h1 id="page-title">企画一覧</h1>
-        <p>このブラウザで開いた企画を表示します。</p>
-      </div>
-      <a class="button button-primary" href="https://script.google.com/macros/s/AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj/exec">
-        新しい企画を作る
-        <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M17 6h-2v9H6v2h9v9h2v-9h9v-2h-9z"/></svg>
+  <main id="main" class="page">
+    <h1>山歩会企画ツール</h1>
+
+    <section class="tool-grid" aria-label="ツールを選ぶ">
+      <a class="tool-tile" href="https://mutoshiki.github.io/circle-kikaku-tools/">
+        <h3>企画ツール</h3>
+        <p class="tool-description">車割・班割・共有・精算を行います。</p>
+        <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/></svg>
+      </a>
+
+      <a class="tool-tile" href="https://script.google.com/macros/s/AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj/exec">
+        <h3>フォーム作成ツール</h3>
+        <p class="tool-description">参加募集用のGoogleフォームを作成します。</p>
+        <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/></svg>
       </a>
     </section>
 
-    <section class="project-section" aria-labelledby="projects-title">
-      <div class="section-bar">
+    <section class="projects" aria-labelledby="projects-title">
+      <div class="section-heading">
         <h2 id="projects-title">過去に開いた企画</h2>
-        <button class="text-button" id="refresh-projects" type="button">更新</button>
       </div>
-      <div id="project-list" class="project-list" aria-live="polite"></div>
-      <noscript><div class="notification">企画一覧の表示にはJavaScriptが必要です。</div></noscript>
-    </section>
-
-    <section class="utility-section" aria-labelledby="documents-title">
-      <div>
-        <h2 id="documents-title">提出書類</h2>
-        <p>参加者名簿や登山計画書を作る手順を確認できます。</p>
+      <div class="structured-list" id="project-list" aria-live="polite">
+        <div class="structured-head" aria-hidden="true">
+          <span>企画名</span><span>最終更新</span><span></span>
+        </div>
+        <div id="project-rows"></div>
       </div>
-      <a class="button button-secondary" href="guide.html">
-        使い方を見る
-        <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/></svg>
-      </a>
+      <noscript><p class="empty-state">企画一覧の表示にはJavaScriptが必要です。</p></noscript>
     </section>
   </main>
 
   <script>
-  (() => {
-    'use strict';
-    const TOOL='https://mutoshiki.github.io/circle-kikaku-tools/';
-    const MAIN='sampokai_v10_split_';
-    const SYNC='sampokai_v10_split_sync_base_';
-    const HISTORY='syawari_history_';
-    const LAST='syawari_last_room_id';
-    const list=document.getElementById('project-list');
-    const refresh=document.getElementById('refresh-projects');
+    (()=>{
+      'use strict';
+      const TOOL='https://mutoshiki.github.io/circle-kikaku-tools/';
+      const STORE='sampokai_v10_split_';
+      const SYNC_BASE=STORE+'sync_base_';
+      const HISTORY='syawari_history_';
+      const LAST='syawari_last_room_id';
+      const rows=document.getElementById('project-rows');
+      if(!rows)return;
 
-    const parse=value=>{try{return JSON.parse(value)}catch{return null}};
-    const number=value=>Number.isFinite(Number(value))?Number(value):0;
+      const parse=value=>{try{const v=JSON.parse(value);return v&&typeof v==='object'?v:null}catch{return null}};
+      const projects=new Map();
 
-    function upsert(map,roomId,data={},source=0){
-      if(!roomId)return;
-      const current=map.get(roomId)||{roomId,name:'',updatedAt:0,source:0};
-      const name=String(data?.roomName||data?.data?.roomName||'').trim();
-      const updatedAt=Math.max(
-        number(data?.lastUpdatedAt),number(data?.updatedAt),number(data?.timestamp),
-        number(data?.data?.lastUpdatedAt),number(data?.data?.updatedAt)
-      );
-      map.set(roomId,{
-        roomId,
-        name:(source>=current.source&&name)?name:current.name,
-        updatedAt:Math.max(current.updatedAt,updatedAt),
-        source:Math.max(current.source,source)
-      });
-    }
+      const merge=(roomId,data={})=>{
+        if(!roomId)return;
+        const current=projects.get(roomId)||{roomId,name:'',updatedAt:0};
+        const updatedAt=Number(data.lastUpdatedAt??data.updatedAt??data.meta?.updatedAt??0)||0;
+        projects.set(roomId,{
+          roomId,
+          name:String(data.roomName||current.name||'').trim(),
+          updatedAt:Math.max(current.updatedAt||0,updatedAt)
+        });
+      };
 
-    function readProjects(){
-      const map=new Map();
-      const last=localStorage.getItem(LAST)||'';
       for(let i=0;i<localStorage.length;i+=1){
-        const key=localStorage.key(i); if(!key)continue;
-        if(key.startsWith(SYNC)){
-          const id=key.slice(SYNC.length); const data=parse(localStorage.getItem(key));
-          if(data&&id)upsert(map,id,data,2);
+        const key=localStorage.key(i);
+        if(!key)continue;
+        if(key.startsWith(SYNC_BASE)){
+          merge(key.slice(SYNC_BASE.length),parse(localStorage.getItem(key))||{});
           continue;
         }
-        if(key.startsWith(MAIN)){
-          const suffix=key.slice(MAIN.length);
-          if(!suffix||suffix.startsWith('sync_base_')||suffix.startsWith('sync_outbox_'))continue;
-          const data=parse(localStorage.getItem(key));
-          if(data)upsert(map,suffix,data,3);
+        if(key.startsWith(STORE)&&!key.startsWith(STORE+'sync_outbox_')){
+          merge(key.slice(STORE.length),parse(localStorage.getItem(key))||{});
           continue;
         }
         if(key.startsWith(HISTORY)){
-          const id=key.slice(HISTORY.length); const history=parse(localStorage.getItem(key));
+          const roomId=key.slice(HISTORY.length);
+          const history=parse(localStorage.getItem(key));
           if(Array.isArray(history)&&history.length){
-            const latest=history.reduce((best,item)=>number(item?.timestamp)>=number(best?.timestamp)?item:best,history[0]);
-            upsert(map,id,latest,1);
-          }
+            const latest=history[history.length-1];
+            merge(roomId,latest?.data||{});
+          }else merge(roomId,{});
         }
       }
-      if(last&&!map.has(last))upsert(map,last,{},0);
-      return [...map.values()].map(p=>({...p,isLast:p.roomId===last,name:p.name||`企画 ${p.roomId}`}))
-        .sort((a,b)=>Number(b.isLast)-Number(a.isLast)||b.updatedAt-a.updatedAt||a.name.localeCompare(b.name,'ja'));
-    }
 
-    function formatDate(value){
-      if(!value)return '—';
-      const d=new Date(value); if(Number.isNaN(d.getTime()))return '—';
-      return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(d);
-    }
+      const lastRoom=localStorage.getItem(LAST)||'';
+      if(lastRoom&&!projects.has(lastRoom))merge(lastRoom,{});
 
-    function row(project){
-      const a=document.createElement('a'); a.className='project-row'; a.href=`${TOOL}?room=${encodeURIComponent(project.roomId)}`;
-      const main=document.createElement('div'); main.className='project-main';
-      const name=document.createElement('span'); name.className='project-name'; name.textContent=project.name;
-      const meta=document.createElement('span'); meta.className='project-meta'; meta.textContent=project.isLast?'最後に開いた企画':`ID: ${project.roomId}`;
-      main.append(name,meta);
-      const time=document.createElement('time'); time.className='project-date'; time.textContent=formatDate(project.updatedAt);
-      if(project.updatedAt)time.dateTime=new Date(project.updatedAt).toISOString();
-      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-      svg.setAttribute('width','20');svg.setAttribute('height','20');svg.setAttribute('viewBox','0 0 32 32');svg.setAttribute('aria-hidden','true');svg.classList.add('project-arrow');
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z');svg.append(path);
-      a.append(main,time,svg); return a;
-    }
+      const formatDate=value=>{
+        if(!value)return '—';
+        const date=new Date(value);
+        if(Number.isNaN(date.getTime()))return '—';
+        return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(date);
+      };
 
-    function render(){
-      list.replaceChildren();
-      let projects=[];
-      try{projects=readProjects()}catch(error){console.warn(error);const box=document.createElement('div');box.className='notification';box.textContent='企画一覧を読み込めませんでした。';list.append(box);return}
-      if(!projects.length){
-        const empty=document.createElement('div');empty.className='empty-state';
-        const h=document.createElement('h3');h.textContent='まだ企画がありません';
-        const p=document.createElement('p');p.textContent='このブラウザでサークル企画ツールを開くと、ここに表示されます。';
-        empty.append(h,p);list.append(empty);return;
+      const list=[...projects.values()].sort((a,b)=>{
+        if(a.roomId===lastRoom&&b.roomId!==lastRoom)return -1;
+        if(b.roomId===lastRoom&&a.roomId!==lastRoom)return 1;
+        return b.updatedAt-a.updatedAt;
+      });
+
+      if(!list.length){
+        rows.innerHTML='<div class="empty-state">このブラウザで開いた企画はまだありません。</div>';
+        return;
       }
-      projects.forEach(project=>list.append(row(project)));
-    }
 
-    refresh?.addEventListener('click',render);
-    window.addEventListener('storage',render);
-    render();
-  })();
+      rows.replaceChildren(...list.map(project=>{
+        const row=document.createElement('div');row.className='structured-row';
+        const main=document.createElement('div');main.className='project-main';
+        const name=document.createElement('span');name.className='project-name';name.textContent=project.name||`企画 ${project.roomId}`;
+        const meta=document.createElement('span');meta.className='project-meta';meta.textContent=project.roomId===lastRoom?'最後に開いた企画':`ID: ${project.roomId}`;
+        const date=document.createElement('time');date.className='project-date';date.textContent=formatDate(project.updatedAt);
+        if(project.updatedAt)date.dateTime=new Date(project.updatedAt).toISOString();
+        const link=document.createElement('a');link.className='open-link';link.href=`${TOOL}?room=${encodeURIComponent(project.roomId)}`;link.textContent='開く';
+        main.append(name,meta);row.append(main,date,link);return row;
+      }));
+    })();
   </script>
 </body>
 </html>
