@@ -4,11 +4,106 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="山歩会の企画作成・企画管理・提出書類作成への入口です。">
+  <meta name="color-scheme" content="light">
   <title>山歩会企画ツール</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    :root {
+      --background:#f4f4f4;
+      --layer:#ffffff;
+      --layer-hover:#e8e8e8;
+      --text-primary:#161616;
+      --text-secondary:#525252;
+      --border:#e0e0e0;
+      --focus:#0f62fe;
+      --blue:#0f62fe;
+      --blue-hover:#0353e9;
+      --gray:#393939;
+      --gray-hover:#4c4c4c;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--background)}
+    body{
+      margin:0;
+      background:var(--background);
+      color:var(--text-primary);
+      font-family:"IBM Plex Sans","Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",Arial,sans-serif;
+      font-size:16px;
+      line-height:1.5;
+    }
+    a{color:inherit}
+    button,a{font:inherit}
+    .skip-link{position:fixed;left:0;top:0;z-index:100;padding:8px 16px;background:#fff;color:var(--blue);transform:translateY(-120%)}
+    .skip-link:focus{transform:none}
+    .app-header{
+      position:sticky;top:0;z-index:10;
+      height:48px;
+      display:flex;align-items:stretch;justify-content:space-between;
+      background:#161616;color:#f4f4f4;
+    }
+    .app-name,.header-nav a{
+      min-height:48px;display:flex;align-items:center;
+      padding:0 16px;text-decoration:none;font-size:14px;
+    }
+    .app-name{font-weight:600}
+    .header-nav{display:flex}
+    .header-nav a:hover{background:#353535}
+    .page-shell{width:min(100%,1056px);margin:0 auto;padding:64px 32px 96px}
+    .page-heading{
+      display:grid;grid-template-columns:minmax(0,1fr) auto;
+      gap:32px;align-items:end;padding-bottom:48px;
+    }
+    h1,h2,h3,p{margin-top:0}
+    h1{margin-bottom:12px;font-size:42px;font-weight:400;line-height:1.1;letter-spacing:-.02em}
+    .page-heading p{margin-bottom:0;color:var(--text-secondary)}
+    h2{margin-bottom:0;font-size:20px;font-weight:400;line-height:1.4}
+    h3{margin-bottom:4px;font-size:16px;font-weight:600}
+    .button{
+      min-height:48px;min-width:192px;
+      display:inline-flex;align-items:center;justify-content:space-between;gap:32px;
+      padding:12px 16px;border:0;text-decoration:none;font-size:14px;line-height:1.25;
+    }
+    .button svg,.project-arrow{display:block;flex:0 0 auto;fill:currentColor}
+    .button-primary{background:var(--blue);color:#fff}
+    .button-primary:hover{background:var(--blue-hover)}
+    .button-secondary{background:var(--gray);color:#fff}
+    .button-secondary:hover{background:var(--gray-hover)}
+    .project-section,.utility-section{border-top:1px solid var(--border)}
+    .section-bar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .text-button{height:40px;padding:0 16px;border:0;background:transparent;color:var(--blue);cursor:pointer;font-size:14px}
+    .text-button:hover{background:var(--layer-hover)}
+    .project-list{border-top:1px solid var(--border)}
+    .project-row{
+      min-height:72px;
+      display:grid;grid-template-columns:minmax(0,1fr) 180px 20px;
+      gap:16px;align-items:center;
+      padding:12px 16px;background:var(--layer);border-bottom:1px solid var(--border);
+      text-decoration:none;
+    }
+    .project-row:hover{background:var(--layer-hover)}
+    .project-main{display:flex;min-width:0;flex-direction:column}
+    .project-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+    .project-meta,.project-date{color:var(--text-secondary);font-size:14px}
+    .empty-state{padding:40px 16px;background:var(--layer)}
+    .empty-state h3{margin-bottom:8px}
+    .empty-state p{margin-bottom:0;color:var(--text-secondary)}
+    .utility-section{
+      margin-top:64px;padding-top:32px;
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:center;
+    }
+    .utility-section p{margin:8px 0 0;color:var(--text-secondary)}
+    .notification{padding:16px;background:#fff;border-left:3px solid #da1e28}
+    :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+    @media(max-width:671px){
+      .page-shell{padding:40px 16px 72px}
+      .page-heading,.utility-section{grid-template-columns:1fr;align-items:start}
+      .page-heading{gap:24px;padding-bottom:40px}
+      h1{font-size:32px}
+      .page-heading .button,.utility-section .button{width:100%}
+      .project-row{grid-template-columns:minmax(0,1fr) 20px;min-height:80px}
+      .project-date{grid-column:1}
+      .project-arrow{grid-column:2;grid-row:1 / span 2;align-self:center}
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">本文へ移動</a>
@@ -28,7 +123,7 @@
       </div>
       <a class="button button-primary" href="https://script.google.com/macros/s/AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj/exec">
         新しい企画を作る
-        <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M17 6h-2v9H6v2h9v9h2v-9h9v-2h-9z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M17 6h-2v9H6v2h9v9h2v-9h9v-2h-9z"/></svg>
       </a>
     </section>
 
@@ -37,12 +132,8 @@
         <h2 id="projects-title">過去に開いた企画</h2>
         <button class="text-button" id="refresh-projects" type="button">更新</button>
       </div>
-
       <div id="project-list" class="project-list" aria-live="polite"></div>
-
-      <noscript>
-        <div class="notification notification-error">企画一覧の表示にはJavaScriptが必要です。</div>
-      </noscript>
+      <noscript><div class="notification">企画一覧の表示にはJavaScriptが必要です。</div></noscript>
     </section>
 
     <section class="utility-section" aria-labelledby="documents-title">
@@ -52,11 +143,108 @@
       </div>
       <a class="button button-secondary" href="guide.html">
         使い方を見る
-        <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/></svg>
       </a>
     </section>
   </main>
 
-  <script src="assets/js/main.js" defer></script>
+  <script>
+  (() => {
+    'use strict';
+    const TOOL='https://mutoshiki.github.io/circle-kikaku-tools/';
+    const MAIN='sampokai_v10_split_';
+    const SYNC='sampokai_v10_split_sync_base_';
+    const HISTORY='syawari_history_';
+    const LAST='syawari_last_room_id';
+    const list=document.getElementById('project-list');
+    const refresh=document.getElementById('refresh-projects');
+
+    const parse=value=>{try{return JSON.parse(value)}catch{return null}};
+    const number=value=>Number.isFinite(Number(value))?Number(value):0;
+
+    function upsert(map,roomId,data={},source=0){
+      if(!roomId)return;
+      const current=map.get(roomId)||{roomId,name:'',updatedAt:0,source:0};
+      const name=String(data?.roomName||data?.data?.roomName||'').trim();
+      const updatedAt=Math.max(
+        number(data?.lastUpdatedAt),number(data?.updatedAt),number(data?.timestamp),
+        number(data?.data?.lastUpdatedAt),number(data?.data?.updatedAt)
+      );
+      map.set(roomId,{
+        roomId,
+        name:(source>=current.source&&name)?name:current.name,
+        updatedAt:Math.max(current.updatedAt,updatedAt),
+        source:Math.max(current.source,source)
+      });
+    }
+
+    function readProjects(){
+      const map=new Map();
+      const last=localStorage.getItem(LAST)||'';
+      for(let i=0;i<localStorage.length;i+=1){
+        const key=localStorage.key(i); if(!key)continue;
+        if(key.startsWith(SYNC)){
+          const id=key.slice(SYNC.length); const data=parse(localStorage.getItem(key));
+          if(data&&id)upsert(map,id,data,2);
+          continue;
+        }
+        if(key.startsWith(MAIN)){
+          const suffix=key.slice(MAIN.length);
+          if(!suffix||suffix.startsWith('sync_base_')||suffix.startsWith('sync_outbox_'))continue;
+          const data=parse(localStorage.getItem(key));
+          if(data)upsert(map,suffix,data,3);
+          continue;
+        }
+        if(key.startsWith(HISTORY)){
+          const id=key.slice(HISTORY.length); const history=parse(localStorage.getItem(key));
+          if(Array.isArray(history)&&history.length){
+            const latest=history.reduce((best,item)=>number(item?.timestamp)>=number(best?.timestamp)?item:best,history[0]);
+            upsert(map,id,latest,1);
+          }
+        }
+      }
+      if(last&&!map.has(last))upsert(map,last,{},0);
+      return [...map.values()].map(p=>({...p,isLast:p.roomId===last,name:p.name||`企画 ${p.roomId}`}))
+        .sort((a,b)=>Number(b.isLast)-Number(a.isLast)||b.updatedAt-a.updatedAt||a.name.localeCompare(b.name,'ja'));
+    }
+
+    function formatDate(value){
+      if(!value)return '—';
+      const d=new Date(value); if(Number.isNaN(d.getTime()))return '—';
+      return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(d);
+    }
+
+    function row(project){
+      const a=document.createElement('a'); a.className='project-row'; a.href=`${TOOL}?room=${encodeURIComponent(project.roomId)}`;
+      const main=document.createElement('div'); main.className='project-main';
+      const name=document.createElement('span'); name.className='project-name'; name.textContent=project.name;
+      const meta=document.createElement('span'); meta.className='project-meta'; meta.textContent=project.isLast?'最後に開いた企画':`ID: ${project.roomId}`;
+      main.append(name,meta);
+      const time=document.createElement('time'); time.className='project-date'; time.textContent=formatDate(project.updatedAt);
+      if(project.updatedAt)time.dateTime=new Date(project.updatedAt).toISOString();
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('width','20');svg.setAttribute('height','20');svg.setAttribute('viewBox','0 0 32 32');svg.setAttribute('aria-hidden','true');svg.classList.add('project-arrow');
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z');svg.append(path);
+      a.append(main,time,svg); return a;
+    }
+
+    function render(){
+      list.replaceChildren();
+      let projects=[];
+      try{projects=readProjects()}catch(error){console.warn(error);const box=document.createElement('div');box.className='notification';box.textContent='企画一覧を読み込めませんでした。';list.append(box);return}
+      if(!projects.length){
+        const empty=document.createElement('div');empty.className='empty-state';
+        const h=document.createElement('h3');h.textContent='まだ企画がありません';
+        const p=document.createElement('p');p.textContent='このブラウザでサークル企画ツールを開くと、ここに表示されます。';
+        empty.append(h,p);list.append(empty);return;
+      }
+      projects.forEach(project=>list.append(row(project)));
+    }
+
+    refresh?.addEventListener('click',render);
+    window.addEventListener('storage',render);
+    render();
+  })();
+  </script>
 </body>
 </html>
