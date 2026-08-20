@@ -3,126 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="山歩会 提出書類作成アプリの使い方ガイドです。">
-  <meta name="theme-color" content="#161616">
+  <meta name="description" content="山歩会 提出書類作成アプリの使い方。">
   <title>提出書類の作り方 | 山歩会企画ツール</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">メインコンテンツへ移動</a>
+  <a class="skip-link" href="#main">本文へ移動</a>
 
-  <header class="app-header" aria-label="山歩会企画ツール">
-    <a class="brand" href="index.html" aria-label="山歩会企画ツール ホーム">
-      <span class="brand-prefix">山歩会</span>
-      <span class="brand-name">企画ツール</span>
-    </a>
+  <header class="app-header">
+    <a class="app-name" href="./">山歩会企画ツール</a>
     <nav class="header-nav" aria-label="メインナビゲーション">
-      <a href="index.html">ホーム</a>
-      <a href="guide.html" aria-current="page">使い方</a>
+      <a href="./">企画一覧</a>
     </nav>
   </header>
 
-  <main id="main" class="main-content guide-page">
-    <section class="guide-hero carbon-grid" aria-labelledby="guide-title">
-      <div class="col-lg-10 col-md-7 col-sm-4">
-        <a class="back-link" href="index.html">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6.7 3.3 1.1 1.1L5 7.2h9v1.6H5l2.8 2.8-1.1 1.1L2 8z"/></svg>
-          ホームへ戻る
-        </a>
-        <h1 id="guide-title">提出書類の作り方</h1>
-        <p class="hero-lead">山歩会 提出書類作成アプリを使って、企画ごとの提出書類を作成します。</p>
+  <main id="main" class="page-shell guide-shell">
+    <section class="page-heading guide-heading" aria-labelledby="page-title">
+      <div>
+        <p class="breadcrumb"><a href="./">企画一覧</a><span aria-hidden="true">/</span></p>
+        <h1 id="page-title">提出書類の作り方</h1>
+        <p>Windows版「山歩会 提出書類作成」を使います。</p>
       </div>
-      <div class="guide-action col-lg-6 col-md-8 col-sm-4">
-        <a class="primary-button" href="https://github.com/mutoshiki/sampokai-submission-builder/releases/latest" target="_blank" rel="noopener noreferrer">
-          最新版を開く
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.3 3.3 8.2 4.4 11 7.2H2v1.6h9l-2.8 2.8 1.1 1.1L14 8z"/></svg>
-        </a>
-      </div>
+      <a class="button button-primary" href="https://github.com/mutoshiki/sampokai-submission-builder/releases">
+        アプリをダウンロード
+        <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M26 24v2H6v-2zm-9-4.8 5.6-5.6L24 15l-8 8-8-8 1.4-1.4 5.6 5.6V4h2z"/></svg>
+      </a>
     </section>
 
-    <section class="guide-layout carbon-grid">
-      <aside class="guide-aside col-lg-4 col-md-3 col-sm-4" aria-label="このページの目次">
-        <nav class="side-nav">
-          <p class="side-nav-title">このページ</p>
-          <a href="#prepare">準備するもの</a>
-          <a href="#steps">作成手順</a>
-          <a href="#output">作成される書類</a>
-          <a href="#notes">確認ポイント</a>
-        </nav>
-      </aside>
+    <section class="guide-section" aria-labelledby="prepare-title">
+      <h2 id="prepare-title">用意するもの</h2>
+      <ul class="plain-list">
+        <li>サークル全体名簿</li>
+        <li>Googleフォームの回答ファイル</li>
+        <li>企画情報・登山計画</li>
+        <li>必要ならルート画像</li>
+      </ul>
+    </section>
 
-      <div class="guide-content col-lg-10 col-md-5 col-sm-4">
-        <section id="prepare" class="guide-section">
-          <h2>準備するもの</h2>
-          <ul class="check-list">
-            <li>サークル全体名簿（XLSX / XLS / CSV / TSV）</li>
-            <li>Googleフォームからダウンロードした回答（XLSX / XLS / CSV / TSV）</li>
-            <li>企画の日程・山名・登山計画</li>
-            <li>登山ルートの画像</li>
-            <li>Microsoft Word または Word COM互換のWPS Office</li>
-          </ul>
-        </section>
+    <section class="guide-section" aria-labelledby="steps-title">
+      <h2 id="steps-title">作成手順</h2>
+      <ol class="step-list">
+        <li><span class="step-number">1</span><div><h3>全体名簿を選ぶ</h3><p>XLSX / XLS / CSV / TSV に対応しています。</p></div></li>
+        <li><span class="step-number">2</span><div><h3>フォーム回答を選ぶ</h3><p>Googleフォームからダウンロードした回答ファイルを選びます。</p></div></li>
+        <li><span class="step-number">3</span><div><h3>参加者を確認する</h3><p>今回参加する人だけを選び、未照合や同姓同名があれば確認します。</p></div></li>
+        <li><span class="step-number">4</span><div><h3>企画情報を入力する</h3><p>山名、実施日、登山計画などを入力します。</p></div></li>
+        <li><span class="step-number">5</span><div><h3>確認する</h3><p>不足や矛盾が表示された場合は修正します。</p></div></li>
+        <li><span class="step-number">6</span><div><h3>提出書類を作成する</h3><p>「提出書類を作成」を押し、作成されたフォルダを確認します。</p></div></li>
+      </ol>
+    </section>
 
-        <section id="steps" class="guide-section">
-          <h2>作成手順</h2>
-          <ol class="step-list">
-            <li>
-              <span class="step-number">1</span>
-              <div><h3>全体名簿を選ぶ</h3><p>最初に、サークル全体の名簿ファイルを選択します。</p></div>
-            </li>
-            <li>
-              <span class="step-number">2</span>
-              <div><h3>フォーム回答を選ぶ</h3><p>募集に使ったGoogleフォームの回答ファイルを選択します。</p></div>
-            </li>
-            <li>
-              <span class="step-number">3</span>
-              <div><h3>今回の参加者を確認する</h3><p>参加する回答だけを選択し、未照合・同姓同名・競合がある場合は名簿候補を確認します。</p></div>
-            </li>
-            <li>
-              <span class="step-number">4</span>
-              <div><h3>企画情報と登山計画を入力する</h3><p>企画の基本情報、登山計画、ルート画像を設定します。</p></div>
-            </li>
-            <li>
-              <span class="step-number">5</span>
-              <div><h3>確認画面で不備を直す</h3><p>不足している情報や照合エラーがないかを確認します。</p></div>
-            </li>
-            <li>
-              <span class="step-number">6</span>
-              <div><h3>提出書類を作成する</h3><p>「提出書類を作成」を押し、企画ごとに作成された出力フォルダを確認します。</p></div>
-            </li>
-          </ol>
-        </section>
-
-        <section id="output" class="guide-section">
-          <h2>作成される書類</h2>
-          <div class="output-list" role="list">
-            <div role="listitem"><span>01</span><strong>企画参加者名簿.docx</strong></div>
-            <div role="listitem"><span>02</span><strong>登山計画書.docx / PDF</strong></div>
-            <div role="listitem"><span>03</span><strong>登山等届.docx</strong></div>
-          </div>
-        </section>
-
-        <section id="notes" class="guide-section">
-          <h2>確認ポイント</h2>
-          <div class="notification" role="note">
-            <h3>参加者の照合は必ず確認してください</h3>
-            <p>学籍番号と氏名が一致しない場合、同姓同名がある場合、複数候補がある場合などは自動確定されません。画面の案内に沿って正しい名簿メンバーを選択してください。</p>
-          </div>
-          <p>元の全体名簿・フォーム回答・提出テンプレートは上書きされません。通常利用ではインターネット接続や外部APIも使用しません。</p>
-        </section>
-      </div>
+    <section class="guide-section" aria-labelledby="outputs-title">
+      <h2 id="outputs-title">作成される書類</h2>
+      <ul class="document-list">
+        <li>参加者名簿</li>
+        <li>登山計画書（Word / PDF）</li>
+        <li>登山等届</li>
+      </ul>
     </section>
   </main>
-
-  <footer class="site-footer">
-    <div class="carbon-grid">
-      <p class="col-lg-16 col-md-8 col-sm-4">山歩会企画ツール</p>
-    </div>
-  </footer>
-
-  <script src="assets/js/main.js" defer></script>
 </body>
 </html>
