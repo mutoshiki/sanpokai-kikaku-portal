@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="山歩会の企画ツールとフォーム作成ツールへの入口です。">
+  <meta name="description" content="山歩会の学務提出書類作成、フォーム作成、サークル企画ツールへの入口です。">
   <meta name="theme-color" content="#161616">
   <meta name="color-scheme" content="light">
   <title>山歩会企画ツール</title>
@@ -12,267 +12,163 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* Carbon White theme roles */
-      --cds-background: #ffffff;
-      --cds-layer: #f4f4f4;
-      --cds-layer-hover: #e8e8e8;
-      --cds-text-primary: #161616;
-      --cds-text-secondary: #525252;
-      --cds-border-subtle: #e0e0e0;
-      --cds-border-strong: #8d8d8d;
-      --cds-border-tile: #c6c6c6;
-      --cds-link-primary: #0f62fe;
-      --cds-link-primary-hover: #0043ce;
-      --cds-icon-interactive: #0f62fe;
-      --cds-focus: #0f62fe;
+      --cds-background:#ffffff;
+      --cds-layer:#f4f4f4;
+      --cds-layer-hover:#e8e8e8;
+      --cds-text-primary:#161616;
+      --cds-text-secondary:#525252;
+      --cds-border-subtle:#e0e0e0;
+      --cds-border-strong:#8d8d8d;
+      --cds-border-tile:#c6c6c6;
+      --cds-link-primary:#0f62fe;
+      --cds-link-primary-hover:#0043ce;
+      --cds-icon-interactive:#0f62fe;
+      --cds-focus:#0f62fe;
     }
 
-    * { box-sizing: border-box; }
+    *{box-sizing:border-box}
+    html{background:var(--cds-background)}
+    body{
+      margin:0;
+      background:var(--cds-background);
+      color:var(--cds-text-primary);
+      font-family:"IBM Plex Sans JP","IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+      font-size:14px;
+      line-height:20px;
+      letter-spacing:.16px;
+    }
+    a{color:inherit}
 
-    html { background: var(--cds-background); }
+    .skip-link{
+      position:fixed;top:0;left:0;z-index:100;
+      padding:8px 16px;background:#fff;color:var(--cds-link-primary);
+      transform:translateY(-120%);
+    }
+    .skip-link:focus{transform:none}
 
-    body {
-      margin: 0;
-      background: var(--cds-background);
-      color: var(--cds-text-primary);
-      font-family: "IBM Plex Sans JP", "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-      font-size: 14px;
-      line-height: 20px;
-      letter-spacing: 0.16px;
+    .app-header{
+      position:sticky;top:0;z-index:10;
+      display:flex;align-items:stretch;
+      width:100%;height:48px;
+      background:#161616;color:#f4f4f4;
+      border-bottom:1px solid #393939;
+    }
+    .app-name{
+      display:flex;align-items:center;min-height:48px;
+      padding:0 16px;color:#f4f4f4;text-decoration:none;
+      font-size:14px;line-height:18px;font-weight:600;letter-spacing:.16px;
+    }
+    .app-name:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+
+    .page{
+      width:min(100%,1584px);
+      margin:0;
+      padding:32px 16px 80px;
+    }
+    .page-title{
+      margin:0 0 24px;
+      font-size:32px;line-height:40px;font-weight:400;letter-spacing:0;
+    }
+    .section-title{
+      margin:0;
+      font-size:20px;line-height:28px;font-weight:400;letter-spacing:0;
     }
 
-    a { color: inherit; }
-
-    .skip-link {
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      padding: 8px 16px;
-      background: #ffffff;
-      color: var(--cds-link-primary);
-      transform: translateY(-120%);
+    /* Carbon Clickable Tile */
+    .tool-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:16px;
+    }
+    .tool-tile{
+      position:relative;display:block;
+      min-width:128px;min-height:144px;
+      padding:16px 48px 16px 16px;
+      background:var(--cds-layer);
+      border:1px solid var(--cds-border-tile);
+      color:var(--cds-text-primary);
+      text-decoration:none;
+    }
+    .tool-tile:hover{background:var(--cds-layer-hover)}
+    .tool-tile:focus-visible{outline:2px solid var(--cds-focus);outline-offset:-2px}
+    .tool-title{
+      margin:0 0 8px;
+      font-size:20px;line-height:28px;font-weight:400;letter-spacing:0;
+    }
+    .tool-description{
+      max-width:32rem;margin:0;
+      color:var(--cds-text-secondary);
+      font-size:14px;line-height:20px;letter-spacing:.16px;
+    }
+    .tool-arrow{
+      position:absolute;right:12px;bottom:12px;
+      width:20px;height:20px;
+      fill:var(--cds-icon-interactive);
     }
 
-    .skip-link:focus { transform: none; }
-
-    /* Carbon UI Shell: Header base */
-    .app-header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      align-items: stretch;
-      width: 100%;
-      height: 48px;
-      background: #161616;
-      color: #f4f4f4;
-      border-bottom: 1px solid #393939;
+    /* Carbon Structured List */
+    .projects{margin-top:48px}
+    .projects-heading{
+      padding-bottom:16px;
+      border-bottom:1px solid var(--cds-border-strong);
+    }
+    .structured-list{width:100%}
+    .structured-head,.structured-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(160px,224px);
+      column-gap:32px;
+      align-items:center;
+    }
+    .structured-head{
+      min-height:40px;
+      border-bottom:1px solid var(--cds-border-subtle);
+      color:var(--cds-text-secondary);
+      font-size:12px;line-height:16px;font-weight:400;letter-spacing:.32px;
+    }
+    .structured-row{
+      min-height:64px;
+      padding:12px 0;
+      border-bottom:1px solid var(--cds-border-subtle);
+    }
+    .project-main{min-width:0}
+    .project-link{
+      display:inline;
+      color:var(--cds-link-primary);
+      text-decoration:none;
+      font-size:14px;line-height:20px;font-weight:600;letter-spacing:.16px;
+    }
+    .project-link:hover{color:var(--cds-link-primary-hover);text-decoration:underline}
+    .project-link:focus-visible{outline:2px solid var(--cds-focus);outline-offset:2px}
+    .project-meta,.project-date{
+      color:var(--cds-text-secondary);
+      font-size:12px;line-height:16px;letter-spacing:.32px;
+    }
+    .project-meta{display:block;margin-top:2px}
+    .empty-state{
+      margin:0;padding:24px 0;
+      border-bottom:1px solid var(--cds-border-subtle);
+      color:var(--cds-text-secondary);
+      font-size:14px;line-height:20px;
     }
 
-    .app-name {
-      display: flex;
-      align-items: center;
-      min-height: 48px;
-      padding: 0 16px;
-      color: #f4f4f4;
-      text-decoration: none;
-      font-size: 14px;
-      line-height: 18px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
+    @media (min-width:672px){
+      .page{padding:40px 32px 96px}
+      .tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
-
-    .app-name:focus-visible {
-      outline: 2px solid #ffffff;
-      outline-offset: -3px;
-    }
-
-    /* Carbon product/docs style: left-aligned productive layout */
-    .page {
-      width: min(100%, 1584px);
-      margin: 0;
-      padding: 32px 16px 80px;
-    }
-
-    .page-title {
-      margin: 0 0 24px;
-      font-size: 32px;
-      line-height: 40px;
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    .section-title {
-      margin: 0;
-      font-size: 20px;
-      line-height: 28px;
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    /* Carbon Clickable Tile with enable-tile-contrast behavior */
-    .tool-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-
-    .tool-tile {
-      position: relative;
-      display: block;
-      min-width: 128px;
-      min-height: 144px;
-      padding: 16px 48px 16px 16px;
-      background: var(--cds-layer);
-      border: 1px solid var(--cds-border-tile);
-      color: var(--cds-text-primary);
-      text-decoration: none;
-    }
-
-    .tool-tile:hover { background: var(--cds-layer-hover); }
-
-    .tool-tile:focus-visible {
-      outline: 2px solid var(--cds-focus);
-      outline-offset: -2px;
-    }
-
-    .tool-title {
-      margin: 0 0 8px;
-      font-size: 20px;
-      line-height: 28px;
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    .tool-description {
-      max-width: 32rem;
-      margin: 0;
-      color: var(--cds-text-secondary);
-      font-size: 14px;
-      line-height: 20px;
-      letter-spacing: 0.16px;
-    }
-
-    .tool-arrow {
-      position: absolute;
-      right: 12px;
-      bottom: 12px;
-      width: 20px;
-      height: 20px;
-      fill: var(--cds-icon-interactive);
-    }
-
-    /* Carbon Structured List for a small, scannable set of saved projects */
-    .projects {
-      margin-top: 48px;
-    }
-
-    .projects-heading {
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--cds-border-strong);
-    }
-
-    .structured-list {
-      width: 100%;
-    }
-
-    .structured-head,
-    .structured-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(160px, 224px);
-      column-gap: 32px;
-      align-items: center;
-    }
-
-    .structured-head {
-      min-height: 40px;
-      border-bottom: 1px solid var(--cds-border-subtle);
-      color: var(--cds-text-secondary);
-      font-size: 12px;
-      line-height: 16px;
-      font-weight: 400;
-      letter-spacing: 0.32px;
-    }
-
-    .structured-row {
-      min-height: 64px;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--cds-border-subtle);
-    }
-
-    .project-main { min-width: 0; }
-
-    .project-link {
-      display: inline;
-      color: var(--cds-link-primary);
-      text-decoration: none;
-      font-size: 14px;
-      line-height: 20px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
-    }
-
-    .project-link:hover {
-      color: var(--cds-link-primary-hover);
-      text-decoration: underline;
-    }
-
-    .project-link:focus-visible {
-      outline: 2px solid var(--cds-focus);
-      outline-offset: 2px;
-    }
-
-    .project-meta,
-    .project-date {
-      color: var(--cds-text-secondary);
-      font-size: 12px;
-      line-height: 16px;
-      letter-spacing: 0.32px;
-    }
-
-    .project-meta {
-      display: block;
-      margin-top: 2px;
-    }
-
-    .empty-state {
-      margin: 0;
-      padding: 24px 0;
-      border-bottom: 1px solid var(--cds-border-subtle);
-      color: var(--cds-text-secondary);
-      font-size: 14px;
-      line-height: 20px;
-    }
-
-    @media (min-width: 672px) {
-      .page { padding: 40px 32px 96px; }
-      .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (min-width: 1056px) {
-      .page { padding-left: 32px; padding-right: 32px; }
-      .tool-grid { max-width: calc(75% - 8px); }
-      .projects { max-width: calc(75% - 8px); }
-    }
-
-    @media (max-width: 671px) {
-      .page-title {
-        margin-bottom: 24px;
-        font-size: 28px;
-        line-height: 36px;
+    @media (min-width:1056px){
+      .page{padding-left:32px;padding-right:32px}
+      .tool-grid{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        max-width:calc(75% - 8px);
       }
-
-      .tool-tile { min-height: 128px; }
-
-      .projects { margin-top: 40px; }
-
-      .structured-head { display: none; }
-
-      .structured-row {
-        grid-template-columns: 1fr;
-        row-gap: 4px;
-      }
+      .projects{max-width:calc(75% - 8px)}
+    }
+    @media (max-width:671px){
+      .page-title{margin-bottom:24px;font-size:28px;line-height:36px}
+      .tool-tile{min-height:128px}
+      .projects{margin-top:40px}
+      .structured-head{display:none}
+      .structured-row{grid-template-columns:1fr;row-gap:4px}
     }
   </style>
 </head>
@@ -289,13 +185,13 @@
     <section class="tool-grid" aria-label="利用するツール">
       <a
         class="tool-tile"
-        href="https://mutoshiki.github.io/circle-kikaku-tools/"
+        href="https://github.com/mutoshiki/sampokai-submission-builder/releases"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="企画ツールを新しいタブで開く"
+        aria-label="学務提出書類作成ツールを新しいタブで開く"
       >
-        <h2 class="tool-title">企画ツール</h2>
-        <p class="tool-description">新しい企画を作成し、車割・班割・共有・精算を行えます。</p>
+        <h2 class="tool-title">学務提出書類作成ツール</h2>
+        <p class="tool-description">企画者はこのツールでフォーム回答から引き継ぎデータを作り、それをサークル長に渡します。登山計画書も作成可能。</p>
         <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
           <path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/>
         </svg>
@@ -306,10 +202,24 @@
         href="https://script.google.com/macros/s/AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj/exec"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="フォーム作成ツールを新しいタブで開く"
+        aria-label="山歩会フォームメーカーを新しいタブで開く"
       >
-        <h2 class="tool-title">フォーム作成ツール</h2>
-        <p class="tool-description">参加募集用のGoogleフォームを作成できます。</p>
+        <h2 class="tool-title">山歩会フォームメーカー</h2>
+        <p class="tool-description">日付や企画名などの入力するだけで、応募フォームの作成を簡単に行えます。</p>
+        <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/>
+        </svg>
+      </a>
+
+      <a
+        class="tool-tile"
+        href="https://mutoshiki.github.io/circle-kikaku-tools/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="サークル企画ツールを新しいタブで開く"
+      >
+        <h2 class="tool-title">サークル企画ツール</h2>
+        <p class="tool-description">タップして新しい企画を作成。車割や班割の作成、精算を効率よく行えます。</p>
         <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
           <path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/>
         </svg>
@@ -336,147 +246,119 @@
   </main>
 
   <script>
-    (() => {
+    (()=>{
       'use strict';
+      const TOOL_URL='https://mutoshiki.github.io/circle-kikaku-tools/';
+      const STORE_PREFIX='sampokai_v10_split_';
+      const SYNC_BASE_PREFIX=STORE_PREFIX+'sync_base_';
+      const SYNC_OUTBOX_PREFIX=STORE_PREFIX+'sync_outbox_';
+      const HISTORY_PREFIX='syawari_history_';
+      const LAST_ROOM_KEY='syawari_last_room_id';
+      const rows=document.getElementById('project-rows');
+      if(!rows)return;
 
-      const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
-      const STORE_PREFIX = 'sampokai_v10_split_';
-      const SYNC_BASE_PREFIX = STORE_PREFIX + 'sync_base_';
-      const SYNC_OUTBOX_PREFIX = STORE_PREFIX + 'sync_outbox_';
-      const HISTORY_PREFIX = 'syawari_history_';
-      const LAST_ROOM_KEY = 'syawari_last_room_id';
-      const rows = document.getElementById('project-rows');
-
-      if (!rows) return;
-
-      function parse(value) {
-        try {
-          const parsed = JSON.parse(value);
-          return parsed && typeof parsed === 'object' ? parsed : null;
-        } catch {
-          return null;
-        }
+      function parse(value){
+        try{
+          const parsed=JSON.parse(value);
+          return parsed&&typeof parsed==='object'?parsed:null;
+        }catch{return null}
       }
 
-      function readProjects() {
-        const projects = new Map();
-
-        function merge(roomId, data = {}) {
-          if (!roomId) return;
-          const current = projects.get(roomId) || { roomId, name: '', updatedAt: 0 };
-          const updatedAt = Number(
-            data.lastUpdatedAt ?? data.updatedAt ?? data.meta?.updatedAt ?? 0
-          ) || 0;
-
-          projects.set(roomId, {
+      function readProjects(){
+        const projects=new Map();
+        function merge(roomId,data={}){
+          if(!roomId)return;
+          const current=projects.get(roomId)||{roomId,name:'',updatedAt:0};
+          const updatedAt=Number(data.lastUpdatedAt??data.updatedAt??data.meta?.updatedAt??0)||0;
+          projects.set(roomId,{
             roomId,
-            name: String(data.roomName || current.name || '').trim(),
-            updatedAt: Math.max(current.updatedAt || 0, updatedAt)
+            name:String(data.roomName||current.name||'').trim(),
+            updatedAt:Math.max(current.updatedAt||0,updatedAt)
           });
         }
 
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = localStorage.key(i);
-          if (!key) continue;
-
-          if (key.startsWith(SYNC_BASE_PREFIX)) {
-            merge(key.slice(SYNC_BASE_PREFIX.length), parse(localStorage.getItem(key)) || {});
+        for(let i=0;i<localStorage.length;i+=1){
+          const key=localStorage.key(i);
+          if(!key)continue;
+          if(key.startsWith(SYNC_BASE_PREFIX)){
+            merge(key.slice(SYNC_BASE_PREFIX.length),parse(localStorage.getItem(key))||{});
             continue;
           }
-
-          if (key.startsWith(STORE_PREFIX) && !key.startsWith(SYNC_OUTBOX_PREFIX)) {
-            merge(key.slice(STORE_PREFIX.length), parse(localStorage.getItem(key)) || {});
+          if(key.startsWith(STORE_PREFIX)&&!key.startsWith(SYNC_OUTBOX_PREFIX)){
+            merge(key.slice(STORE_PREFIX.length),parse(localStorage.getItem(key))||{});
             continue;
           }
-
-          if (key.startsWith(HISTORY_PREFIX)) {
-            const roomId = key.slice(HISTORY_PREFIX.length);
-            const history = parse(localStorage.getItem(key));
-            if (Array.isArray(history) && history.length) {
-              const latest = history[history.length - 1];
-              merge(roomId, latest?.data || {});
-            } else {
-              merge(roomId, {});
-            }
+          if(key.startsWith(HISTORY_PREFIX)){
+            const roomId=key.slice(HISTORY_PREFIX.length);
+            const history=parse(localStorage.getItem(key));
+            if(Array.isArray(history)&&history.length){
+              const latest=history[history.length-1];
+              merge(roomId,latest?.data||{});
+            }else merge(roomId,{});
           }
         }
 
-        const lastRoom = localStorage.getItem(LAST_ROOM_KEY) || '';
-        if (lastRoom && !projects.has(lastRoom)) merge(lastRoom, {});
-
-        return {
+        const lastRoom=localStorage.getItem(LAST_ROOM_KEY)||'';
+        if(lastRoom&&!projects.has(lastRoom))merge(lastRoom,{});
+        return{
           lastRoom,
-          projects: [...projects.values()].sort((a, b) => {
-            if (a.roomId === lastRoom && b.roomId !== lastRoom) return -1;
-            if (b.roomId === lastRoom && a.roomId !== lastRoom) return 1;
-            return b.updatedAt - a.updatedAt;
+          projects:[...projects.values()].sort((a,b)=>{
+            if(a.roomId===lastRoom&&b.roomId!==lastRoom)return -1;
+            if(b.roomId===lastRoom&&a.roomId!==lastRoom)return 1;
+            return b.updatedAt-a.updatedAt;
           })
         };
       }
 
-      function formatDate(value) {
-        if (!value) return '—';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '—';
-
-        return new Intl.DateTimeFormat('ja-JP', {
-          year: 'numeric',
-          month: 'numeric',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+      function formatDate(value){
+        if(!value)return '—';
+        const date=new Date(value);
+        if(Number.isNaN(date.getTime()))return '—';
+        return new Intl.DateTimeFormat('ja-JP',{
+          year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'
         }).format(date);
       }
 
-      function render() {
-        const { lastRoom, projects } = readProjects();
+      function render(){
+        const{lastRoom,projects}=readProjects();
         rows.replaceChildren();
-
-        if (!projects.length) {
-          const empty = document.createElement('p');
-          empty.className = 'empty-state';
-          empty.textContent = 'このブラウザで開いた企画はありません。';
+        if(!projects.length){
+          const empty=document.createElement('p');
+          empty.className='empty-state';
+          empty.textContent='このブラウザで開いた企画はありません。';
           rows.append(empty);
           return;
         }
 
-        projects.forEach(project => {
-          const row = document.createElement('div');
-          row.className = 'structured-row';
-
-          const main = document.createElement('div');
-          main.className = 'project-main';
-
-          const link = document.createElement('a');
-          link.className = 'project-link';
-          link.href = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.textContent = project.name || `企画 ${project.roomId}`;
-          link.setAttribute('aria-label', `${link.textContent}を新しいタブで開く`);
-
-          const meta = document.createElement('span');
-          meta.className = 'project-meta';
-          meta.textContent = project.roomId === lastRoom
-            ? `最後に開いた企画 · ID: ${project.roomId}`
-            : `ID: ${project.roomId}`;
-
-          const date = document.createElement('time');
-          date.className = 'project-date';
-          date.textContent = formatDate(project.updatedAt);
-          if (project.updatedAt) date.dateTime = new Date(project.updatedAt).toISOString();
-
-          main.append(link, meta);
-          row.append(main, date);
+        projects.forEach(project=>{
+          const row=document.createElement('div');
+          row.className='structured-row';
+          const main=document.createElement('div');
+          main.className='project-main';
+          const link=document.createElement('a');
+          link.className='project-link';
+          link.href=`${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
+          link.target='_blank';
+          link.rel='noopener noreferrer';
+          link.textContent=project.name||`企画 ${project.roomId}`;
+          link.setAttribute('aria-label',`${link.textContent}を新しいタブで開く`);
+          const meta=document.createElement('span');
+          meta.className='project-meta';
+          meta.textContent=project.roomId===lastRoom
+            ?`最後に開いた企画 · ID: ${project.roomId}`
+            :`ID: ${project.roomId}`;
+          const date=document.createElement('time');
+          date.className='project-date';
+          date.textContent=formatDate(project.updatedAt);
+          if(project.updatedAt)date.dateTime=new Date(project.updatedAt).toISOString();
+          main.append(link,meta);
+          row.append(main,date);
           rows.append(row);
         });
       }
 
-      window.addEventListener('storage', render);
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) render();
-      });
-
+      window.addEventListener('storage',render);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
       render();
     })();
   </script>
