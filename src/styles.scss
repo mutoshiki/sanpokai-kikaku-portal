@@ -103,6 +103,7 @@ body {
 /* Carbon's tile focus outline is transparent in this bundled theme path.
    currentColor is already Carbon text-primary, so the fallback remains
    theme-aware without introducing a separate light/dark color. */
+.tool-tile.cds--tile--clickable:focus,
 .tool-tile.cds--tile--clickable:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: -2px;
