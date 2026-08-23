@@ -373,6 +373,7 @@
       const SYNC_OUTBOX_PREFIX=STORE_PREFIX+'sync_outbox_';
       const HISTORY_PREFIX='syawari_history_';
       const LAST_ROOM_KEY='syawari_last_room_id';
+      const PROJECT_REGISTRY_KEY='sanpokai_portal_project_history_v1';
       const rows=document.getElementById('project-rows');
       if(!rows)return;
 
@@ -386,14 +387,23 @@
       function readProjects(){
         const projects=new Map();
         function merge(roomId,data={}){
-          if(!roomId)return;
-          const current=projects.get(roomId)||{roomId,name:'',updatedAt:0};
+          const normalizedRoomId=String(roomId||'').trim();
+          if(!normalizedRoomId)return;
+          const current=projects.get(normalizedRoomId)||{roomId:normalizedRoomId,name:'',updatedAt:0};
           const updatedAt=Number(data.lastUpdatedAt??data.updatedAt??data.meta?.updatedAt??0)||0;
-          projects.set(roomId,{
-            roomId,
-            name:String(data.roomName||current.name||'').trim(),
+          const nextName=String(data.roomName??data.name??'').trim();
+          projects.set(normalizedRoomId,{
+            roomId:normalizedRoomId,
+            name:nextName||current.name||'',
             updatedAt:Math.max(current.updatedAt||0,updatedAt)
           });
+        }
+
+        // Keep a portal-owned registry so the list survives cleanup/reset of the app's
+        // per-room caches. The registry is additive: rooms are never removed implicitly.
+        const registry=parse(localStorage.getItem(PROJECT_REGISTRY_KEY));
+        if(Array.isArray(registry?.projects)){
+          registry.projects.forEach(project=>merge(project?.roomId,project||{}));
         }
 
         for(let i=0;i<localStorage.length;i+=1){
@@ -411,22 +421,37 @@
             const roomId=key.slice(HISTORY_PREFIX.length);
             const history=parse(localStorage.getItem(key));
             if(Array.isArray(history)&&history.length){
-              const latest=history[history.length-1];
-              merge(roomId,latest?.data||{});
+              const latest=history.reduce((best,item)=>{
+                return Number(item?.time||0)>Number(best?.time||0)?item:best;
+              },history[0]);
+              merge(roomId,{
+                ...(latest?.data||{}),
+                lastUpdatedAt:Number(latest?.data?.lastUpdatedAt??latest?.data?.updatedAt??latest?.time??0)||0
+              });
             }else merge(roomId,{});
           }
         }
 
         const lastRoom=localStorage.getItem(LAST_ROOM_KEY)||'';
-        if(lastRoom&&!projects.has(lastRoom))merge(lastRoom,{});
-        return{
-          lastRoom,
-          projects:[...projects.values()].sort((a,b)=>{
-            if(a.roomId===lastRoom&&b.roomId!==lastRoom)return -1;
-            if(b.roomId===lastRoom&&a.roomId!==lastRoom)return 1;
-            return b.updatedAt-a.updatedAt;
-          })
-        };
+        if(lastRoom&&!projects.has(lastRoom))merge(lastRoom,{updatedAt:Date.now()});
+
+        const sorted=[...projects.values()].sort((a,b)=>{
+          if(a.roomId===lastRoom&&b.roomId!==lastRoom)return -1;
+          if(b.roomId===lastRoom&&a.roomId!==lastRoom)return 1;
+          return b.updatedAt-a.updatedAt;
+        });
+
+        try{
+          localStorage.setItem(PROJECT_REGISTRY_KEY,JSON.stringify({
+            version:1,
+            projects:sorted,
+            savedAt:Date.now()
+          }));
+        }catch(error){
+          console.warn('企画一覧の永続履歴を保存できませんでした。',error);
+        }
+
+        return{lastRoom,projects:sorted};
       }
 
       function formatDate(value){
@@ -474,6 +499,10 @@
           row.append(main,date);
           rows.append(row);
         });
+      }
+
+      if(navigator.storage?.persist){
+        navigator.storage.persist().catch(()=>false);
       }
 
       window.addEventListener('storage',render);
