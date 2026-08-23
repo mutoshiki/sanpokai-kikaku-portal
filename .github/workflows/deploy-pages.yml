@@ -14,6 +14,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  LIVE_URL: https://mutoshiki.github.io/sanpokai-kikaku-portal/
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,3 +43,94 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install browser verifier
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Verify live portal in Chromium and WebKit
+        run: |
+          cat > portal-smoke.cjs <<'NODE'
+          const fs = require('fs');
+          const { chromium, webkit } = require('playwright');
+
+          async function inspect(name, browserType) {
+            const browser = await browserType.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 390, height: 844 },
+              colorScheme: 'light',
+              isMobile: true,
+              hasTouch: true,
+              deviceScaleFactor: 1
+            });
+            const page = await context.newPage();
+            const errors = [];
+            const consoleErrors = [];
+            page.on('pageerror', e => errors.push(String(e)));
+            page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+
+            const response = await page.goto(process.env.LIVE_URL, { waitUntil: 'networkidle', timeout: 60000 });
+            if (!response || !response.ok()) throw new Error(`${name}: live portal returned ${response && response.status()}`);
+
+            await page.evaluate(() => {
+              const now = Date.now();
+              localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({
+                version: 1,
+                projects: [
+                  { roomId: 'QA-OLDER', name: '過去企画', updatedAt: now - 60000 },
+                  { roomId: 'QA-LATEST', name: '最新企画', updatedAt: now }
+                ],
+                savedAt: now
+              }));
+              localStorage.setItem('syawari_last_room_id', 'QA-LATEST');
+            });
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+
+            const metrics = await page.evaluate(() => ({
+              title: document.title,
+              tiles: document.querySelectorAll('.cds--tile--clickable').length,
+              carbonHeader: document.querySelectorAll('.cds--header').length,
+              historyRows: document.querySelectorAll('.cds--structured-list-row:not(.cds--structured-list-row--header-row)').length,
+              firstHistoryText: document.querySelector('.cds--structured-list-tbody .cds--structured-list-row')?.innerText || '',
+              overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+              bodyTextLength: document.body.innerText.length
+            }));
+
+            await page.screenshot({ path: `portal-${name}.png`, fullPage: true });
+            fs.writeFileSync(`portal-${name}.json`, JSON.stringify({ metrics, errors, consoleErrors }, null, 2));
+
+            if (metrics.title !== '山歩会企画ツール一覧') throw new Error(`${name}: wrong title`);
+            if (metrics.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${metrics.tiles}`);
+            if (metrics.carbonHeader !== 1) throw new Error(`${name}: Carbon header missing`);
+            if (metrics.historyRows < 2) throw new Error(`${name}: project history did not render`);
+            if (!metrics.firstHistoryText.includes('最新企画')) throw new Error(`${name}: last-room project is not first`);
+            if (metrics.overflowX > 1) throw new Error(`${name}: horizontal overflow ${metrics.overflowX}px`);
+            if (metrics.bodyTextLength < 100) throw new Error(`${name}: body is unexpectedly empty`);
+            if (errors.length) throw new Error(`${name}: page errors: ${errors.join(' | ')}`);
+            if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}`);
+            await browser.close();
+          }
+
+          (async () => {
+            await inspect('chromium', chromium);
+            await inspect('webkit', webkit);
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE
+          node portal-smoke.cjs
+      - name: Upload live browser evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: portal-live-browser-evidence
+          path: |
+            portal-*.png
+            portal-*.json
+          if-no-files-found: ignore
