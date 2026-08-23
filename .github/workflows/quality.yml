@@ -1,0 +1,22 @@
+name: Quality guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - carbon-react-migration-20260823
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only
+      - run: npm ci
+      - run: npm run build
