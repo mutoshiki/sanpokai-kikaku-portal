@@ -10,6 +10,11 @@ body {
   font-family: 'IBM Plex Sans JP', 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+.app-theme-root {
+  min-height: 100vh;
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
 
 /* Keep the UI shell on the same Carbon theme as the page. */
 .cds--header {
