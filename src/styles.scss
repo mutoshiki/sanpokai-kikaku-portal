@@ -101,7 +101,7 @@ body {
   background: var(--cds-layer-hover);
 }
 .tool-tile.cds--tile--clickable:focus-visible {
-  outline: 2px solid var(--cds-focus);
+  outline: 2px solid var(--cds-link-primary);
   outline-offset: -2px;
 }
 .tool-tile__content h2 {
