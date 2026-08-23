@@ -14,6 +14,7 @@ import { ArrowRight } from '@carbon/icons-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
+const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
 const STORE_PREFIX = 'sampokai_v10_split_';
 const SYNC_BASE_PREFIX = `${STORE_PREFIX}sync_base_`;
 const SYNC_OUTBOX_PREFIX = `${STORE_PREFIX}sync_outbox_`;
@@ -35,7 +36,7 @@ const TOOLS = [
   {
     title: '山歩会フォームメーカー',
     description: '日付や企画名などを入力するだけで、応募フォームの作成を簡単に行えます。',
-    href: 'https://script.google.com/a/gmail.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec',
+    href: FORM_MAKER_URL,
   },
   {
     title: 'サークル企画ツール',
