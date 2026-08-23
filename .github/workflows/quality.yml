@@ -20,3 +20,8 @@ jobs:
       - run: npm install --package-lock-only
       - run: npm ci
       - run: npm run build
+      - name: Upload built portal
+        uses: actions/upload-artifact@v6
+        with:
+          name: portal-dist
+          path: dist
