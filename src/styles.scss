@@ -1,9 +1,5 @@
 @use '@carbon/react';
 
-:root {
-  color-scheme: light dark;
-}
-
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--cds-background); }
 body {
@@ -15,22 +11,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.theme-toggle-host {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 8001;
-  width: 3rem;
-  height: 3rem;
+.theme-preference-panel__content {
+  padding: 1rem;
+  color: var(--cds-text-primary);
 }
-.theme-toggle-host .cds--btn {
-  width: 3rem;
-  min-width: 3rem;
-  height: 3rem;
-  min-height: 3rem;
-  padding: 0;
-  display: grid;
-  place-items: center;
+.theme-preference-panel__title {
+  margin: 0 0 1rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+.theme-preference-panel__content .cds--radio-button-group {
+  align-items: flex-start;
+  gap: 1rem;
+}
+.theme-preference-panel__status {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-secondary);
+  font-size: .75rem;
+  line-height: 1rem;
 }
 
 .skip-link {
