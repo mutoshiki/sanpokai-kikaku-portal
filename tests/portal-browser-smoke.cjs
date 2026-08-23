@@ -33,8 +33,8 @@ async function run(browser, name, viewport) {
   await page.evaluate(() => {
     const store = {
       syawari_last_room_id: 'ROOM-B',
-      sampokai_v10_split_ROOM-A: JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
-      sampokai_v10_split_ROOM-B: JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
+      'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
+      'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
     };
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
