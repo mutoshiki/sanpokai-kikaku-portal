@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="山歩会の学務提出書類作成、登山計画書作成、フォーム作成、サークル企画ツールへの入口です。" />
-    <meta name="theme-color" content="#161616" />
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      (() => {
+        const key = 'sanpokai-theme-preference-v1';
+        let preference = 'system';
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored === 'system' || stored === 'light' || stored === 'dark') preference = stored;
+        } catch (_) {}
+        const systemDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const dark = preference === 'dark' || (preference === 'system' && systemDark);
+        document.documentElement.dataset.carbonTheme = dark ? 'g100' : 'white';
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = dark ? '#161616' : '#ffffff';
+      })();
+    </script>
     <title>山歩会企画ツール一覧</title>
   </head>
   <body>
