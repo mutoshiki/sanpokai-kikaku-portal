@@ -11,6 +11,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Keep the UI shell on the same Carbon theme as the page. */
+.cds--header {
+  background: var(--cds-background);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+.cds--header__name,
+.cds--header__action {
+  color: var(--cds-text-primary);
+}
+.cds--header__action:hover {
+  background: var(--cds-background-hover);
+}
+.cds--header-panel {
+  background: var(--cds-layer-01);
+  color: var(--cds-text-primary);
+}
+
 .theme-preference-panel__content {
   padding: 1rem;
   color: var(--cds-text-primary);
@@ -24,6 +41,9 @@ body {
 .theme-preference-panel__content .cds--radio-button-group {
   align-items: flex-start;
   gap: 1rem;
+}
+.theme-preference-panel__content .cds--radio-button__label {
+  color: var(--cds-text-primary);
 }
 .theme-preference-panel__status {
   margin: 1.5rem 0 0;
@@ -69,6 +89,15 @@ body {
   min-height: 9.5rem;
   padding: 1rem 3rem 3rem 1rem;
   border: 1px solid var(--cds-border-strong-01);
+  background: var(--cds-layer-01);
+  color: var(--cds-text-primary);
+}
+.tool-tile.cds--tile--clickable:hover {
+  background: var(--cds-layer-hover-01);
+}
+.tool-tile.cds--tile--clickable:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
 }
 .tool-tile__content h2 {
   margin: 0 0 .5rem;
