@@ -14,7 +14,7 @@ body {
 /* Keep the UI shell on the same Carbon theme as the page. */
 .cds--header {
   background: var(--cds-background);
-  border-bottom: 1px solid var(--cds-border-subtle-01);
+  border-bottom: 1px solid var(--cds-border-subtle);
 }
 .cds--header__name,
 .cds--header__action {
@@ -24,7 +24,7 @@ body {
   background: var(--cds-background-hover);
 }
 .cds--header-panel {
-  background: var(--cds-layer-01);
+  background: var(--cds-layer);
   color: var(--cds-text-primary);
 }
 
@@ -48,7 +48,7 @@ body {
 .theme-preference-panel__status {
   margin: 1.5rem 0 0;
   padding-top: 1rem;
-  border-top: 1px solid var(--cds-border-subtle-01);
+  border-top: 1px solid var(--cds-border-subtle);
   color: var(--cds-text-secondary);
   font-size: .75rem;
   line-height: 1rem;
@@ -88,12 +88,12 @@ body {
   position: relative;
   min-height: 9.5rem;
   padding: 1rem 3rem 3rem 1rem;
-  border: 1px solid var(--cds-border-strong-01);
-  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-strong);
+  background: var(--cds-layer);
   color: var(--cds-text-primary);
 }
 .tool-tile.cds--tile--clickable:hover {
-  background: var(--cds-layer-hover-01);
+  background: var(--cds-layer-hover);
 }
 .tool-tile.cds--tile--clickable:focus-visible {
   outline: 2px solid var(--cds-focus);
@@ -148,8 +148,8 @@ body {
 .empty-state {
   margin: 0;
   padding: 1rem 0 1.5rem;
-  border-top: 1px solid var(--cds-border-strong-01);
-  border-bottom: 1px solid var(--cds-border-subtle-01);
+  border-top: 1px solid var(--cds-border-strong);
+  border-bottom: 1px solid var(--cds-border-subtle);
   color: var(--cds-text-secondary);
   font-size: .875rem;
   line-height: 1.25rem;
