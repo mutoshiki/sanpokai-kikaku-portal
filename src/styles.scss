@@ -101,11 +101,11 @@ body {
   background: var(--cds-layer-hover);
 }
 /* Carbon's packaged ClickableTile keeps its outline transparent in this
-   runtime theme path. Add a theme-aware inset ring using an existing Carbon
-   semantic color so keyboard focus remains visible without layout shift. */
+   runtime theme path. Add a theme-aware inset ring using an emitted Carbon
+   semantic token so keyboard focus remains visible without layout shift. */
 .tool-tile.cds--tile--clickable:focus,
 .tool-tile.cds--tile--clickable:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--cds-link-primary);
+  box-shadow: inset 0 0 0 2px var(--cds-text-primary);
 }
 .tool-tile__content h2 {
   margin: 0 0 .5rem;
