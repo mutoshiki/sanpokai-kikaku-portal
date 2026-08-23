@@ -1,68 +1,119 @@
-import React, { useEffect, useState } from 'react';
-import { Button } from '@carbon/react';
-import { Asleep, Light } from '@carbon/icons-react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  GlobalTheme,
+  HeaderGlobalAction,
+  HeaderGlobalBar,
+  HeaderPanel,
+  RadioButton,
+  RadioButtonGroup,
+} from '@carbon/react';
+import { Settings } from '@carbon/icons-react';
 
-const STORAGE_KEY = 'sanpokai-ui-theme-v1';
-const LIGHT_THEME = 'light';
-const DARK_THEME = 'dark';
+export const THEME_STORAGE_KEY = 'sanpokai-theme-preference-v1';
+const SYSTEM = 'system';
+const LIGHT = 'light';
+const DARK = 'dark';
+const VALID_PREFERENCES = new Set([SYSTEM, LIGHT, DARK]);
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
-function readInitialTheme() {
+const ThemePreferenceContext = createContext({
+  preference: SYSTEM,
+  resolvedTheme: 'white',
+  setPreference: () => {},
+});
+
+function readPreference() {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === LIGHT_THEME || stored === DARK_THEME) return stored;
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (VALID_PREFERENCES.has(stored)) return stored;
   } catch {
-    // Storage can be unavailable in privacy-restricted contexts.
+    // Keep the default when storage is unavailable.
   }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? DARK_THEME : LIGHT_THEME;
+  return SYSTEM;
 }
 
-function applyTheme(theme) {
-  const carbonTheme = theme === DARK_THEME ? 'g100' : 'white';
-  document.documentElement.setAttribute('data-carbon-theme', carbonTheme);
-  document.documentElement.style.colorScheme = theme;
-
-  document.querySelectorAll('[data-carbon-theme]').forEach((node) => {
-    if (node.getAttribute('data-carbon-theme') !== carbonTheme) {
-      node.setAttribute('data-carbon-theme', carbonTheme);
-    }
-  });
+function readSystemDark() {
+  return Boolean(window.matchMedia?.(DARK_QUERY).matches);
 }
 
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState(readInitialTheme);
-  const dark = theme === DARK_THEME;
+export function ThemePreferenceProvider({ children }) {
+  const [preference, setPreferenceState] = useState(readPreference);
+  const [systemDark, setSystemDark] = useState(readSystemDark);
+  const resolvedTheme = preference === DARK || (preference === SYSTEM && systemDark) ? 'g100' : 'white';
 
   useEffect(() => {
-    applyTheme(theme);
+    const media = window.matchMedia?.(DARK_QUERY);
+    if (!media) return undefined;
+    const sync = (event) => setSystemDark(event.matches);
+    setSystemDark(media.matches);
+    media.addEventListener?.('change', sync);
+    return () => media.removeEventListener?.('change', sync);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-carbon-theme', resolvedTheme);
+    document.documentElement.style.colorScheme = resolvedTheme === 'g100' ? 'dark' : 'light';
+  }, [resolvedTheme]);
+
+  const setPreference = (nextPreference) => {
+    const next = VALID_PREFERENCES.has(nextPreference) ? nextPreference : SYSTEM;
+    setPreferenceState(next);
     try {
-      localStorage.setItem(STORAGE_KEY, theme);
+      localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      // Theme still works for the current page even when storage is unavailable.
+      // Theme still works for this visit when persistence is unavailable.
     }
+  };
 
-    const observer = new MutationObserver(() => applyTheme(theme));
-    observer.observe(document.documentElement, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ['data-carbon-theme'],
-    });
-    return () => observer.disconnect();
-  }, [theme]);
+  const value = useMemo(() => ({ preference, resolvedTheme, setPreference }), [preference, resolvedTheme]);
 
-  const label = dark ? 'ライトモードに切り替え' : 'ダークモードに切り替え';
   return (
-    <div className="theme-toggle-host">
-      <Button
-        kind="ghost"
-        size="lg"
-        hasIconOnly
-        renderIcon={dark ? Light : Asleep}
-        iconDescription={label}
-        aria-label={label}
-        aria-pressed={dark}
-        onClick={() => setTheme(dark ? LIGHT_THEME : DARK_THEME)}
-      />
-    </div>
+    <ThemePreferenceContext.Provider value={value}>
+      <GlobalTheme theme={resolvedTheme}>{children}</GlobalTheme>
+    </ThemePreferenceContext.Provider>
+  );
+}
+
+export function useThemePreference() {
+  return useContext(ThemePreferenceContext);
+}
+
+export function ThemeHeaderControl() {
+  const { preference, resolvedTheme, setPreference } = useThemePreference();
+  const [expanded, setExpanded] = useState(false);
+  const currentLabel = preference === SYSTEM ? 'システム設定' : preference === LIGHT ? 'ライト' : 'ダーク';
+
+  return (
+    <>
+      <HeaderGlobalBar>
+        <HeaderGlobalAction
+          aria-label={`テーマ設定：${currentLabel}`}
+          isActive={expanded}
+          tooltipAlignment="end"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <Settings size={20} />
+        </HeaderGlobalAction>
+      </HeaderGlobalBar>
+      <HeaderPanel aria-label="テーマ設定" expanded={expanded}>
+        <div className="theme-preference-panel__content">
+          <p className="theme-preference-panel__title">表示テーマ</p>
+          <RadioButtonGroup
+            legendText="表示テーマ"
+            name="theme-preference"
+            orientation="vertical"
+            valueSelected={preference}
+            onChange={(value) => setPreference(value)}
+          >
+            <RadioButton id="theme-system" labelText="システム設定" value={SYSTEM} />
+            <RadioButton id="theme-light" labelText="ライト" value={LIGHT} />
+            <RadioButton id="theme-dark" labelText="ダーク" value={DARK} />
+          </RadioButtonGroup>
+          <p className="theme-preference-panel__status">
+            現在の表示：{resolvedTheme === 'g100' ? 'ダーク' : 'ライト'}
+          </p>
+        </div>
+      </HeaderPanel>
+    </>
   );
 }
