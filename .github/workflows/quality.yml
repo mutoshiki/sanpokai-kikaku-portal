@@ -4,13 +4,13 @@ on:
   pull_request:
   push:
     branches:
-      - carbon-react-migration-20260823
+      - main
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-and-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -20,3 +20,18 @@ jobs:
       - run: npm install --package-lock-only
       - run: npm ci
       - run: npm run build
+      - name: Install Chromium for browser QA
+        run: npx playwright install --with-deps chromium
+      - name: Run isolated browser QA
+        env:
+          CHROMIUM_POLICY_DIR: /tmp/empty-chromium-policy
+        run: npm run test:browser
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: portal-browser-evidence
+          path: |
+            browser-evidence/*.png
+            browser-evidence/*.json
+          if-no-files-found: ignore
