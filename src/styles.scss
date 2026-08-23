@@ -1,9 +1,5 @@
 @use '@carbon/react';
 
-:root {
-  color-scheme: light;
-}
-
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--cds-background); }
 body {
@@ -13,6 +9,54 @@ body {
   color: var(--cds-text-primary);
   font-family: 'IBM Plex Sans JP', 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+.app-theme-root {
+  min-height: 100vh;
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+/* Keep the UI shell on the same Carbon theme as the page. */
+.cds--header {
+  background: var(--cds-background);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.cds--header__name,
+.cds--header__action {
+  color: var(--cds-text-primary);
+}
+.cds--header__action:hover {
+  background: var(--cds-background-hover);
+}
+.cds--header-panel {
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+}
+
+.theme-preference-panel__content {
+  padding: 1rem;
+  color: var(--cds-text-primary);
+}
+.theme-preference-panel__title {
+  margin: 0 0 1rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+.theme-preference-panel__content .cds--radio-button-group {
+  align-items: flex-start;
+  gap: 1rem;
+}
+.theme-preference-panel__content .cds--radio-button__label {
+  color: var(--cds-text-primary);
+}
+.theme-preference-panel__status {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-secondary);
+  font-size: .75rem;
+  line-height: 1rem;
 }
 
 .skip-link {
@@ -49,7 +93,19 @@ body {
   position: relative;
   min-height: 9.5rem;
   padding: 1rem 3rem 3rem 1rem;
-  border: 1px solid var(--cds-border-strong-01);
+  border: 1px solid var(--cds-border-strong);
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+}
+.tool-tile.cds--tile--clickable:hover {
+  background: var(--cds-layer-hover);
+}
+/* Carbon's packaged ClickableTile keeps its outline transparent in this
+   runtime theme path. Add a theme-aware inset ring using an emitted Carbon
+   semantic token so keyboard focus remains visible without layout shift. */
+.tool-tile.cds--tile--clickable:focus,
+.tool-tile.cds--tile--clickable:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--cds-text-primary);
 }
 .tool-tile__content h2 {
   margin: 0 0 .5rem;
@@ -100,8 +156,8 @@ body {
 .empty-state {
   margin: 0;
   padding: 1rem 0 1.5rem;
-  border-top: 1px solid var(--cds-border-strong-01);
-  border-bottom: 1px solid var(--cds-border-subtle-01);
+  border-top: 1px solid var(--cds-border-strong);
+  border-bottom: 1px solid var(--cds-border-subtle);
   color: var(--cds-text-secondary);
   font-size: .875rem;
   line-height: 1.25rem;

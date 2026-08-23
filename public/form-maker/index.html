@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>山歩会フォームメーカー</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --host-bg: #ffffff;
+      --host-text: #161616;
+    }
+    :root[data-theme='g100'] {
+      color-scheme: dark;
+      --host-bg: #161616;
+      --host-text: #f4f4f4;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      min-width: 320px;
+      height: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--host-bg);
+      color: var(--host-text);
+    }
+    body {
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    #form-maker-frame {
+      display: block;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      border: 0;
+      background: var(--host-bg);
+      color-scheme: inherit;
+    }
+    .fallback {
+      position: fixed;
+      inset: auto 1rem max(1rem, env(safe-area-inset-bottom)) 1rem;
+      z-index: -1;
+      margin: 0;
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--host-text);
+    }
+    .fallback a { color: #0f62fe; }
+  </style>
+</head>
+<body>
+  <iframe
+    id="form-maker-frame"
+    title="山歩会フォームメーカー"
+    src="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec?embedded=true"
+    allow="clipboard-write; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+  <p class="fallback">表示できない場合は <a href="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec">フォームメーカーを直接開く</a></p>
+
+  <script>
+    (() => {
+      const KEY = 'sanpokai-theme-preference-v1';
+      const VALID = new Set(['system', 'light', 'dark']);
+      const frame = document.getElementById('form-maker-frame');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      let preference = readPreference();
+
+      function readPreference() {
+        try {
+          const stored = localStorage.getItem(KEY);
+          return VALID.has(stored) ? stored : 'system';
+        } catch {
+          return 'system';
+        }
+      }
+
+      function resolveTheme(pref) {
+        return pref === 'dark' || (pref === 'system' && media.matches) ? 'g100' : 'white';
+      }
+
+      function applyTheme(resolved) {
+        const dark = resolved === 'g100';
+        document.documentElement.dataset.theme = dark ? 'g100' : 'white';
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        if (meta) meta.setAttribute('content', dark ? '#161616' : '#ffffff');
+      }
+
+      function sendPreference() {
+        try {
+          frame.contentWindow?.postMessage({
+            source: 'sanpokai-theme-host',
+            preference,
+          }, '*');
+        } catch {
+          // The embedded app still follows its own stored/system theme.
+        }
+      }
+
+      applyTheme(resolveTheme(preference));
+      frame.addEventListener('load', sendPreference);
+
+      media.addEventListener?.('change', () => {
+        if (preference === 'system') applyTheme(resolveTheme(preference));
+      });
+
+      window.addEventListener('storage', (event) => {
+        if (event.key !== KEY) return;
+        preference = readPreference();
+        applyTheme(resolveTheme(preference));
+        sendPreference();
+      });
+
+      window.addEventListener('message', (event) => {
+        if (event.source !== frame.contentWindow) return;
+        const message = event.data;
+        if (message?.source !== 'sanpokai-theme-child' || !VALID.has(message.preference)) return;
+        preference = message.preference;
+        try { localStorage.setItem(KEY, preference); } catch {}
+        applyTheme(message.resolvedTheme === 'g100' ? 'g100' : 'white');
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -3,16 +3,18 @@ import {
   ClickableTile,
   Header,
   HeaderName,
+  Layer,
   StructuredListBody,
   StructuredListCell,
   StructuredListHead,
   StructuredListRow,
   StructuredListWrapper,
-  Theme,
 } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
+import { ThemeHeaderControl } from './ThemeToggle.jsx';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
+const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
 const STORE_PREFIX = 'sampokai_v10_split_';
 const SYNC_BASE_PREFIX = `${STORE_PREFIX}sync_base_`;
 const SYNC_OUTBOX_PREFIX = `${STORE_PREFIX}sync_outbox_`;
@@ -34,7 +36,7 @@ const TOOLS = [
   {
     title: '山歩会フォームメーカー',
     description: '日付や企画名などを入力するだけで、応募フォームの作成を簡単に行えます。',
-    href: 'https://script.google.com/a/gmail.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec',
+    href: FORM_MAKER_URL,
   },
   {
     title: 'サークル企画ツール',
@@ -143,16 +145,17 @@ function App() {
   }, [refreshProjects]);
 
   return (
-    <Theme theme="white">
+    <>
       <a className="skip-link" href="#main">本文へ移動</a>
       <Header aria-label="山歩会企画ツール一覧">
         <HeaderName href="./" prefix="">山歩会企画ツール一覧</HeaderName>
+        <ThemeHeaderControl />
       </Header>
 
       <main id="main" className="portal-page">
         <h1 className="portal-title">ツール</h1>
 
-        <section className="tool-grid" aria-label="利用するツール">
+        <Layer as="section" className="tool-grid" aria-label="利用するツール">
           {TOOLS.map((tool) => (
             <ClickableTile
               key={tool.title}
@@ -169,7 +172,7 @@ function App() {
               <ArrowRight className="tool-tile__arrow" size={20} aria-hidden="true" />
             </ClickableTile>
           ))}
-        </section>
+        </Layer>
 
         <section className="projects" aria-labelledby="projects-title">
           <h2 id="projects-title">過去に開いた企画</h2>
@@ -213,7 +216,7 @@ function App() {
           )}
         </section>
       </main>
-    </Theme>
+    </>
   );
 }
 
