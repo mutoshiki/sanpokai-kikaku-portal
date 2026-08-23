@@ -52,6 +52,9 @@ async function run(browser, name, viewport) {
 
   await page.setContent(inlined, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: 'ダークモードに切り替え' }).waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-carbon-theme') === 'white');
+
   const metrics = await page.evaluate(() => ({
     carbonTiles: document.querySelectorAll('.cds--tile--clickable').length,
     carbonStructuredRows: document.querySelectorAll('.cds--structured-list-row').length,
@@ -69,11 +72,38 @@ async function run(browser, name, viewport) {
   }
   if (metrics.projectLabels[0] !== '夏山企画' || metrics.projectLabels[1] !== '春山企画') throw new Error(`${name}: project history ordering/name regression`);
   if (!metrics.projectHrefs[0]?.includes('?room=ROOM-B')) throw new Error(`${name}: last room project link regression`);
+
+  await page.getByRole('button', { name: 'ダークモードに切り替え' }).click();
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-carbon-theme') === 'g100');
+  await page.getByRole('button', { name: 'ライトモードに切り替え' }).waitFor();
+
+  const dark = await page.evaluate(() => {
+    const toggle = document.querySelector('.theme-toggle-host .cds--btn')?.getBoundingClientRect();
+    const headerName = document.querySelector('.cds--header__name')?.getBoundingClientRect();
+    const themeValues = [...document.querySelectorAll('[data-carbon-theme]')].map(node => node.getAttribute('data-carbon-theme'));
+    return {
+      rootTheme: document.documentElement.getAttribute('data-carbon-theme'),
+      storedTheme: localStorage.getItem('sanpokai-ui-theme-v1'),
+      themeValues,
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      bodyBackground: getComputedStyle(document.body).backgroundColor,
+      bodyColor: getComputedStyle(document.body).color,
+      toggle: toggle ? { x: toggle.x, y: toggle.y, width: toggle.width, height: toggle.height, right: toggle.right } : null,
+      headerName: headerName ? { right: headerName.right } : null,
+    };
+  });
+
+  if (dark.rootTheme !== 'g100' || dark.storedTheme !== 'dark') throw new Error(`${name}: dark theme did not apply/persist`);
+  if (dark.themeValues.some(value => value !== 'g100')) throw new Error(`${name}: nested Carbon theme stayed light: ${dark.themeValues.join(',')}`);
+  if (dark.overflowX > 1) throw new Error(`${name}: dark mode horizontal overflow ${dark.overflowX}px`);
+  if (!dark.toggle || dark.toggle.width < 44 || dark.toggle.height < 44 || dark.toggle.y < -0.5 || dark.toggle.right > viewport.width + 0.5) throw new Error(`${name}: theme toggle is not a stable 44px+ header target`);
+  if (dark.headerName && dark.toggle.x < dark.headerName.right) throw new Error(`${name}: theme toggle overlaps header name`);
+  if (dark.bodyBackground === 'rgb(255, 255, 255)') throw new Error(`${name}: body stayed white in dark mode`);
   if (errors.length) throw new Error(`${name}: page errors: ${errors.join(' | ')}`);
   if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}`);
 
-  await page.screenshot({ path: path.join(out, `${name}.png`), fullPage: true });
-  fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ viewport, metrics, errors, consoleErrors }, null, 2));
+  await page.screenshot({ path: path.join(out, `${name}-dark.png`), fullPage: true });
+  fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ viewport, metrics, dark, errors, consoleErrors }, null, 2));
   await context.close();
 }
 
@@ -91,5 +121,5 @@ async function run(browser, name, viewport) {
   } finally {
     await browser.close();
   }
-  console.log('Portal browser smoke passed.');
+  console.log('Portal dark-mode browser smoke passed.');
 })().catch(error => { console.error(error); process.exit(1); });
