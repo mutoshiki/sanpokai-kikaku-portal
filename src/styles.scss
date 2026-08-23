@@ -1,7 +1,14 @@
 @use '@carbon/react';
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--cds-background); }
+html {
+  min-width: 320px;
+  background: var(--cds-background);
+  --portal-focus-ring: #0f62fe; /* Carbon Blue 60 */
+}
+html[data-carbon-theme='g100'] {
+  --portal-focus-ring: #f4f4f4; /* Carbon Gray 10 */
+}
 body {
   margin: 0;
   min-width: 320px;
@@ -102,7 +109,7 @@ body {
 }
 .tool-tile.cds--tile--clickable:focus,
 .tool-tile.cds--tile--clickable:focus-visible {
-  outline: 2px solid var(--cds-link-primary);
+  outline: 2px solid var(--portal-focus-ring);
   outline-offset: -2px;
 }
 .tool-tile__content h2 {
