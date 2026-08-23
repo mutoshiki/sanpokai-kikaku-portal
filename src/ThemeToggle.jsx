@@ -6,6 +6,7 @@ import {
   HeaderPanel,
   RadioButton,
   RadioButtonGroup,
+  Theme as CarbonTheme,
 } from '@carbon/react';
 import { Settings } from '@carbon/icons-react';
 
@@ -53,6 +54,8 @@ export function ThemePreferenceProvider({ children }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-carbon-theme', resolvedTheme);
     document.documentElement.style.colorScheme = resolvedTheme === 'g100' ? 'dark' : 'light';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', resolvedTheme === 'g100' ? '#161616' : '#ffffff');
   }, [resolvedTheme]);
 
   const setPreference = (nextPreference) => {
@@ -69,7 +72,11 @@ export function ThemePreferenceProvider({ children }) {
 
   return (
     <ThemePreferenceContext.Provider value={value}>
-      <GlobalTheme theme={resolvedTheme}>{children}</GlobalTheme>
+      <GlobalTheme theme={resolvedTheme}>
+        <CarbonTheme theme={resolvedTheme} className="app-theme-root">
+          {children}
+        </CarbonTheme>
+      </GlobalTheme>
     </ThemePreferenceContext.Provider>
   );
 }
