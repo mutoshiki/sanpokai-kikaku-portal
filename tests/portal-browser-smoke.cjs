@@ -48,11 +48,31 @@ async function run(browser, name, viewport) {
       },
     });
     Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist: async () => true } });
+
+    const listeners = new Set();
+    const media = {
+      matches: false,
+      media: '(prefers-color-scheme: dark)',
+      addEventListener(type, listener) { if (type === 'change') listeners.add(listener); },
+      removeEventListener(type, listener) { if (type === 'change') listeners.delete(listener); },
+      addListener(listener) { listeners.add(listener); },
+      removeListener(listener) { listeners.delete(listener); },
+      dispatchEvent() { return true; },
+      set(matches) {
+        this.matches = matches;
+        for (const listener of listeners) listener({ matches, media: this.media });
+      },
+    };
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: query => query === '(prefers-color-scheme: dark)' ? media : ({ ...media, media: query }),
+    });
+    window.__QA_THEME_MEDIA__ = media;
   });
 
   await page.setContent(inlined, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
-  await page.getByRole('button', { name: 'ダークモードに切り替え' }).waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: 'テーマ設定：システム設定' }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.getAttribute('data-carbon-theme') === 'white');
 
   const metrics = await page.evaluate(() => ({
@@ -60,7 +80,6 @@ async function run(browser, name, viewport) {
     carbonStructuredRows: document.querySelectorAll('.cds--structured-list-row').length,
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     text: document.body.innerText,
-    hrefs: [...document.querySelectorAll('.tool-tile')].map(a => a.href),
     projectLabels: [...document.querySelectorAll('.project-link')].map(a => a.textContent.trim()),
     projectHrefs: [...document.querySelectorAll('.project-link')].map(a => a.href),
   }));
@@ -73,37 +92,71 @@ async function run(browser, name, viewport) {
   if (metrics.projectLabels[0] !== '夏山企画' || metrics.projectLabels[1] !== '春山企画') throw new Error(`${name}: project history ordering/name regression`);
   if (!metrics.projectHrefs[0]?.includes('?room=ROOM-B')) throw new Error(`${name}: last room project link regression`);
 
-  await page.getByRole('button', { name: 'ダークモードに切り替え' }).click();
-  await page.waitForFunction(() => document.documentElement.getAttribute('data-carbon-theme') === 'g100');
-  await page.getByRole('button', { name: 'ライトモードに切り替え' }).waitFor();
+  const openThemePanel = async (label) => {
+    const button = page.getByRole('button', { name: `テーマ設定：${label}` });
+    await button.click();
+    await page.getByText('表示テーマ', { exact: true }).first().waitFor();
+  };
+  const selectTheme = async (currentLabel, option) => {
+    await openThemePanel(currentLabel);
+    await page.getByLabel(option, { exact: true }).check();
+  };
 
-  const dark = await page.evaluate(() => {
-    const toggle = document.querySelector('.theme-toggle-host .cds--btn')?.getBoundingClientRect();
-    const headerName = document.querySelector('.cds--header__name')?.getBoundingClientRect();
-    const themeValues = [...document.querySelectorAll('[data-carbon-theme]')].map(node => node.getAttribute('data-carbon-theme'));
+  await selectTheme('システム設定', 'ダーク');
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  let dark = await page.evaluate(() => {
+    const tile = document.querySelector('.tool-tile');
+    const panel = document.querySelector('.cds--header-panel');
     return {
-      rootTheme: document.documentElement.getAttribute('data-carbon-theme'),
-      storedTheme: localStorage.getItem('sanpokai-ui-theme-v1'),
-      themeValues,
-      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      bodyBackground: getComputedStyle(document.body).backgroundColor,
+      preference: localStorage.getItem('sanpokai-theme-preference-v1'),
+      rootTheme: document.documentElement.dataset.carbonTheme,
+      bodyBg: getComputedStyle(document.body).backgroundColor,
       bodyColor: getComputedStyle(document.body).color,
-      toggle: toggle ? { x: toggle.x, y: toggle.y, width: toggle.width, height: toggle.height, right: toggle.right } : null,
-      headerName: headerName ? { right: headerName.right } : null,
+      tileBg: tile ? getComputedStyle(tile).backgroundColor : '',
+      tileColor: tile ? getComputedStyle(tile).color : '',
+      panelBg: panel ? getComputedStyle(panel).backgroundColor : '',
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
+  if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: explicit dark not persisted/applied`);
+  if (dark.bodyBg === 'rgb(255, 255, 255)' || dark.tileBg === 'rgb(255, 255, 255)' || dark.panelBg === 'rgb(255, 255, 255)') throw new Error(`${name}: white surface leaked into dark theme`);
+  if (dark.overflowX > 1) throw new Error(`${name}: dark mode overflow ${dark.overflowX}px`);
+  await page.screenshot({ path: path.join(out, `${name}-dark.png`), fullPage: true });
 
-  if (dark.rootTheme !== 'g100' || dark.storedTheme !== 'dark') throw new Error(`${name}: dark theme did not apply/persist`);
-  if (dark.themeValues.some(value => value !== 'g100')) throw new Error(`${name}: nested Carbon theme stayed light: ${dark.themeValues.join(',')}`);
-  if (dark.overflowX > 1) throw new Error(`${name}: dark mode horizontal overflow ${dark.overflowX}px`);
-  if (!dark.toggle || dark.toggle.width < 44 || dark.toggle.height < 44 || dark.toggle.y < -0.5 || dark.toggle.right > viewport.width + 0.5) throw new Error(`${name}: theme toggle is not a stable 44px+ header target`);
-  if (dark.headerName && dark.toggle.x < dark.headerName.right) throw new Error(`${name}: theme toggle overlaps header name`);
-  if (dark.bodyBackground === 'rgb(255, 255, 255)') throw new Error(`${name}: body stayed white in dark mode`);
+  await selectTheme('ダーク', 'ライト');
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  if (await page.evaluate(() => localStorage.getItem('sanpokai-theme-preference-v1')) !== 'light') throw new Error(`${name}: explicit light not persisted`);
+  await page.screenshot({ path: path.join(out, `${name}-light.png`), fullPage: true });
+
+  await selectTheme('ライト', 'システム設定');
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  await page.evaluate(() => window.__QA_THEME_MEDIA__.set(true));
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+
+  await selectTheme('システム設定', 'ダーク');
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
+  await page.waitForTimeout(50);
+  if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override system`);
+
+  await page.setContent(inlined, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  if (await page.evaluate(() => localStorage.getItem('sanpokai-theme-preference-v1')) !== 'dark') throw new Error(`${name}: theme persistence lost on reload-equivalent render`);
+
+  const focus = await page.locator('.tool-tile').first().evaluate((node) => {
+    node.focus();
+    const style = getComputedStyle(node);
+    return { outline: style.outline, boxShadow: style.boxShadow };
+  });
+  if ((focus.outline === 'none' || focus.outline.startsWith('rgb(0, 0, 0) 0px')) && focus.boxShadow === 'none') throw new Error(`${name}: focus indicator not visible`);
+
   if (errors.length) throw new Error(`${name}: page errors: ${errors.join(' | ')}`);
   if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}`);
 
-  await page.screenshot({ path: path.join(out, `${name}-dark.png`), fullPage: true });
-  fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ viewport, metrics, dark, errors, consoleErrors }, null, 2));
+  fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ viewport, metrics, dark, focus, errors, consoleErrors }, null, 2));
   await context.close();
 }
 
@@ -121,5 +174,5 @@ async function run(browser, name, viewport) {
   } finally {
     await browser.close();
   }
-  console.log('Portal dark-mode browser smoke passed.');
+  console.log('Portal three-state Carbon theme browser smoke passed.');
 })().catch(error => { console.error(error); process.exit(1); });
