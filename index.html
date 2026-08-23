@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
-    :root {
+    :root{
       --cds-background:#ffffff;
       --cds-layer:#f4f4f4;
       --cds-layer-hover:#e8e8e8;
@@ -19,7 +19,7 @@
       --cds-text-secondary:#525252;
       --cds-border-subtle:#e0e0e0;
       --cds-border-strong:#8d8d8d;
-      --cds-border-tile:#c6c6c6;
+      --cds-border-tile:#8d8d8d;
       --cds-link-primary:#0f62fe;
       --cds-link-primary-hover:#0043ce;
       --cds-icon-interactive:#0f62fe;
@@ -29,6 +29,7 @@
     *{box-sizing:border-box}
     html{background:var(--cds-background)}
     body{
+      min-width:320px;
       margin:0;
       background:var(--cds-background);
       color:var(--cds-text-primary);
@@ -36,98 +37,157 @@
       font-size:14px;
       line-height:20px;
       letter-spacing:.16px;
+      -webkit-font-smoothing:antialiased;
     }
     a{color:inherit}
 
     .skip-link{
-      position:fixed;top:0;left:0;z-index:100;
-      padding:8px 16px;background:#fff;color:var(--cds-link-primary);
+      position:fixed;
+      top:0;
+      left:0;
+      z-index:100;
+      padding:8px 16px;
+      background:#ffffff;
+      color:var(--cds-link-primary);
       transform:translateY(-120%);
     }
     .skip-link:focus{transform:none}
 
+    /* Carbon UI shell header */
     .app-header{
-      position:sticky;top:0;z-index:10;
-      display:flex;align-items:stretch;
-      width:100%;height:48px;
-      background:#161616;color:#f4f4f4;
+      position:sticky;
+      top:0;
+      z-index:10;
+      display:flex;
+      align-items:stretch;
+      width:100%;
+      height:48px;
+      background:#161616;
+      color:#f4f4f4;
       border-bottom:1px solid #393939;
     }
     .app-name{
-      display:flex;align-items:center;min-height:48px;
-      padding:0 16px;color:#f4f4f4;text-decoration:none;
-      font-size:14px;line-height:18px;font-weight:600;letter-spacing:.16px;
+      display:flex;
+      align-items:center;
+      min-height:48px;
+      padding:0 16px;
+      color:#f4f4f4;
+      text-decoration:none;
+      font-size:14px;
+      line-height:18px;
+      font-weight:600;
+      letter-spacing:.16px;
+      white-space:nowrap;
     }
-    .app-name:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+    .app-name:hover{background:#353535}
+    .app-name:focus-visible{
+      outline:2px solid #ffffff;
+      outline-offset:-3px;
+    }
 
+    /* Carbon 2x Grid page scaffold */
     .page{
-      width:min(100%,1584px);
-      margin:0;
+      width:100%;
+      max-width:1584px;
+      margin:0 auto;
       padding:32px 16px 80px;
     }
     .page-title{
-      margin:0 0 24px;
-      font-size:32px;line-height:40px;font-weight:400;letter-spacing:0;
+      max-width:672px;
+      margin:0 0 32px;
+      font-size:28px;
+      line-height:36px;
+      font-weight:400;
+      letter-spacing:0;
     }
     .section-title{
       margin:0;
-      font-size:20px;line-height:28px;font-weight:400;letter-spacing:0;
+      font-size:20px;
+      line-height:28px;
+      font-weight:400;
+      letter-spacing:0;
     }
 
-    /* Carbon Clickable Tile */
+    /* Carbon clickable tiles, using the current contrast-border treatment. */
     .tool-grid{
       display:grid;
       grid-template-columns:1fr;
-      gap:16px;
+      grid-auto-rows:1fr;
+      gap:8px;
+      width:100%;
     }
     .tool-tile{
-      position:relative;display:block;
-      min-width:128px;min-height:144px;
-      padding:16px 48px 16px 16px;
+      position:relative;
+      display:block;
+      width:100%;
+      min-width:128px;
+      min-height:152px;
+      padding:16px 48px 48px 16px;
       background:var(--cds-layer);
       border:1px solid var(--cds-border-tile);
       color:var(--cds-text-primary);
       text-decoration:none;
     }
     .tool-tile:hover{background:var(--cds-layer-hover)}
-    .tool-tile:focus-visible{outline:2px solid var(--cds-focus);outline-offset:-2px}
+    .tool-tile:focus-visible{
+      outline:2px solid var(--cds-focus);
+      outline-offset:-2px;
+    }
     .tool-title{
       margin:0 0 8px;
-      font-size:20px;line-height:28px;font-weight:400;letter-spacing:0;
+      font-size:16px;
+      line-height:22px;
+      font-weight:400;
+      letter-spacing:0;
     }
     .tool-description{
-      max-width:32rem;margin:0;
+      max-width:36rem;
+      margin:0;
       color:var(--cds-text-secondary);
-      font-size:14px;line-height:20px;letter-spacing:.16px;
+      font-size:14px;
+      line-height:20px;
+      letter-spacing:.16px;
     }
     .tool-arrow{
-      position:absolute;right:12px;bottom:12px;
-      width:20px;height:20px;
+      position:absolute;
+      right:12px;
+      bottom:12px;
+      width:20px;
+      height:20px;
       fill:var(--cds-icon-interactive);
     }
 
-    /* Carbon Structured List */
-    .projects{margin-top:48px}
+    /* Carbon structured list */
+    .projects{
+      width:100%;
+      margin-top:64px;
+    }
     .projects-heading{
       padding-bottom:16px;
-      border-bottom:1px solid var(--cds-border-strong);
     }
-    .structured-list{width:100%}
-    .structured-head,.structured-row{
+    .structured-list{
+      width:100%;
+      border-top:1px solid var(--cds-border-strong);
+    }
+    .structured-head,
+    .structured-row{
       display:grid;
       grid-template-columns:minmax(0,1fr) minmax(160px,224px);
       column-gap:32px;
-      align-items:center;
+      align-items:start;
     }
     .structured-head{
-      min-height:40px;
+      padding:16px 0 8px;
       border-bottom:1px solid var(--cds-border-subtle);
-      color:var(--cds-text-secondary);
-      font-size:12px;line-height:16px;font-weight:400;letter-spacing:.32px;
+      color:var(--cds-text-primary);
+      font-size:14px;
+      line-height:18px;
+      font-weight:600;
+      letter-spacing:.16px;
     }
     .structured-row{
-      min-height:64px;
-      padding:12px 0;
+      min-height:60px;
+      padding:16px 0 24px;
       border-bottom:1px solid var(--cds-border-subtle);
     }
     .project-main{min-width:0}
@@ -135,40 +195,85 @@
       display:inline;
       color:var(--cds-link-primary);
       text-decoration:none;
-      font-size:14px;line-height:20px;font-weight:600;letter-spacing:.16px;
+      font-size:14px;
+      line-height:20px;
+      font-weight:600;
+      letter-spacing:.16px;
+      overflow-wrap:anywhere;
     }
-    .project-link:hover{color:var(--cds-link-primary-hover);text-decoration:underline}
-    .project-link:focus-visible{outline:2px solid var(--cds-focus);outline-offset:2px}
-    .project-meta,.project-date{
+    .project-link:hover{
+      color:var(--cds-link-primary-hover);
+      text-decoration:underline;
+    }
+    .project-link:focus-visible{
+      outline:2px solid var(--cds-focus);
+      outline-offset:2px;
+    }
+    .project-meta,
+    .project-date{
       color:var(--cds-text-secondary);
-      font-size:12px;line-height:16px;letter-spacing:.32px;
+      font-size:14px;
+      line-height:20px;
+      font-weight:400;
+      letter-spacing:.16px;
     }
-    .project-meta{display:block;margin-top:2px}
+    .project-meta{
+      display:block;
+      margin-top:4px;
+    }
     .empty-state{
-      margin:0;padding:24px 0;
+      margin:0;
+      padding:16px 0 24px;
       border-bottom:1px solid var(--cds-border-subtle);
       color:var(--cds-text-secondary);
-      font-size:14px;line-height:20px;
+      font-size:14px;
+      line-height:20px;
     }
 
     @media (min-width:672px){
       .page{padding:40px 32px 96px}
-      .tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    }
-    @media (min-width:1056px){
-      .page{padding-left:32px;padding-right:32px}
       .tool-grid{
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        max-width:calc(75% - 8px);
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:16px;
       }
-      .projects{max-width:calc(75% - 8px)}
+      .tool-tile{min-height:176px}
     }
+
+    @media (min-width:1056px){
+      .tool-grid{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:32px;
+      }
+      .tool-tile{min-height:192px}
+      .projects{max-width:calc(50% - 16px)}
+    }
+
     @media (max-width:671px){
-      .page-title{margin-bottom:24px;font-size:28px;line-height:36px}
-      .tool-tile{min-height:128px}
-      .projects{margin-top:40px}
+      .projects{margin-top:48px}
+      .projects-heading{padding-bottom:12px}
       .structured-head{display:none}
-      .structured-row{grid-template-columns:1fr;row-gap:4px}
+      .structured-row{
+        grid-template-columns:1fr;
+        row-gap:4px;
+        padding:16px 0 24px;
+      }
+      .project-link{
+        font-size:16px;
+        line-height:22px;
+        font-weight:400;
+      }
+      .project-meta,
+      .project-date{
+        font-size:12px;
+        line-height:16px;
+        letter-spacing:.32px;
+      }
+    }
+
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{
+        scroll-behavior:auto!important;
+      }
     }
   </style>
 </head>
@@ -188,10 +293,10 @@
         href="https://github.com/mutoshiki/sampokai-submission-builder/releases"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="学務提出書類作成ツールを新しいタブで開く"
+        aria-label="学務提出書類メーカーを新しいタブで開く"
       >
-        <h2 class="tool-title">学務提出書類作成ツール</h2>
-        <p class="tool-description">企画者はこのツールで応募フォーム回答から引き継ぎデータを作り、それをサークル長に渡すことでサークル長が学務への提出書類を作れます。登山計画書も最小限の入力で作成できます。</p>
+        <h2 class="tool-title">学務提出書類メーカー</h2>
+        <p class="tool-description">企画者は応募フォームの回答から引き継ぎデータを作り、それを使ってサークル長が学務への提出書類を簡単に作れます。</p>
         <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
           <path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/>
         </svg>
@@ -219,7 +324,7 @@
         aria-label="山歩会フォームメーカーを新しいタブで開く"
       >
         <h2 class="tool-title">山歩会フォームメーカー</h2>
-        <p class="tool-description">日付や企画名などの入力するだけで、応募フォームの作成を簡単に行えます。</p>
+        <p class="tool-description">日付や企画名などを入力するだけで、応募フォームの作成を簡単に行えます。</p>
         <svg class="tool-arrow" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
           <path d="M18 6l-1.4 1.4 7.6 7.6H6v2h18.2l-7.6 7.6L18 26l10-10z"/>
         </svg>
