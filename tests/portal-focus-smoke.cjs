@@ -56,6 +56,17 @@ function shadowIsTransparent(value) {
   return /rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/i.test(value) || /transparent/i.test(value);
 }
 
+async function waitForFocusedTile(page) {
+  await page.evaluate(async () => {
+    const el = document.activeElement;
+    if (!el?.classList?.contains('tool-tile')) return;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const animations = el.getAnimations({ subtree: true });
+    await Promise.all(animations.map(animation => animation.finished.catch(() => undefined)));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  });
+}
+
 async function run(browser, preference, expectedTheme) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
   const page = await context.newPage();
@@ -77,6 +88,7 @@ async function run(browser, preference, expectedTheme) {
     if (reached) break;
   }
   if (!reached) throw new Error(`${preference}: keyboard navigation did not reach a tool tile`);
+  await waitForFocusedTile(page);
 
   const focus = await page.evaluate(() => {
     const el = document.activeElement;
@@ -92,7 +104,7 @@ async function run(browser, preference, expectedTheme) {
 
   if (!focus.textToken) throw new Error(`${preference}: Carbon text-primary token is unavailable`);
   if (shadowIsTransparent(focus.boxShadow)) {
-    throw new Error(`${preference}: keyboard focus ring is transparent: ${JSON.stringify(focus)}`);
+    throw new Error(`${preference}: keyboard focus ring is transparent after transition: ${JSON.stringify(focus)}`);
   }
 
   await page.screenshot({ path: `browser-evidence/focus-${preference}.png`, fullPage: true });
