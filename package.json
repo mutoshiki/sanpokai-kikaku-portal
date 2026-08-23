@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:browser": "node tests/portal-browser-smoke.cjs"
+    "test:browser": "node tests/portal-browser-smoke.cjs && node tests/portal-focus-smoke.cjs"
   },
   "dependencies": {
     "@carbon/icons-react": "^11.68.0",
