@@ -70,6 +70,56 @@ async function selectTheme(page, currentLabel, id) {
   await page.locator(`label[for="${id}"]`).click();
 }
 
+async function waitForSurfaceTokens(page) {
+  await page.waitForFunction(() => {
+    const tile = document.querySelector('.tool-tile');
+    const panel = document.querySelector('.cds--header-panel');
+    if (!tile || !panel) return false;
+
+    const resolveColor = value => {
+      const probe = document.createElement('span');
+      probe.style.color = value;
+      probe.style.position = 'fixed';
+      probe.style.left = '-9999px';
+      document.body.appendChild(probe);
+      const result = getComputedStyle(probe).color;
+      probe.remove();
+      return result;
+    };
+
+    const tileStyle = getComputedStyle(tile);
+    const panelStyle = getComputedStyle(panel);
+    const expectedTileBg = resolveColor(tileStyle.getPropertyValue('--cds-layer').trim());
+    const expectedTileText = resolveColor(tileStyle.getPropertyValue('--cds-text-primary').trim());
+    const expectedPanelBg = resolveColor(panelStyle.getPropertyValue('--cds-layer').trim());
+
+    return tileStyle.backgroundColor === expectedTileBg &&
+      tileStyle.color === expectedTileText &&
+      panelStyle.backgroundColor === expectedPanelBg;
+  }, { timeout: 5000 });
+}
+
+async function focusFirstTileWithKeyboard(page) {
+  await page.evaluate(() => document.activeElement?.blur?.());
+  let reached = false;
+  for (let i = 0; i < 12; i += 1) {
+    await page.keyboard.press('Tab');
+    reached = await page.evaluate(() => document.activeElement?.classList?.contains('tool-tile') === true);
+    if (reached) break;
+  }
+  if (!reached) throw new Error('keyboard navigation did not reach the first tool tile');
+  return page.evaluate(() => {
+    const style = getComputedStyle(document.activeElement);
+    return {
+      outline: style.outline,
+      outlineColor: style.outlineColor,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      boxShadow: style.boxShadow,
+    };
+  });
+}
+
 async function run(browser, name, viewport) {
   const context = await browser.newContext({ viewport, colorScheme: 'light', isMobile: viewport.width <= 430, hasTouch: viewport.width <= 430 });
   const page = await context.newPage();
@@ -83,6 +133,7 @@ async function run(browser, name, viewport) {
   await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
   await page.getByRole('button', { name: 'テーマ設定：システム設定' }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  await waitForSurfaceTokens(page);
 
   const initial = await page.evaluate(() => ({
     tiles: document.querySelectorAll('.cds--tile--clickable').length,
@@ -102,6 +153,7 @@ async function run(browser, name, viewport) {
 
   await selectTheme(page, 'システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await waitForSurfaceTokens(page);
 
   const dark = await page.evaluate((key) => {
     const root = document.documentElement;
@@ -111,32 +163,6 @@ async function run(browser, name, viewport) {
     const panel = document.querySelector('.cds--header-panel');
     const css = node => node ? getComputedStyle(node) : null;
     const prop = (node, name) => css(node)?.getPropertyValue(name).trim() || '';
-    const matchingBackgroundRules = [];
-
-    const visitRules = rules => {
-      for (const rule of rules) {
-        if (rule.type === CSSRule.STYLE_RULE && tile) {
-          let matches = false;
-          try {
-            matches = rule.selectorText.split(',').some(selector => tile.matches(selector.trim()));
-          } catch {}
-          if (matches && (rule.style.background || rule.style.backgroundColor)) {
-            matchingBackgroundRules.push({
-              selector: rule.selectorText,
-              background: rule.style.background,
-              backgroundColor: rule.style.backgroundColor,
-              backgroundPriority: rule.style.getPropertyPriority('background'),
-              backgroundColorPriority: rule.style.getPropertyPriority('background-color'),
-            });
-          }
-        }
-        if (rule.cssRules) visitRules(rule.cssRules);
-      }
-    };
-    for (const sheet of document.styleSheets) {
-      try { visitRules(sheet.cssRules); } catch {}
-    }
-
     return {
       preference: localStorage.getItem(key),
       rootTheme: root.dataset.carbonTheme,
@@ -146,8 +172,6 @@ async function run(browser, name, viewport) {
       rootBackgroundToken: prop(root, '--cds-background'),
       rootLayerToken: prop(root, '--cds-layer'),
       rootTextToken: prop(root, '--cds-text-primary'),
-      appLayerToken: prop(app, '--cds-layer'),
-      appTextToken: prop(app, '--cds-text-primary'),
       gridLayerToken: prop(grid, '--cds-layer'),
       tileLayerToken: prop(tile, '--cds-layer'),
       tileTextToken: prop(tile, '--cds-text-primary'),
@@ -157,12 +181,8 @@ async function run(browser, name, viewport) {
       tileColor: css(tile)?.color || '',
       panelBg: css(panel)?.backgroundColor || '',
       overflowX: root.scrollWidth - root.clientWidth,
-      matchingBackgroundRules,
     };
   }, THEME_KEY);
-
-  await page.screenshot({ path: path.join(OUT, `${name}-dark-debug.png`), fullPage: true });
-  fs.writeFileSync(path.join(OUT, `${name}-dark-debug.json`), JSON.stringify({ viewport, initial, dark, pageErrors, consoleErrors }, null, 2));
 
   if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: dark preference failed: ${JSON.stringify(dark)}`);
   if ([dark.bodyBg, dark.appBg, dark.tileBg, dark.panelBg].includes('rgb(255, 255, 255)')) throw new Error(`${name}: white surface leaked: ${JSON.stringify(dark)}`);
@@ -171,18 +191,23 @@ async function run(browser, name, viewport) {
 
   await selectTheme(page, 'ダーク', 'theme-light');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'light') throw new Error(`${name}: light preference not persisted`);
   await page.screenshot({ path: path.join(OUT, `${name}-light.png`), fullPage: true });
 
   await selectTheme(page, 'ライト', 'theme-system');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  await waitForSurfaceTokens(page);
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(true));
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await waitForSurfaceTokens(page);
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
+  await waitForSurfaceTokens(page);
 
   await selectTheme(page, 'システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await waitForSurfaceTokens(page);
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
   await page.waitForTimeout(50);
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
@@ -190,14 +215,12 @@ async function run(browser, name, viewport) {
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'dark') throw new Error(`${name}: theme lost on reload-equivalent render`);
 
-  const focus = await page.locator('.tool-tile').first().evaluate(node => {
-    node.focus();
-    const style = getComputedStyle(node);
-    return { outline: style.outline, boxShadow: style.boxShadow };
-  });
-  if ((focus.outline === 'none' || focus.outline.startsWith('rgb(0, 0, 0) 0px')) && focus.boxShadow === 'none') throw new Error(`${name}: focus indicator missing`);
+  const focus = await focusFirstTileWithKeyboard(page);
+  const focusInvisible = focus.outlineStyle === 'none' || focus.outlineWidth === '0px' || focus.outlineColor === 'rgba(0, 0, 0, 0)' || focus.outlineColor === 'transparent';
+  if (focusInvisible && focus.boxShadow === 'none') throw new Error(`${name}: keyboard focus indicator missing: ${JSON.stringify(focus)}`);
   if (pageErrors.length) throw new Error(`${name}: page errors: ${pageErrors.join(' | ')}`);
   if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}`);
 
