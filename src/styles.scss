@@ -1,7 +1,7 @@
 @use '@carbon/react';
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 * { box-sizing: border-box; }
@@ -13,6 +13,24 @@ body {
   color: var(--cds-text-primary);
   font-family: 'IBM Plex Sans JP', 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.theme-toggle-host {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 8001;
+  width: 3rem;
+  height: 3rem;
+}
+.theme-toggle-host .cds--btn {
+  width: 3rem;
+  min-width: 3rem;
+  height: 3rem;
+  min-height: 3rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
 }
 
 .skip-link {
