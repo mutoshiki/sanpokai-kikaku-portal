@@ -76,12 +76,13 @@ async function waitForSurfaceTokens(page) {
     const panel = document.querySelector('.cds--header-panel');
     if (!tile || !panel) return false;
 
-    const resolveColor = value => {
+    const resolveColor = (owner, value) => {
       const probe = document.createElement('span');
       probe.style.color = value;
-      probe.style.position = 'fixed';
+      probe.style.position = 'absolute';
       probe.style.left = '-9999px';
-      document.body.appendChild(probe);
+      probe.style.pointerEvents = 'none';
+      owner.appendChild(probe);
       const result = getComputedStyle(probe).color;
       probe.remove();
       return result;
@@ -89,9 +90,9 @@ async function waitForSurfaceTokens(page) {
 
     const tileStyle = getComputedStyle(tile);
     const panelStyle = getComputedStyle(panel);
-    const expectedTileBg = resolveColor(tileStyle.getPropertyValue('--cds-layer').trim());
-    const expectedTileText = resolveColor(tileStyle.getPropertyValue('--cds-text-primary').trim());
-    const expectedPanelBg = resolveColor(panelStyle.getPropertyValue('--cds-layer').trim());
+    const expectedTileBg = resolveColor(tile, tileStyle.getPropertyValue('--cds-layer').trim());
+    const expectedTileText = resolveColor(tile, tileStyle.getPropertyValue('--cds-text-primary').trim());
+    const expectedPanelBg = resolveColor(panel, panelStyle.getPropertyValue('--cds-layer').trim());
 
     return tileStyle.backgroundColor === expectedTileBg &&
       tileStyle.color === expectedTileText &&
