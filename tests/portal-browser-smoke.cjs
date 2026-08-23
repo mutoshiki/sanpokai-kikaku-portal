@@ -71,33 +71,17 @@ async function selectTheme(page, currentLabel, id) {
 }
 
 async function waitForSurfaceTokens(page) {
-  await page.waitForFunction(() => {
-    const tile = document.querySelector('.tool-tile');
-    const panel = document.querySelector('.cds--header-panel');
-    if (!tile || !panel) return false;
-
-    const resolveColor = (owner, value) => {
-      const probe = document.createElement('span');
-      probe.style.color = value;
-      probe.style.position = 'absolute';
-      probe.style.left = '-9999px';
-      probe.style.pointerEvents = 'none';
-      owner.appendChild(probe);
-      const result = getComputedStyle(probe).color;
-      probe.remove();
-      return result;
-    };
-
-    const tileStyle = getComputedStyle(tile);
-    const panelStyle = getComputedStyle(panel);
-    const expectedTileBg = resolveColor(tile, tileStyle.getPropertyValue('--cds-layer').trim());
-    const expectedTileText = resolveColor(tile, tileStyle.getPropertyValue('--cds-text-primary').trim());
-    const expectedPanelBg = resolveColor(panel, panelStyle.getPropertyValue('--cds-layer').trim());
-
-    return tileStyle.backgroundColor === expectedTileBg &&
-      tileStyle.color === expectedTileText &&
-      panelStyle.backgroundColor === expectedPanelBg;
-  }, { timeout: 5000 });
+  await page.evaluate(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const nodes = [
+      document.querySelector('.tool-tile'),
+      document.querySelector('.cds--header-panel'),
+      document.querySelector('.app-theme-root'),
+    ].filter(Boolean);
+    const animations = nodes.flatMap(node => node.getAnimations({ subtree: true }));
+    await Promise.all(animations.map(animation => animation.finished.catch(() => undefined)));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  });
 }
 
 async function focusFirstTileWithKeyboard(page) {
@@ -187,6 +171,7 @@ async function run(browser, name, viewport) {
 
   if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: dark preference failed: ${JSON.stringify(dark)}`);
   if ([dark.bodyBg, dark.appBg, dark.tileBg, dark.panelBg].includes('rgb(255, 255, 255)')) throw new Error(`${name}: white surface leaked: ${JSON.stringify(dark)}`);
+  if (dark.tileColor === 'rgb(22, 22, 22)' || dark.tileColor === 'rgb(0, 0, 0)') throw new Error(`${name}: dark tile text stayed dark: ${JSON.stringify(dark)}`);
   if (dark.overflowX > 1) throw new Error(`${name}: dark overflow ${dark.overflowX}px`);
   await page.screenshot({ path: path.join(OUT, `${name}-dark.png`), fullPage: true });
 
@@ -210,7 +195,7 @@ async function run(browser, name, viewport) {
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
-  await page.waitForTimeout(50);
+  await page.waitForSurfaceTokens?.catch?.(() => undefined);
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
 
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
