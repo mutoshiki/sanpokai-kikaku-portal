@@ -8,9 +8,9 @@ import {
   StructuredListHead,
   StructuredListRow,
   StructuredListWrapper,
-  Theme,
 } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
+import { ThemeHeaderControl } from './ThemeToggle.jsx';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const STORE_PREFIX = 'sampokai_v10_split_';
@@ -143,10 +143,11 @@ function App() {
   }, [refreshProjects]);
 
   return (
-    <Theme theme="white">
+    <>
       <a className="skip-link" href="#main">本文へ移動</a>
       <Header aria-label="山歩会企画ツール一覧">
         <HeaderName href="./" prefix="">山歩会企画ツール一覧</HeaderName>
+        <ThemeHeaderControl />
       </Header>
 
       <main id="main" className="portal-page">
@@ -213,7 +214,7 @@ function App() {
           )}
         </section>
       </main>
-    </Theme>
+    </>
   );
 }
 
