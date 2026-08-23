@@ -100,13 +100,12 @@ body {
 .tool-tile.cds--tile--clickable:hover {
   background: var(--cds-layer-hover);
 }
-/* Carbon's tile focus outline is transparent in this bundled theme path.
-   currentColor is already Carbon text-primary, so the fallback remains
-   theme-aware without introducing a separate light/dark color. */
+/* Carbon's packaged ClickableTile keeps its outline transparent in this
+   runtime theme path. Add a theme-aware inset ring using an existing Carbon
+   semantic color so keyboard focus remains visible without layout shift. */
 .tool-tile.cds--tile--clickable:focus,
 .tool-tile.cds--tile--clickable:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px var(--cds-link-primary);
 }
 .tool-tile__content h2 {
   margin: 0 0 .5rem;
