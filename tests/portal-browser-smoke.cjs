@@ -92,45 +92,64 @@ async function run(browser, name, viewport) {
   if (metrics.projectLabels[0] !== '夏山企画' || metrics.projectLabels[1] !== '春山企画') throw new Error(`${name}: project history ordering/name regression`);
   if (!metrics.projectHrefs[0]?.includes('?room=ROOM-B')) throw new Error(`${name}: last room project link regression`);
 
-  const selectTheme = async (currentLabel, option, id) => {
+  const selectTheme = async (currentLabel, id) => {
     await page.getByRole('button', { name: `テーマ設定：${currentLabel}` }).click();
     await page.locator(`label[for="${id}"]`).click();
   };
 
-  await selectTheme('システム設定', 'ダーク', 'theme-dark');
+  await selectTheme('システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
-  let dark = await page.evaluate(() => {
+  const dark = await page.evaluate(() => {
+    const root = document.documentElement;
+    const appRoot = document.querySelector('.app-theme-root');
+    const grid = document.querySelector('.tool-grid');
     const tile = document.querySelector('.tool-tile');
     const panel = document.querySelector('.cds--header-panel');
+    const read = (node, prop) => node ? getComputedStyle(node).getPropertyValue(prop).trim() : '';
     return {
       preference: localStorage.getItem('sanpokai-theme-preference-v1'),
-      rootTheme: document.documentElement.dataset.carbonTheme,
+      rootTheme: root.dataset.carbonTheme,
+      rootClasses: root.className,
+      appClasses: appRoot?.className || '',
+      gridClasses: grid?.className || '',
+      rootBackgroundToken: read(root, '--cds-background'),
+      rootLayerToken: read(root, '--cds-layer'),
+      appBackgroundToken: read(appRoot, '--cds-background'),
+      appLayerToken: read(appRoot, '--cds-layer'),
+      gridLayerToken: read(grid, '--cds-layer'),
+      tileLayerToken: read(tile, '--cds-layer'),
       bodyBg: getComputedStyle(document.body).backgroundColor,
-      bodyColor: getComputedStyle(document.body).color,
+      appBg: appRoot ? getComputedStyle(appRoot).backgroundColor : '',
       tileBg: tile ? getComputedStyle(tile).backgroundColor : '',
       tileColor: tile ? getComputedStyle(tile).color : '',
       panelBg: panel ? getComputedStyle(panel).backgroundColor : '',
-      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflowX: root.scrollWidth - root.clientWidth,
     };
   });
-  if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: explicit dark not persisted/applied`);
-  if (dark.bodyBg === 'rgb(255, 255, 255)' || dark.tileBg === 'rgb(255, 255, 255)' || dark.panelBg === 'rgb(255, 255, 255)') throw new Error(`${name}: white surface leaked into dark theme`);
+
+  await page.screenshot({ path: path.join(out, `${name}-dark-debug.png`), fullPage: true });
+  fs.writeFileSync(path.join(out, `${name}-dark-debug.json`), JSON.stringify({ viewport, metrics, dark, errors, consoleErrors }, null, 2));
+
+  if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: explicit dark not persisted/applied: ${JSON.stringify(dark)}`);
+  if ([dark.bodyBg, dark.appBg, dark.tileBg, dark.panelBg].includes('rgb(255, 255, 255)')) {
+    throw new Error(`${name}: white surface leaked into dark theme: ${JSON.stringify(dark)}`);
+  }
   if (dark.overflowX > 1) throw new Error(`${name}: dark mode overflow ${dark.overflowX}px`);
   await page.screenshot({ path: path.join(out, `${name}-dark.png`), fullPage: true });
 
-  await selectTheme('ダーク', 'ライト', 'theme-light');
+  await selectTheme('ダーク', 'theme-light');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
   if (await page.evaluate(() => localStorage.getItem('sanpokai-theme-preference-v1')) !== 'light') throw new Error(`${name}: explicit light not persisted`);
   await page.screenshot({ path: path.join(out, `${name}-light.png`), fullPage: true });
 
-  await selectTheme('ライト', 'システム設定', 'theme-system');
+  await selectTheme('ライト', 'theme-system');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(true));
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
 
-  await selectTheme('システム設定', 'ダーク', 'theme-dark');
+  await selectTheme('システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await page.evaluate(() => window.__QA_THEME_MEDIA__.set(false));
   await page.waitForTimeout(50);
