@@ -10,12 +10,14 @@
 
 ## UI方針
 
-Carbon Design System の用途定義に従い、以下を採用しています。
+UIは React 19 + 公式 `@carbon/react` をソースのownerとしています。Carbon Design System の用途定義に従い、以下を採用しています。
 
-- 単純な1ページ構成: UI Shell Header base
-- 別ツールへのナビゲーション: Clickable Tile
-- 過去企画の一覧: Structured List
+- 単純な1ページ構成: Carbon Header
+- 別ツールへのナビゲーション: ClickableTile
+- 過去企画の一覧: StructuredList
 - ページ遷移には Button ではなく Link を使用
+
+Viteでビルドした `dist` をGitHub Pagesへ配信します。手書きのCarbon風コンポーネントへ戻さず、React/Carbon側でUIを管理します。
 
 ## 企画一覧の仕組み
 
@@ -23,3 +25,7 @@ GitHub Pages 上では、このサイトと `circle-kikaku-tools` はどちら�
 そのため、このサイトは `circle-kikaku-tools` が保存している `sampokai_v10_split_<roomId>` などのローカル保存データを読み取り、企画名と最終更新日時を表示できます。
 
 既存の `circle-kikaku-tools` 側は変更しません。
+
+## ブラウザQA
+
+Quality Guardはビルド後の画面をChromiumで390×844と1280×900の両方で描画し、Carbon ClickableTile、StructuredList、4ツールのリンク、企画履歴の名称・並び順、横overflow、console/page errorを検査します。管理ポリシーで通常URLナビゲーションが制限される環境でも同じ確認ができるよう、自己完結したビルドを `about:blank + page.setContent` で読み込む方式です。
