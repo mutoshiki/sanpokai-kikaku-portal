@@ -16,6 +16,7 @@ const LIGHT = 'light';
 const DARK = 'dark';
 const VALID_PREFERENCES = new Set([SYSTEM, LIGHT, DARK]);
 const DARK_QUERY = '(prefers-color-scheme: dark)';
+const ROOT_THEME_CLASSES = ['cds--white', 'cds--g100'];
 
 const ThemePreferenceContext = createContext({
   preference: SYSTEM,
@@ -52,8 +53,11 @@ export function ThemePreferenceProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-carbon-theme', resolvedTheme);
-    document.documentElement.style.colorScheme = resolvedTheme === 'g100' ? 'dark' : 'light';
+    const root = document.documentElement;
+    root.setAttribute('data-carbon-theme', resolvedTheme);
+    root.style.colorScheme = resolvedTheme === 'g100' ? 'dark' : 'light';
+    root.classList.remove(...ROOT_THEME_CLASSES);
+    root.classList.add(resolvedTheme === 'g100' ? 'cds--g100' : 'cds--white', 'cds--layer-one');
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', resolvedTheme === 'g100' ? '#161616' : '#ffffff');
   }, [resolvedTheme]);
