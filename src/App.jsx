@@ -3,6 +3,7 @@ import {
   ClickableTile,
   Header,
   HeaderName,
+  Layer,
   StructuredListBody,
   StructuredListCell,
   StructuredListHead,
@@ -153,7 +154,7 @@ function App() {
       <main id="main" className="portal-page">
         <h1 className="portal-title">ツール</h1>
 
-        <section className="tool-grid" aria-label="利用するツール">
+        <Layer as="section" className="tool-grid" aria-label="利用するツール">
           {TOOLS.map((tool) => (
             <ClickableTile
               key={tool.title}
@@ -170,7 +171,7 @@ function App() {
               <ArrowRight className="tool-tile__arrow" size={20} aria-hidden="true" />
             </ClickableTile>
           ))}
-        </section>
+        </Layer>
 
         <section className="projects" aria-labelledby="projects-title">
           <h2 id="projects-title">過去に開いた企画</h2>
