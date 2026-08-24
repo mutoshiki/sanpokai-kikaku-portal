@@ -184,7 +184,10 @@
 
         if (message?.source !== HISTORY_CHILD_SOURCE || message.channel !== historyChannel) return;
         if (message.type !== 'history-ready' && message.type !== 'history-update') return;
-        const merged = saveHistory(mergeHistory(message.history, readHistory()));
+        const stored = readHistory();
+        const merged = message.type === 'history-ready'
+          ? saveHistory(mergeHistory(stored, message.history))
+          : saveHistory(mergeHistory(message.history, stored));
         sendHistory(event.source, merged);
       });
     })();
