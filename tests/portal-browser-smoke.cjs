@@ -130,7 +130,7 @@ async function run(browser, name, viewport) {
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
-  for (const text of ['学務提出書類メーカー', '登山計画書メーカー', '山歩会フォームメーカー', 'サークル企画ツール', '過去に開いた企画']) {
+  for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '過去に開いた企画']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
   if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
