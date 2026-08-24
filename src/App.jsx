@@ -24,24 +24,24 @@ const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
 
 const TOOLS = [
   {
-    title: '学務提出書類メーカー',
-    description: '企画者は応募フォームの回答から引き継ぎデータを作り、それを使ってサークル長が学務への提出書類を簡単に作れます。',
-    href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases',
-  },
-  {
     title: '登山計画書メーカー',
-    description: 'YAMAPのルートと行程のスクリーンショットを添付するだけで、日付などの最小限の入力で登山計画書を作成できます。',
+    description: '日付などの最小限の情報を入力し、YAMAPのスクリーンショットを2〜4枚添付するだけで、登山計画書をすぐに作成できます。',
     href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/',
   },
   {
-    title: '山歩会フォームメーカー',
-    description: '日付や企画名などを入力するだけで、応募フォームの作成を簡単に行えます。',
+    title: '応募フォームメーカー',
+    description: '企画名や日付などの最小限の情報を入力するだけで、企画の応募フォームを作成できます。作成したフォームは自動でサークル企画ツールの部屋と結び付き、応募者や車出しの有無、定員などが自動でインポートされます。応募者の中から任意の参加者を選択してツールを使用できます。',
     href: FORM_MAKER_URL,
   },
   {
     title: 'サークル企画ツール',
-    description: 'タップして新しい企画を作成。車割や班割の作成、精算を効率よく行えます。',
+    description: '車割・班割を作成してリンクで共有できます。交通費などの精算を簡単に行えます。サークル長が学務提出書類作成ツールで書類を作るための引き継ぎデータも作成できます。',
     href: TOOL_URL,
+  },
+  {
+    title: '学務提出書類作成ツール',
+    description: 'サークル長が、企画者から受け取った引き継ぎデータから学務提出書類を自動で作成できます。「山歩会_提出書類作成ツール_〇〇_x64-setup.exe」を押してダウンロード後、開くとインストールできます。',
+    href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases',
   },
 ];
 
