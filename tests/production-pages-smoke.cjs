@@ -98,32 +98,45 @@ async function waitForAnimations(page) {
       documentWidth: document.documentElement.scrollWidth,
       frameWidth: rect?.width || 0,
       frameHeight: rect?.height || 0,
+      frameSrc: frame?.src || '',
     };
   });
   if (host.theme !== 'g100' || host.preference !== 'dark') throw new Error(`embedded host theme did not persist: ${JSON.stringify(host)}`);
   if (host.background === 'rgb(255, 255, 255)' || host.themeColor.toLowerCase() !== '#161616') throw new Error(`embedded host retained white chrome: ${JSON.stringify(host)}`);
   if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || host.frameHeight < 800) throw new Error(`embedded host layout regression: ${JSON.stringify(host)}`);
+  if (!/[?&]theme=dark(?:&|$)/.test(host.frameSrc) || !/[?&]themeChannel=[^&]+/.test(host.frameSrc)) {
+    throw new Error(`embedded host did not pass theme/channel through iframe URL: ${host.frameSrc}`);
+  }
 
-  let embeddedFound = false;
-  for (let attempt = 0; attempt < 12 && !embeddedFound; attempt += 1) {
+  let embedded = null;
+  for (let attempt = 0; attempt < 20 && !embedded; attempt += 1) {
     for (const frame of page.frames()) {
       try {
         const text = await frame.locator('body').innerText({ timeout: 1500 });
-        if (text.includes('編集者メールアドレス') && text.includes('Googleフォームを作成')) {
-          embeddedFound = true;
-          break;
-        }
+        if (!text.includes('編集者メールアドレス') || !text.includes('Googleフォームを作成')) continue;
+        embedded = await frame.evaluate(() => ({
+          theme: document.documentElement.dataset.carbonTheme || '',
+          bodyBackground: getComputedStyle(document.body).backgroundColor,
+          headerBackground: document.querySelector('.cds--header') ? getComputedStyle(document.querySelector('.cds--header')).backgroundColor : '',
+          preference: localStorage.getItem('sanpokai-theme-preference-v1'),
+          viewportWidth: document.documentElement.clientWidth,
+          documentWidth: document.documentElement.scrollWidth,
+        }));
+        if (embedded.theme !== 'g100') embedded = null;
+        if (embedded) break;
       } catch {}
     }
-    if (!embeddedFound) await page.waitForTimeout(2000);
+    if (!embedded) await page.waitForTimeout(1500);
   }
-  if (!embeddedFound) throw new Error('embedded Apps Script form UI was not found inside the themed host');
+  if (!embedded) throw new Error('embedded Apps Script React UI did not reach Carbon g100 inside the Google wrapper');
+  if ([embedded.bodyBackground, embedded.headerBackground].includes('rgb(255, 255, 255)')) {
+    throw new Error(`embedded React UI leaked white surfaces in dark mode: ${JSON.stringify(embedded)}`);
+  }
+  if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded React UI overflow: ${JSON.stringify(embedded)}`);
   await page.screenshot({ path: `${OUT}/form-maker-host-dark.png`, fullPage: true });
 
   if (pageErrors.length) throw new Error(`production page errors: ${pageErrors.join(' | ')}`);
-  // Google-owned iframe shells can log their own non-fatal messages. Keep the
-  // report, but only the app/host rendering assertions above own pass/fail.
-  const report = { status: response?.status() || null, liveUrl: LIVE_URL, initial, dark, host, pageErrors, consoleErrors };
+  const report = { status: response?.status() || null, liveUrl: LIVE_URL, initial, dark, host, embedded, pageErrors, consoleErrors };
   fs.writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   await browser.close();
