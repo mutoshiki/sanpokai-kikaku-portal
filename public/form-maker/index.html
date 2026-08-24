@@ -54,7 +54,6 @@
   <iframe
     id="form-maker-frame"
     title="山歩会フォームメーカー"
-    src="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec?embedded=true"
     allow="clipboard-write; web-share"
     referrerpolicy="strict-origin-when-cross-origin"
   ></iframe>
@@ -64,10 +63,18 @@
     (() => {
       const KEY = 'sanpokai-theme-preference-v1';
       const VALID = new Set(['system', 'light', 'dark']);
+      const APP_URL = 'https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec';
       const frame = document.getElementById('form-maker-frame');
       const meta = document.querySelector('meta[name="theme-color"]');
       const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const themeChannel = createChannel();
       let preference = readPreference();
+
+      function createChannel() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        const random = Math.random().toString(36).slice(2);
+        return `theme-${Date.now().toString(36)}-${random}`;
+      }
 
       function readPreference() {
         try {
@@ -89,19 +96,21 @@
         if (meta) meta.setAttribute('content', dark ? '#161616' : '#ffffff');
       }
 
-      function sendPreference() {
-        try {
-          frame.contentWindow?.postMessage({
-            source: 'sanpokai-theme-host',
-            preference,
-          }, '*');
-        } catch {
-          // The embedded app still follows its own stored/system theme.
-        }
+      function buildFrameUrl(pref) {
+        const url = new URL(APP_URL);
+        url.searchParams.set('embedded', 'true');
+        url.searchParams.set('theme', VALID.has(pref) ? pref : 'system');
+        url.searchParams.set('themeChannel', themeChannel);
+        return url.href;
+      }
+
+      function loadFrame(pref) {
+        const next = buildFrameUrl(pref);
+        if (frame.src !== next) frame.src = next;
       }
 
       applyTheme(resolveTheme(preference));
-      frame.addEventListener('load', sendPreference);
+      loadFrame(preference);
 
       media.addEventListener?.('change', () => {
         if (preference === 'system') applyTheme(resolveTheme(preference));
@@ -111,13 +120,14 @@
         if (event.key !== KEY) return;
         preference = readPreference();
         applyTheme(resolveTheme(preference));
-        sendPreference();
+        loadFrame(preference);
       });
 
       window.addEventListener('message', (event) => {
-        if (event.source !== frame.contentWindow) return;
         const message = event.data;
-        if (message?.source !== 'sanpokai-theme-child' || !VALID.has(message.preference)) return;
+        if (message?.source !== 'sanpokai-theme-child') return;
+        if (message.channel !== themeChannel) return;
+        if (!VALID.has(message.preference)) return;
         preference = message.preference;
         try { localStorage.setItem(KEY, preference); } catch {}
         applyTheme(message.resolvedTheme === 'g100' ? 'g100' : 'white');
