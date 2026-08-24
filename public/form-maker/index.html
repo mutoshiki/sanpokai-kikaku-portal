@@ -63,17 +63,22 @@
     (() => {
       const KEY = 'sanpokai-theme-preference-v1';
       const VALID = new Set(['system', 'light', 'dark']);
+      const HISTORY_KEY = 'sanpokai-form-builder-history-v1';
+      const HISTORY_LIMIT = 10;
+      const HISTORY_CHILD_SOURCE = 'sanpokai-form-history-child';
+      const HISTORY_HOST_SOURCE = 'sanpokai-form-history-host';
       const APP_URL = 'https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec';
       const frame = document.getElementById('form-maker-frame');
       const meta = document.querySelector('meta[name="theme-color"]');
       const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const themeChannel = createChannel();
+      const themeChannel = createChannel('theme');
+      const historyChannel = createChannel('history');
       let preference = readPreference();
 
-      function createChannel() {
+      function createChannel(prefix) {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
         const random = Math.random().toString(36).slice(2);
-        return `theme-${Date.now().toString(36)}-${random}`;
+        return `${prefix}-${Date.now().toString(36)}-${random}`;
       }
 
       function readPreference() {
@@ -83,6 +88,47 @@
         } catch {
           return 'system';
         }
+      }
+
+      function normalizeHistory(items) {
+        if (!Array.isArray(items)) return [];
+        const seen = new Set();
+        const next = [];
+        for (const item of items) {
+          const formId = String(item?.formId || '').trim();
+          if (!formId || seen.has(formId)) continue;
+          seen.add(formId);
+          next.push({ ...item, formId });
+          if (next.length >= HISTORY_LIMIT) break;
+        }
+        return next;
+      }
+
+      function readHistory() {
+        try {
+          return normalizeHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'));
+        } catch {
+          return [];
+        }
+      }
+
+      function mergeHistory(primary, secondary) {
+        return normalizeHistory([...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])]);
+      }
+
+      function saveHistory(history) {
+        const normalized = normalizeHistory(history);
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(normalized)); } catch {}
+        return normalized;
+      }
+
+      function sendHistory(target, history) {
+        target?.postMessage?.({
+          source: HISTORY_HOST_SOURCE,
+          channel: historyChannel,
+          type: 'history-state',
+          history,
+        }, '*');
       }
 
       function resolveTheme(pref) {
@@ -101,6 +147,7 @@
         url.searchParams.set('embedded', 'true');
         url.searchParams.set('theme', VALID.has(pref) ? pref : 'system');
         url.searchParams.set('themeChannel', themeChannel);
+        url.searchParams.set('historyChannel', historyChannel);
         return url.href;
       }
 
@@ -117,20 +164,28 @@
       });
 
       window.addEventListener('storage', (event) => {
-        if (event.key !== KEY) return;
-        preference = readPreference();
-        applyTheme(resolveTheme(preference));
-        loadFrame(preference);
+        if (event.key === KEY) {
+          preference = readPreference();
+          applyTheme(resolveTheme(preference));
+          loadFrame(preference);
+        }
       });
 
       window.addEventListener('message', (event) => {
         const message = event.data;
-        if (message?.source !== 'sanpokai-theme-child') return;
-        if (message.channel !== themeChannel) return;
-        if (!VALID.has(message.preference)) return;
-        preference = message.preference;
-        try { localStorage.setItem(KEY, preference); } catch {}
-        applyTheme(message.resolvedTheme === 'g100' ? 'g100' : 'white');
+        if (message?.source === 'sanpokai-theme-child') {
+          if (message.channel !== themeChannel) return;
+          if (!VALID.has(message.preference)) return;
+          preference = message.preference;
+          try { localStorage.setItem(KEY, preference); } catch {}
+          applyTheme(message.resolvedTheme === 'g100' ? 'g100' : 'white');
+          return;
+        }
+
+        if (message?.source !== HISTORY_CHILD_SOURCE || message.channel !== historyChannel) return;
+        if (message.type !== 'history-ready' && message.type !== 'history-update') return;
+        const merged = saveHistory(mergeHistory(message.history, readHistory()));
+        sendHistory(event.source, merged);
       });
     })();
   </script>
