@@ -57,7 +57,7 @@ async function waitForAnimations(page) {
     bodyTextLength: document.body.innerText.trim().length,
     viewportWidth: document.documentElement.clientWidth,
     documentWidth: document.documentElement.scrollWidth,
-    formHref: [...document.querySelectorAll('.tool-tile')].find(node => node.textContent.includes('山歩会フォームメーカー'))?.getAttribute('href') || '',
+    formHref: [...document.querySelectorAll('.tool-tile')].find(node => node.textContent.includes('応募フォームメーカー'))?.getAttribute('href') || '',
   }));
   if (initial.tiles !== 4 || initial.bodyTextLength < 100) throw new Error(`portal production app did not render: ${JSON.stringify(initial)}`);
   if (initial.documentWidth > initial.viewportWidth + 1) throw new Error(`portal mobile overflow: ${initial.documentWidth} > ${initial.viewportWidth}`);
