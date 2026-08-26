@@ -1,0 +1,65 @@
+name: Deploy Pages Recovery
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-recovery
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy built site to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Verify production serves built assets, not Vite source
+        env:
+          LIVE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            HTML="$(curl --fail --silent --show-error --location --max-time 20 "$LIVE_URL" || true)"
+            if printf '%s' "$HTML" | grep -q '/assets/' && ! printf '%s' "$HTML" | grep -q '/src/main.jsx'; then
+              echo "Built Pages deployment verified."
+              exit 0
+            fi
+            echo "Waiting for built Pages deployment ($i/6)..."
+            sleep 10
+          done
+          echo "Production is still serving source index.html instead of dist." >&2
+          exit 1
