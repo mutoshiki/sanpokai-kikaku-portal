@@ -25,22 +25,33 @@ const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
 const TOOLS = [
   {
     title: '登山計画書メーカー',
-    description: '日付などの最小限の情報を入力し、YAMAPのスクリーンショットを2〜4枚添付するだけで、登山計画書をすぐに作成できます。',
+    paragraphs: [
+      '日付などの最小限の情報を入力し、YAMAPのスクリーンショットを2〜4枚添付するだけで、登山計画書をすぐに作成できます。',
+    ],
     href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/',
   },
   {
     title: '応募フォームメーカー',
-    description: '企画名や日付などの最小限の情報を入力するだけで、企画の応募フォームを作成できます。作成したフォームは自動でサークル企画ツールの部屋と結び付き、応募者や車出しの有無、定員などが自動でインポートされます。応募者の中から任意の参加者を選択してツールを使用できます。',
+    paragraphs: [
+      '企画名や日付などの最小限の情報を入力するだけで、企画の応募フォームを作成できます。',
+      '作成したフォームは自動でサークル企画ツールの部屋と結び付き、応募者や車出しの有無、定員などが自動でインポートされます。応募者の中から任意の参加者を選択してツールを使用できます。',
+    ],
     href: FORM_MAKER_URL,
   },
   {
     title: 'サークル企画ツール',
-    description: '車割・班割を作成してリンクで共有できます。交通費などの精算を簡単に行えます。サークル長が学務提出書類作成ツールで書類を作るための引き継ぎデータも作成できます。',
+    paragraphs: [
+      '車割・班割を作成してリンクで共有できます。',
+      '交通費などの精算を簡単に行えます。サークル長が学務提出書類作成ツールで書類を作るための引き継ぎデータも作成できます。',
+    ],
     href: TOOL_URL,
   },
   {
     title: '学務提出書類作成ツール',
-    description: 'サークル長が、企画者から受け取った引き継ぎデータから学務提出書類を自動で作成できます。「山歩会_提出書類作成ツール_〇〇_x64-setup.exe」を押してダウンロード後、開くとインストールできます。',
+    paragraphs: [
+      'サークル長が、企画者から受け取った引き継ぎデータから学務提出書類を自動で作成できます。',
+      '「山歩会_提出書類作成ツール_〇〇_x64-setup.exe」を押してダウンロード後、開くとインストールできます。',
+    ],
     href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases',
   },
 ];
@@ -167,9 +178,16 @@ function App() {
             >
               <div className="tool-tile__content">
                 <h2>{tool.title}</h2>
-                <p>{tool.description}</p>
+                <div className="tool-tile__description">
+                  {tool.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
               </div>
-              <ArrowRight className="tool-tile__arrow" size={20} aria-hidden="true" />
+              <span className="tool-tile__action" aria-hidden="true">
+                <span>ツールを開く</span>
+                <ArrowRight size={20} />
+              </span>
             </ClickableTile>
           ))}
         </Layer>
