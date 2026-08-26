@@ -21,10 +21,45 @@
         if (meta) meta.content = dark ? '#161616' : '#ffffff';
       })();
     </script>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #f4f4f4; color: #161616; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      html[data-carbon-theme="g100"], html[data-carbon-theme="g100"] body { background: #161616; color: #f4f4f4; }
+      .static-fallback { max-width: 960px; margin: 0 auto; padding: 72px 16px 40px; }
+      .static-fallback h1 { font-size: 28px; font-weight: 400; margin: 0 0 24px; }
+      .static-fallback__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: #c6c6c6; }
+      .static-fallback a { display: block; min-height: 120px; padding: 20px; background: #ffffff; color: #161616; text-decoration: none; box-sizing: border-box; }
+      html[data-carbon-theme="g100"] .static-fallback__grid { background: #525252; }
+      html[data-carbon-theme="g100"] .static-fallback a { background: #262626; color: #f4f4f4; }
+      .static-fallback a:hover { text-decoration: underline; }
+      .static-fallback strong { display: block; font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+      .static-fallback span { font-size: 14px; line-height: 1.5; }
+    </style>
     <title>山歩会企画ツール一覧</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="static-fallback" aria-label="山歩会企画ツール一覧">
+        <h1>ツール</h1>
+        <div class="static-fallback__grid">
+          <a href="https://mutoshiki.github.io/tozan-keikaku-syo-maker/" target="_blank" rel="noopener noreferrer">
+            <strong>登山計画書メーカー</strong>
+            <span>登山計画書を作成します。</span>
+          </a>
+          <a href="./form-maker/" target="_blank" rel="noopener noreferrer">
+            <strong>応募フォームメーカー</strong>
+            <span>企画の応募フォームを作成します。</span>
+          </a>
+          <a href="https://mutoshiki.github.io/circle-kikaku-tools/" target="_blank" rel="noopener noreferrer">
+            <strong>サークル企画ツール</strong>
+            <span>車割・班割・精算を行います。</span>
+          </a>
+          <a href="https://github.com/mutoshiki/sampokai-submission-builder/releases" target="_blank" rel="noopener noreferrer">
+            <strong>学務提出書類作成ツール</strong>
+            <span>学務提出書類を作成します。</span>
+          </a>
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
