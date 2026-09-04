@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ClickableTile,
   ContainedList,
@@ -7,6 +7,9 @@ import {
   HeaderName,
   Layer,
   Link,
+  OverflowMenu,
+  OverflowMenuItem,
+  ToastNotification,
 } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
@@ -137,8 +140,16 @@ function safeExternalUrl(value) {
   }
 }
 
-function openExternal(url) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+function safeProjectToolUrl(value) {
+  const url = safeExternalUrl(value);
+  if (!url) return '';
+  try {
+    const expected = new URL(TOOL_URL);
+    const candidate = new URL(url);
+    return candidate.origin === expected.origin && candidate.pathname === expected.pathname ? candidate.href : '';
+  } catch {
+    return '';
+  }
 }
 
 function formatDate(value) {
@@ -154,6 +165,8 @@ function App() {
   const [{ lastRoom, projects, formHistory }, setPortalState] = useState(() => {
     try { return { ...readProjects(), formHistory: readFormHistory() }; } catch { return { lastRoom: '', projects: [], formHistory: [] }; }
   });
+  const [toast, setToast] = useState('');
+  const toastTimer = useRef(null);
 
   const refreshPortalState = useCallback(() => {
     try { setPortalState({ ...readProjects(), formHistory: readFormHistory() }); } catch { setPortalState({ lastRoom: '', projects: [], formHistory: [] }); }
@@ -169,6 +182,38 @@ function App() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [refreshPortalState]);
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const showToast = useCallback((message) => {
+    clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = setTimeout(() => setToast(''), 3000);
+  }, []);
+
+  const copyLink = useCallback(async (url, message) => {
+    if (!url) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) return;
+      }
+      showToast(message);
+    } catch {
+      // Clipboard failures do not create a second alert surface in the portal.
+    }
+  }, [showToast]);
 
   return (
     <>
@@ -206,22 +251,46 @@ function App() {
               const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
               const responseUrl = safeExternalUrl(form.responseUrl);
               const editUrl = safeExternalUrl(form.editUrl);
-              const primaryUrl = responseUrl || editUrl;
-              const primaryLinkLabel = responseUrl ? '回答フォームを開く' : editUrl ? '編集フォームを開く' : 'フォームURLなし';
+              const projectUrl = safeProjectToolUrl(form.spreadsheetUrl) || safeProjectToolUrl(form.projectUrl);
+              const projectId = String(form.projectId || '').trim() || (projectUrl ? new URL(projectUrl).searchParams.get('room') || '' : '');
               const createdAt = String(form.createdAt || '').trim();
               return (
                 <ContainedListItem
                   key={form.formId}
-                  onClick={primaryUrl ? () => openExternal(primaryUrl) : undefined}
-                  action={editUrl && editUrl !== primaryUrl ? (
-                    <Link href={editUrl} target="_blank" rel="noopener noreferrer">編集</Link>
+                  className="project-list__row"
+                  action={projectUrl || responseUrl || editUrl ? (
+                    <div className="project-list__actions">
+                      {projectUrl && (
+                        <Link href={projectUrl} target="_blank" rel="noopener noreferrer">企画を開く</Link>
+                      )}
+                      {(responseUrl || editUrl) && (
+                        <OverflowMenu
+                          flipped
+                          aria-label={`${label}のフォーム操作`}
+                          iconDescription={`${label}のフォーム操作`}
+                        >
+                          {responseUrl && (
+                            <OverflowMenuItem
+                              itemText="応募フォームのリンクをコピー"
+                              onClick={() => copyLink(responseUrl, '応募フォームのリンクをコピーしました')}
+                            />
+                          )}
+                          {editUrl && (
+                            <OverflowMenuItem
+                              itemText="編集者用リンクをコピー"
+                              onClick={() => copyLink(editUrl, '編集者用リンクをコピーしました')}
+                            />
+                          )}
+                        </OverflowMenu>
+                      )}
+                    </div>
                   ) : undefined}
                 >
                   <div className="project-list__item">
                     <div className="project-list__primary">
-                      <span className="project-link">{label}</span>
+                      <span className="project-title">{label}</span>
                       <span className="project-meta">
-                        {primaryLinkLabel} · ID: {form.formId}
+                        {projectId ? `企画ID: ${projectId} · ` : ''}フォームID: {form.formId}
                       </span>
                     </div>
                     <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
@@ -240,10 +309,18 @@ function App() {
               const label = project.name || `企画 ${project.roomId}`;
               const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
               return (
-                <ContainedListItem key={project.roomId} onClick={() => openExternal(projectUrl)}>
+                <ContainedListItem
+                  key={project.roomId}
+                  className="project-list__row"
+                  action={(
+                    <div className="project-list__actions">
+                      <Link href={projectUrl} target="_blank" rel="noopener noreferrer">企画を開く</Link>
+                    </div>
+                  )}
+                >
                   <div className="project-list__item">
                     <div className="project-list__primary">
-                      <span className="project-link">{label}</span>
+                      <span className="project-title">{label}</span>
                       <span className="project-meta">
                         {project.roomId === lastRoom ? `最後に開いた企画 · ID: ${project.roomId}` : `ID: ${project.roomId}`}
                       </span>
@@ -260,6 +337,18 @@ function App() {
           </ContainedList>
         </section>
       </main>
+
+      {toast && (
+        <div className="toast-host">
+          <ToastNotification
+            kind="success"
+            title={toast}
+            timeout={0}
+            lowContrast
+            onCloseButtonClick={() => setToast('')}
+          />
+        </div>
+      )}
     </>
   );
 }

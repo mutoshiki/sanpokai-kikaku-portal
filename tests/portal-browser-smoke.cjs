@@ -30,7 +30,7 @@ async function installIsolatedEnvironment(page) {
       'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
       'sanpokai-form-builder-history-v1': JSON.stringify([
-        { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
+        { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
       ]),
     };
@@ -66,6 +66,11 @@ async function installIsolatedEnvironment(page) {
       value: query => query === media.media ? media : ({ ...media, media: query }),
     });
     window.__QA_THEME_MEDIA__ = media;
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async value => { window.__QA_COPIED__ = value; } },
+    });
   });
 }
 
@@ -141,10 +146,17 @@ async function run(browser, name, viewport) {
     })),
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     text: document.body.innerText,
-    labels: [...document.querySelectorAll('.projects:not(.form-history) .project-link')].map(node => node.textContent.trim()),
-    formHistoryLabels: [...document.querySelectorAll('.form-history .project-link')].map(node => node.textContent.trim()),
+    labels: [...document.querySelectorAll('.projects:not(.form-history) .project-title')].map(node => node.textContent.trim()),
+    formHistoryLabels: [...document.querySelectorAll('.form-history .project-title')].map(node => node.textContent.trim()),
     nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.querySelector('a, button')),
     formActionLinks: document.querySelectorAll('.form-history .cds--contained-list-item__action a').length,
+    formOverflowMenus: document.querySelectorAll('.form-history .cds--overflow-menu').length,
+    projectActionLinks: document.querySelectorAll('.projects:not(.form-history) .cds--contained-list-item__action a').length,
+    actionOverflow: [...document.querySelectorAll('.project-list__actions > *')].some(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.right > window.innerWidth || rect.left < 0;
+    }),
+    clickableRows: document.querySelectorAll('.project-list .cds--contained-list-item--clickable').length,
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
   if (initial.tileArrowIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
@@ -162,20 +174,49 @@ async function run(browser, name, viewport) {
   if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
-  if (initial.formActionLinks !== 1) throw new Error(`${name}: expected the existing form edit action to remain outside the clickable row`);
+  if (initial.formActionLinks !== 1 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
+  if (initial.projectActionLinks !== 2 || initial.actionOverflow || initial.clickableRows) throw new Error(`${name}: project history action geometry regression`);
   if (!initial.text.includes('フォーム作成履歴')) throw new Error(`${name}: missing form history section`);
 
   const projectPopupPromise = page.waitForEvent('popup');
-  await page.locator('.projects:not(.form-history) .cds--contained-list-item').first().click();
+  await page.locator('.projects:not(.form-history) .cds--link').first().focus();
+  await page.keyboard.press('Enter');
   const projectPopup = await projectPopupPromise;
   if (!projectPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: last-room row navigation regression: ${projectPopup.url()}`);
   await projectPopup.close();
 
   const formPopupPromise = page.waitForEvent('popup');
-  await page.locator('.form-history .cds--contained-list-item').first().click();
+  await page.locator('.form-history .cds--link').first().focus();
+  await page.keyboard.press('Enter');
   const formPopup = await formPopupPromise;
-  if (!formPopup.url().includes('FORM-B/viewform')) throw new Error(`${name}: form response row navigation regression: ${formPopup.url()}`);
+  if (!formPopup.url().includes('?room=PROJECT-B')) throw new Error(`${name}: form project link regression: ${formPopup.url()}`);
   await formPopup.close();
+
+  const formRow = page.locator('.form-history .cds--contained-list-item').first();
+  await formRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  const menuBounds = await page.getByRole('menu').boundingBox();
+  if (!menuBounds || menuBounds.left < 0 || menuBounds.right > viewport.width) throw new Error(`${name}: overflow menu escaped viewport: ${JSON.stringify(menuBounds)}`);
+  if (await page.getByRole('menu').getAttribute('aria-label') !== '夏山応募フォームのフォーム操作') throw new Error(`${name}: form menu label regression`);
+  await page.getByRole('menuitem', { name: '応募フォームのリンクをコピー' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
+  if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/viewform') throw new Error(`${name}: response URL copy regression`);
+
+  await formRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '編集者用リンクをコピー' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.innerText.includes('編集者用リンクをコピーしました'));
+  if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/edit') throw new Error(`${name}: editor URL copy regression`);
+
+  const olderFormRow = page.locator('.form-history .cds--contained-list-item').nth(1);
+  await olderFormRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '応募フォームのリンクをコピー' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
+  if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-A/viewform') throw new Error(`${name}: second history response URL mix-up`);
 
   await page.locator('.tool-tile').first().focus();
   const tilePopupPromise = page.waitForEvent('popup');

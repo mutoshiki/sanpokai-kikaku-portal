@@ -14,7 +14,7 @@ UIは React 19 + 公式 `@carbon/react` をソースのownerとしています�
 
 - 単純な1ページ構成: Carbon Header
 - 別ツールへのナビゲーション: ClickableTile
-- 過去企画の一覧: StructuredList
+- 履歴一覧: `ContainedList` / `ContainedListItem`
 - ページ遷移には Button ではなく Link を使用
 
 Viteでビルドした `dist` をGitHub Pagesへ配信します。手書きのCarbon風コンポーネントへ戻さず、React/Carbon側でUIを管理します。
@@ -28,4 +28,4 @@ GitHub Pages 上では、このサイトと `circle-kikaku-tools` はどちら�
 
 ## ブラウザQA
 
-Quality Guardはビルド後の画面をChromiumで390×844と1280×900の両方で描画し、Carbon ClickableTile、StructuredList、4ツールのリンク、企画履歴の名称・並び順、横overflow、console/page errorを検査します。管理ポリシーで通常URLナビゲーションが制限される環境でも同じ確認ができるよう、自己完結したビルドを `about:blank + page.setContent` で読み込む方式です。
+Quality Guardはビルド後の画面をChromiumで390×844と1280×900の両方で描画し、Carbon ClickableTile、ContainedList、4ツールのリンク、企画履歴の名称・並び順、履歴アクション、横overflow、console/page errorを検査します。管理ポリシーで通常URLナビゲーションが制限される環境でも同じ確認ができるよう、自己完結したビルドを `about:blank + page.setContent` で読み込む方式です。
