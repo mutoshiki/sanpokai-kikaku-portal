@@ -97,6 +97,12 @@ async function focusFirstTileWithKeyboard(page) {
     if (reached) break;
   }
   if (!reached) throw new Error('keyboard navigation did not reach the first tool tile');
+  await page.waitForFunction(() => {
+    const element = document.activeElement;
+    if (!element?.classList?.contains('tool-tile')) return false;
+    const style = getComputedStyle(element);
+    return style.outlineStyle !== 'none' && style.outlineColor !== 'rgba(0, 0, 0, 0)';
+  });
   return page.evaluate(() => {
     const style = getComputedStyle(document.activeElement);
     return {
@@ -126,24 +132,57 @@ async function run(browser, name, viewport) {
 
   const initial = await page.evaluate(() => ({
     tiles: document.querySelectorAll('.cds--tile--clickable').length,
-    rows: document.querySelectorAll('.cds--structured-list-row').length,
+    tileArrowIcons: document.querySelectorAll('.tool-tile .cds--tile--icon').length,
+    tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
+    containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
+      className: node.className,
+      label: node.querySelector('.cds--contained-list__label')?.textContent.trim() || '',
+      itemCount: node.querySelectorAll('.cds--contained-list-item').length,
+    })),
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     text: document.body.innerText,
     labels: [...document.querySelectorAll('.projects:not(.form-history) .project-link')].map(node => node.textContent.trim()),
-    hrefs: [...document.querySelectorAll('.projects:not(.form-history) .project-link')].map(node => node.href),
     formHistoryLabels: [...document.querySelectorAll('.form-history .project-link')].map(node => node.textContent.trim()),
-    formHistoryHrefs: [...document.querySelectorAll('.form-history .project-link')].map(node => node.href),
+    nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.querySelector('a, button')),
+    formActionLinks: document.querySelectorAll('.form-history .cds--contained-list-item__action a').length,
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
+  if (initial.tileArrowIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
+  if (initial.containedLists.length !== 2) throw new Error(`${name}: expected 2 Carbon contained lists, got ${initial.containedLists.length}`);
+  if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--md'))) {
+    throw new Error(`${name}: contained list variant or size regression: ${JSON.stringify(initial.containedLists)}`);
+  }
+  if (initial.containedLists[0].label !== 'フォーム作成履歴' || initial.containedLists[1].label !== '過去に開いた企画') {
+    throw new Error(`${name}: contained list labels regression: ${JSON.stringify(initial.containedLists)}`);
+  }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
   for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '過去に開いた企画']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
   if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
-  if (!initial.hrefs[0]?.includes('?room=ROOM-B')) throw new Error(`${name}: last-room link regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
-  if (!initial.formHistoryHrefs[0]?.includes('FORM-B/viewform')) throw new Error(`${name}: form response link regression`);
+  if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
+  if (initial.formActionLinks !== 1) throw new Error(`${name}: expected the existing form edit action to remain outside the clickable row`);
   if (!initial.text.includes('フォーム作成履歴')) throw new Error(`${name}: missing form history section`);
+
+  const projectPopupPromise = page.waitForEvent('popup');
+  await page.locator('.projects:not(.form-history) .cds--contained-list-item').first().click();
+  const projectPopup = await projectPopupPromise;
+  if (!projectPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: last-room row navigation regression: ${projectPopup.url()}`);
+  await projectPopup.close();
+
+  const formPopupPromise = page.waitForEvent('popup');
+  await page.locator('.form-history .cds--contained-list-item').first().click();
+  const formPopup = await formPopupPromise;
+  if (!formPopup.url().includes('FORM-B/viewform')) throw new Error(`${name}: form response row navigation regression: ${formPopup.url()}`);
+  await formPopup.close();
+
+  await page.locator('.tool-tile').first().focus();
+  const tilePopupPromise = page.waitForEvent('popup');
+  await page.keyboard.press('Enter');
+  const tilePopup = await tilePopupPromise;
+  if (!tilePopup.url().includes('tozan-keikaku-syo-maker')) throw new Error(`${name}: ClickableTile Enter navigation regression: ${tilePopup.url()}`);
+  await tilePopup.close();
 
   await selectTheme(page, 'システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');

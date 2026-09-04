@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ClickableTile,
+  ContainedList,
+  ContainedListItem,
   Header,
   HeaderName,
   Layer,
-  StructuredListBody,
-  StructuredListCell,
-  StructuredListHead,
-  StructuredListRow,
-  StructuredListWrapper,
+  Link,
 } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
@@ -139,6 +137,10 @@ function safeExternalUrl(value) {
   }
 }
 
+function openExternal(url) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function formatDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -187,107 +189,75 @@ function App() {
               href={tool.href}
               target="_blank"
               rel="noopener noreferrer"
+              renderIcon={ArrowRight}
               aria-label={`${tool.title}を新しいタブで開く`}
             >
               <div className="tool-tile__content">
                 <h2>{tool.title}</h2>
                 <p>{tool.description}</p>
               </div>
-              <ArrowRight className="tool-tile__arrow" size={20} aria-hidden="true" />
             </ClickableTile>
           ))}
         </Layer>
 
-        <section className="projects form-history" aria-labelledby="form-history-title">
-          <h2 id="form-history-title">フォーム作成履歴</h2>
-          {formHistory.length ? (
-            <StructuredListWrapper className="project-list form-history-list" aria-label="フォーム作成履歴">
-              <StructuredListHead>
-                <StructuredListRow head>
-                  <StructuredListCell head>フォーム</StructuredListCell>
-                  <StructuredListCell head>作成日時</StructuredListCell>
-                </StructuredListRow>
-              </StructuredListHead>
-              <StructuredListBody>
-                {formHistory.map((form) => {
-                  const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
-                  const responseUrl = safeExternalUrl(form.responseUrl);
-                  const editUrl = safeExternalUrl(form.editUrl);
-                  const primaryUrl = responseUrl || editUrl;
-                  const primaryLinkLabel = responseUrl ? '回答フォームを開く' : editUrl ? '編集フォームを開く' : 'フォームURLなし';
-                  const createdAt = String(form.createdAt || '').trim();
-                  return (
-                    <StructuredListRow key={form.formId}>
-                      <StructuredListCell>
-                        {primaryUrl ? (
-                          <a
-                            className="project-link"
-                            href={primaryUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`${label}を新しいタブで開く`}
-                          >{label}</a>
-                        ) : <span className="project-link">{label}</span>}
-                        <span className="project-meta">
-                          {primaryLinkLabel} · ID: {form.formId}
-                          {editUrl && editUrl !== primaryUrl ? (
-                            <> · <a className="form-history__edit-link" href={editUrl} target="_blank" rel="noopener noreferrer">編集</a></>
-                          ) : null}
-                        </span>
-                      </StructuredListCell>
-                      <StructuredListCell>
-                        <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
-                      </StructuredListCell>
-                    </StructuredListRow>
-                  );
-                })}
-              </StructuredListBody>
-            </StructuredListWrapper>
-          ) : (
-            <p className="empty-state">このブラウザで作成したフォームはありません。</p>
-          )}
+        <section className="projects form-history">
+          <ContainedList className="project-list form-history-list" kind="on-page" size="md" label="フォーム作成履歴">
+            {formHistory.length ? formHistory.map((form) => {
+              const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
+              const responseUrl = safeExternalUrl(form.responseUrl);
+              const editUrl = safeExternalUrl(form.editUrl);
+              const primaryUrl = responseUrl || editUrl;
+              const primaryLinkLabel = responseUrl ? '回答フォームを開く' : editUrl ? '編集フォームを開く' : 'フォームURLなし';
+              const createdAt = String(form.createdAt || '').trim();
+              return (
+                <ContainedListItem
+                  key={form.formId}
+                  onClick={primaryUrl ? () => openExternal(primaryUrl) : undefined}
+                  action={editUrl && editUrl !== primaryUrl ? (
+                    <Link href={editUrl} target="_blank" rel="noopener noreferrer">編集</Link>
+                  ) : undefined}
+                >
+                  <div className="project-list__item">
+                    <div className="project-list__primary">
+                      <span className="project-link">{label}</span>
+                      <span className="project-meta">
+                        {primaryLinkLabel} · ID: {form.formId}
+                      </span>
+                    </div>
+                    <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
+                  </div>
+                </ContainedListItem>
+              );
+            }) : (
+              <ContainedListItem>このブラウザで作成したフォームはありません。</ContainedListItem>
+            )}
+          </ContainedList>
         </section>
 
-        <section className="projects" aria-labelledby="projects-title">
-          <h2 id="projects-title">過去に開いた企画</h2>
-          {projects.length ? (
-            <StructuredListWrapper className="project-list" aria-label="過去に開いた企画">
-              <StructuredListHead>
-                <StructuredListRow head>
-                  <StructuredListCell head>企画</StructuredListCell>
-                  <StructuredListCell head>最終更新</StructuredListCell>
-                </StructuredListRow>
-              </StructuredListHead>
-              <StructuredListBody>
-                {projects.map((project) => {
-                  const label = project.name || `企画 ${project.roomId}`;
-                  return (
-                    <StructuredListRow key={project.roomId}>
-                      <StructuredListCell>
-                        <a
-                          className="project-link"
-                          href={`${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`${label}を新しいタブで開く`}
-                        >{label}</a>
-                        <span className="project-meta">
-                          {project.roomId === lastRoom ? `最後に開いた企画 · ID: ${project.roomId}` : `ID: ${project.roomId}`}
-                        </span>
-                      </StructuredListCell>
-                      <StructuredListCell>
-                        <time dateTime={project.updatedAt ? new Date(project.updatedAt).toISOString() : undefined}>
-                          {formatDate(project.updatedAt)}
-                        </time>
-                      </StructuredListCell>
-                    </StructuredListRow>
-                  );
-                })}
-              </StructuredListBody>
-            </StructuredListWrapper>
-          ) : (
-            <p className="empty-state">このブラウザで開いた企画はありません。</p>
-          )}
+        <section className="projects">
+          <ContainedList className="project-list" kind="on-page" size="md" label="過去に開いた企画">
+            {projects.length ? projects.map((project) => {
+              const label = project.name || `企画 ${project.roomId}`;
+              const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
+              return (
+                <ContainedListItem key={project.roomId} onClick={() => openExternal(projectUrl)}>
+                  <div className="project-list__item">
+                    <div className="project-list__primary">
+                      <span className="project-link">{label}</span>
+                      <span className="project-meta">
+                        {project.roomId === lastRoom ? `最後に開いた企画 · ID: ${project.roomId}` : `ID: ${project.roomId}`}
+                      </span>
+                    </div>
+                    <time dateTime={project.updatedAt ? new Date(project.updatedAt).toISOString() : undefined}>
+                      {formatDate(project.updatedAt)}
+                    </time>
+                  </div>
+                </ContainedListItem>
+              );
+            }) : (
+              <ContainedListItem>このブラウザで開いた企画はありません。</ContainedListItem>
+            )}
+          </ContainedList>
         </section>
       </main>
     </>

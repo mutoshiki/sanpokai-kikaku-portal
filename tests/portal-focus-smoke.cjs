@@ -75,6 +75,18 @@ async function run(browser, preference, expectedTheme) {
   await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
 
+  const emptyLists = await page.evaluate(() => [...document.querySelectorAll('.cds--contained-list')].map(node => ({
+    label: node.querySelector('.cds--contained-list__label')?.textContent.trim() || '',
+    itemCount: node.querySelectorAll('.cds--contained-list-item').length,
+    itemButtons: node.querySelectorAll('.cds--contained-list-item button').length,
+  })));
+  if (emptyLists.length !== 2 || emptyLists.some(list => list.itemCount !== 1 || list.itemButtons !== 0)) {
+    throw new Error(`${preference}: empty contained list state is not non-interactive: ${JSON.stringify(emptyLists)}`);
+  }
+  if (emptyLists[0]?.label !== 'フォーム作成履歴' || emptyLists[1]?.label !== '過去に開いた企画') {
+    throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
+  }
+
   const toolLinks = await page.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
   if (!toolLinks.some(href => href && href.includes('/form-maker/'))) {
     throw new Error(`${preference}: form maker tile is not routed through the themed host`);
@@ -103,7 +115,8 @@ async function run(browser, preference, expectedTheme) {
   });
 
   if (!focus.textToken) throw new Error(`${preference}: Carbon text-primary token is unavailable`);
-  if (shadowIsTransparent(focus.boxShadow)) {
+  const outlineInvisible = focus.outline === 'none' || /transparent|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/i.test(focus.outline);
+  if (outlineInvisible && shadowIsTransparent(focus.boxShadow)) {
     throw new Error(`${preference}: keyboard focus ring is transparent after transition: ${JSON.stringify(focus)}`);
   }
 
