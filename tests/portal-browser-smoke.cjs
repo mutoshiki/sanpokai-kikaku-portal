@@ -151,10 +151,8 @@ async function run(browser, name, viewport) {
     toolGridClass: document.querySelector('.tool-grid')?.className || '',
     labels: [...document.querySelectorAll('.projects:not(.form-history) .project-title')].map(node => node.textContent.trim()),
     formHistoryLabels: [...document.querySelectorAll('.form-history .project-title')].map(node => node.textContent.trim()),
-    formNavigationLabels: [...document.querySelectorAll('.form-history .cds--link')].map(node => node.textContent.trim()),
-    projectNavigationLabels: [...document.querySelectorAll('.projects:not(.form-history) .cds--link')].map(node => node.textContent.trim()),
-    linkIconCount: document.querySelectorAll('.projects .cds--link .cds--link__icon svg').length,
-    linkIconsDecorative: [...document.querySelectorAll('.projects .cds--link .cds--link__icon svg')].every(node => node.getAttribute('aria-hidden') === 'true'),
+    openIconCount: document.querySelectorAll('.projects .project-list__open-icon svg').length,
+    openIconsDecorative: [...document.querySelectorAll('.projects .project-list__open-icon svg')].every(node => node.getAttribute('aria-hidden') === 'true'),
     nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.querySelector('a, button')),
     formActionLinks: document.querySelectorAll('.form-history .cds--contained-list-item__action a').length,
     formOverflowMenus: document.querySelectorAll('.form-history .cds--overflow-menu').length,
@@ -174,36 +172,51 @@ async function run(browser, name, viewport) {
   if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--md'))) {
     throw new Error(`${name}: contained list variant or size regression: ${JSON.stringify(initial.containedLists)}`);
   }
-  if (initial.containedLists[0].label !== 'フォーム作成履歴' || initial.containedLists[1].label !== '過去に開いた企画') {
+  if (initial.containedLists[0].label !== '作成したフォーム' || initial.containedLists[1].label !== '最近開いた企画') {
     throw new Error(`${name}: contained list labels regression: ${JSON.stringify(initial.containedLists)}`);
   }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
-  for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '過去に開いた企画']) {
+  for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近開いた企画', '作成', '最終閲覧']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
   if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
-  if (initial.formNavigationLabels.some(label => label !== 'この企画をサークル企画ツールで開く') || initial.projectNavigationLabels.some(label => label !== 'この企画をサークル企画ツールで開く')) {
-    throw new Error(`${name}: navigation link copy regression: ${JSON.stringify(initial)}`);
-  }
-  if (initial.linkIconCount !== 3 || !initial.linkIconsDecorative) throw new Error(`${name}: ArrowRight link icon anatomy regression`);
+  if (initial.openIconCount !== 3 || !initial.openIconsDecorative) throw new Error(`${name}: Launch icon anatomy regression`);
   if (initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
     throw new Error(`${name}: obsolete history copy or IDs remain`);
   }
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
-  if (initial.formActionLinks !== 1 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
-  if (initial.projectActionLinks !== 2 || initial.actionOverflow || initial.clickableRows) throw new Error(`${name}: project history action geometry regression`);
-  if (!initial.text.includes('フォーム作成履歴')) throw new Error(`${name}: missing form history section`);
+  if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
+  if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 3) throw new Error(`${name}: project history action geometry regression`);
+  if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
+
+  const rowFocus = await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().evaluate((button) => {
+    button.focus();
+    const focus = getComputedStyle(button, '::after');
+    return { outlineStyle: focus.outlineStyle, outlineColor: focus.outlineColor, outlineWidth: focus.outlineWidth };
+  });
+  if (rowFocus.outlineStyle === 'none' || rowFocus.outlineWidth === '0px' || rowFocus.outlineColor === 'rgba(0, 0, 0, 0)') {
+    throw new Error(`${name}: contained list row focus indicator is missing: ${JSON.stringify(rowFocus)}`);
+  }
 
   const projectPopupPromise = page.waitForEvent('popup');
-  await page.locator('.projects:not(.form-history) .cds--link').first().focus();
+  await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().focus();
   await page.keyboard.press('Enter');
   const projectPopup = await projectPopupPromise;
   if (!projectPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: last-room row navigation regression: ${projectPopup.url()}`);
   await projectPopup.close();
 
+  const recentRow = page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable').first();
+  const openIconBounds = await recentRow.locator('.project-list__open-icon').boundingBox();
+  if (!openIconBounds) throw new Error(`${name}: Launch icon has no hit area`);
+  const iconPopupPromise = page.waitForEvent('popup');
+  await page.mouse.click(openIconBounds.x + openIconBounds.width / 2, openIconBounds.y + openIconBounds.height / 2);
+  const iconPopup = await iconPopupPromise;
+  if (!iconPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: Launch icon did not activate the row: ${iconPopup.url()}`);
+  await iconPopup.close();
+
   const formPopupPromise = page.waitForEvent('popup');
-  await page.locator('.form-history .cds--link').first().focus();
+  await page.locator('.form-history .cds--contained-list-item--clickable .cds--contained-list-item__content').first().focus();
   await page.keyboard.press('Enter');
   const formPopup = await formPopupPromise;
   if (!formPopup.url().includes('?room=PROJECT-B')) throw new Error(`${name}: form project link regression: ${formPopup.url()}`);
@@ -211,28 +224,42 @@ async function run(browser, name, viewport) {
 
   const formRow = page.locator('.form-history .cds--contained-list-item').first();
   await formRow.locator('.cds--overflow-menu').focus();
+  const noRowPopup = page.waitForEvent('popup', { timeout: 500 }).then(() => false).catch(() => true);
   await page.keyboard.press('Enter');
+  if (!(await noRowPopup)) throw new Error(`${name}: opening the OverflowMenu also opened the project`);
   const menuBounds = await page.getByRole('menu').boundingBox();
   if (!menuBounds || menuBounds.left < 0 || menuBounds.right > viewport.width) throw new Error(`${name}: overflow menu escaped viewport: ${JSON.stringify(menuBounds)}`);
   if (await page.getByRole('menu').getAttribute('aria-label') !== '夏山応募フォームのフォーム操作') throw new Error(`${name}: form menu label regression`);
-  await page.getByRole('menuitem', { name: '応募用フォームのリンクをコピー' }).focus();
+  const menuItems = await page.getByRole('menuitem').evaluateAll(nodes => nodes.map(node => {
+    const content = node.querySelector('.cds--overflow-menu-options__option-content');
+    return { text: node.textContent.trim(), scrollWidth: content?.scrollWidth || 0, clientWidth: content?.clientWidth || 0, textOverflow: content ? getComputedStyle(content).textOverflow : '' };
+  }));
+  if (menuItems.some(item => item.scrollWidth > item.clientWidth || item.textOverflow === 'ellipsis')) throw new Error(`${name}: overflow menu item text was truncated: ${JSON.stringify(menuItems)}`);
+  if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'menuitem') throw new Error(`${name}: OverflowMenu did not move focus to its first item`);
+  await page.screenshot({ path: path.join(OUT, `${name}-menu-open.png`), fullPage: false });
+  await page.keyboard.press('Escape');
+  if (await page.getByRole('menu').count() !== 0 || await page.evaluate(() => document.activeElement?.classList?.contains('cds--overflow-menu') !== true)) {
+    throw new Error(`${name}: Escape did not close OverflowMenu and restore trigger focus`);
+  }
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.body.innerText.includes('応募用フォームのリンクをコピーしました'));
+  await page.getByRole('menuitem', { name: '応募フォームのリンクをコピー' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/viewform') throw new Error(`${name}: response URL copy regression`);
 
   await formRow.locator('.cds--overflow-menu').focus();
   await page.keyboard.press('Enter');
-  await page.getByRole('menuitem', { name: '編集者用リンクをコピー' }).focus();
+  await page.getByRole('menuitem', { name: '編集用リンクをコピー' }).focus();
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.body.innerText.includes('編集者用リンクをコピーしました'));
+  await page.waitForFunction(() => document.body.innerText.includes('編集用リンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/edit') throw new Error(`${name}: editor URL copy regression`);
 
   const olderFormRow = page.locator('.form-history .cds--contained-list-item').nth(1);
   await olderFormRow.locator('.cds--overflow-menu').focus();
   await page.keyboard.press('Enter');
-  await page.getByRole('menuitem', { name: '応募用フォームのリンクをコピー' }).focus();
+  await page.getByRole('menuitem', { name: '応募フォームのリンクをコピー' }).focus();
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.body.innerText.includes('応募用フォームのリンクをコピーしました'));
+  await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-A/viewform') throw new Error(`${name}: second history response URL mix-up`);
 
   await page.locator('.tool-tile').first().focus();

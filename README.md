@@ -6,7 +6,7 @@
 
 - 企画ツール: `circle-kikaku-tools`
 - フォーム作成ツール: Google Apps Script のフォームメーカー
-- 過去に開いた企画: `circle-kikaku-tools` が同一オリジンの `localStorage` に保存した企画データを一覧表示
+- 最近開いた企画: `circle-kikaku-tools` が同一オリジンの `localStorage` に保存した企画データを一覧表示
 
 ## UI方針
 

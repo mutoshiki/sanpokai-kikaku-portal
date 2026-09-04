@@ -83,7 +83,7 @@ async function run(browser, preference, expectedTheme) {
   if (emptyLists.length !== 2 || emptyLists.some(list => list.itemCount !== 1 || list.itemButtons !== 0)) {
     throw new Error(`${preference}: empty contained list state is not non-interactive: ${JSON.stringify(emptyLists)}`);
   }
-  if (emptyLists[0]?.label !== 'フォーム作成履歴' || emptyLists[1]?.label !== '過去に開いた企画') {
+  if (emptyLists[0]?.label !== '作成したフォーム' || emptyLists[1]?.label !== '最近開いた企画') {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
 

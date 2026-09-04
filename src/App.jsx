@@ -6,12 +6,11 @@ import {
   Header,
   HeaderName,
   Layer,
-  Link,
   OverflowMenu,
   OverflowMenuItem,
   ToastNotification,
 } from '@carbon/react';
-import { ArrowRight } from '@carbon/icons-react';
+import { ArrowRight, Launch } from '@carbon/icons-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
@@ -24,7 +23,8 @@ const LAST_ROOM_KEY = 'syawari_last_room_id';
 const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
 const FORM_HISTORY_KEY = 'sanpokai-form-builder-history-v1';
 const FORM_HISTORY_LIMIT = 10;
-const OPEN_PROJECT_LABEL = 'この企画をサークル企画ツールで開く';
+const RESPONSE_LINK_COPY_LABEL = '応募フォームのリンクをコピー';
+const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
 
 const TOOLS = [
   {
@@ -153,6 +153,12 @@ function safeProjectToolUrl(value) {
   }
 }
 
+function openExternalUrl(value) {
+  const url = safeProjectToolUrl(value);
+  if (!url) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function formatDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -163,7 +169,7 @@ function formatDate(value) {
 }
 
 function App() {
-  const [{ lastRoom, projects, formHistory }, setPortalState] = useState(() => {
+  const [{ projects, formHistory }, setPortalState] = useState(() => {
     try { return { ...readProjects(), formHistory: readFormHistory() }; } catch { return { lastRoom: '', projects: [], formHistory: [] }; }
   });
   const [toast, setToast] = useState('');
@@ -247,7 +253,7 @@ function App() {
         </Layer>
 
         <section className="projects form-history">
-          <ContainedList className="project-list form-history-list" kind="on-page" size="md" label="フォーム作成履歴">
+          <ContainedList className="project-list form-history-list" kind="on-page" size="md" label="作成したフォーム">
             {formHistory.length ? formHistory.map((form) => {
               const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
               const responseUrl = safeExternalUrl(form.responseUrl);
@@ -257,41 +263,43 @@ function App() {
               return (
                 <ContainedListItem
                   key={form.formId}
-                  className="project-list__row"
+                  className={`project-list__row${projectUrl ? ' project-list__row--form-actions' : ''}`}
+                  onClick={projectUrl ? () => openExternalUrl(projectUrl) : undefined}
                   action={projectUrl || responseUrl || editUrl ? (
                     <div className="project-list__actions">
-                      {projectUrl && (
-                        <Link href={projectUrl} target="_blank" rel="noopener noreferrer" renderIcon={ArrowRight}>
-                          {OPEN_PROJECT_LABEL}
-                        </Link>
-                      )}
                       {(responseUrl || editUrl) && (
                         <OverflowMenu
                           aria-label={`${label}のフォーム操作`}
                           iconDescription={`${label}のフォーム操作`}
+                          flipped
+                          menuOptionsClass="project-list__form-menu"
+                          onClick={(event) => event?.stopPropagation?.()}
                         >
                           {responseUrl && (
                             <OverflowMenuItem
-                              itemText="応募用フォームのリンクをコピー"
-                              onClick={() => copyLink(responseUrl, '応募用フォームのリンクをコピーしました')}
+                              itemText={RESPONSE_LINK_COPY_LABEL}
+                              onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`)}
                             />
                           )}
                           {editUrl && (
                             <OverflowMenuItem
-                              itemText="編集者用リンクをコピー"
-                              onClick={() => copyLink(editUrl, '編集者用リンクをコピーしました')}
+                              itemText={EDIT_LINK_COPY_LABEL}
+                              onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`)}
                             />
                           )}
                         </OverflowMenu>
+                      )}
+                      {projectUrl && (
+                        <span className="project-list__open-icon" aria-hidden="true">
+                          <Launch size={20} />
+                        </span>
                       )}
                     </div>
                   ) : undefined}
                 >
                   <div className="project-list__item">
-                    <div className="project-list__primary">
-                      <span className="project-title">{label}</span>
-                    </div>
-                    <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
+                    <span className="project-title">{label}</span>
+                    <time dateTime={createdAt || undefined}>作成 {formatDate(createdAt)}</time>
                   </div>
                 </ContainedListItem>
               );
@@ -302,29 +310,27 @@ function App() {
         </section>
 
         <section className="projects">
-          <ContainedList className="project-list" kind="on-page" size="md" label="過去に開いた企画">
+          <ContainedList className="project-list" kind="on-page" size="md" label="最近開いた企画">
             {projects.length ? projects.map((project) => {
-              const label = project.name || `企画 ${project.roomId}`;
+              const label = project.name || '名称未設定の企画';
               const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
               return (
                 <ContainedListItem
                   key={project.roomId}
                   className="project-list__row"
+                  onClick={() => openExternalUrl(projectUrl)}
                   action={(
                     <div className="project-list__actions">
-                      <Link href={projectUrl} target="_blank" rel="noopener noreferrer" renderIcon={ArrowRight}>
-                        {OPEN_PROJECT_LABEL}
-                      </Link>
+                      <span className="project-list__open-icon" aria-hidden="true">
+                        <Launch size={20} />
+                      </span>
                     </div>
                   )}
                 >
                   <div className="project-list__item">
-                    <div className="project-list__primary">
-                      <span className="project-title">{label}</span>
-                      {project.roomId === lastRoom && <span className="project-meta">最後に開いた企画</span>}
-                    </div>
+                    <span className="project-title">{label}</span>
                     <time dateTime={project.updatedAt ? new Date(project.updatedAt).toISOString() : undefined}>
-                      {formatDate(project.updatedAt)}
+                      最終閲覧 {formatDate(project.updatedAt)}
                     </time>
                   </div>
                 </ContainedListItem>
