@@ -131,6 +131,7 @@ body {
   width: 100%;
   margin-top: 4rem;
 }
+.form-history { margin-top: 3rem; }
 .projects > h2 {
   margin: 0 0 1rem;
   font-size: 1.25rem;
@@ -153,6 +154,11 @@ body {
   line-height: 1.25rem;
   overflow-wrap: anywhere;
 }
+.form-history__edit-link {
+  color: var(--cds-link-primary);
+  text-decoration: none;
+}
+.form-history__edit-link:hover { text-decoration: underline; }
 .empty-state {
   margin: 0;
   padding: 1rem 0 1.5rem;
@@ -177,7 +183,8 @@ body {
 }
 
 @media (max-width: 41.99rem) {
-  .projects { margin-top: 3rem; }
+  .projects,
+  .form-history { margin-top: 3rem; }
   .project-list .cds--structured-list-thead { display: none; }
   .project-list .cds--structured-list-row { display: grid; grid-template-columns: 1fr; padding: .75rem 0; }
   .project-list .cds--structured-list-td { padding: .25rem 0; }

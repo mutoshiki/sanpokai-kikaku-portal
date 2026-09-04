@@ -29,6 +29,10 @@ async function installIsolatedEnvironment(page) {
       syawari_last_room_id: 'ROOM-B',
       'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
+      'sanpokai-form-builder-history-v1': JSON.stringify([
+        { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
+        { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
+      ]),
     };
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
@@ -125,8 +129,10 @@ async function run(browser, name, viewport) {
     rows: document.querySelectorAll('.cds--structured-list-row').length,
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     text: document.body.innerText,
-    labels: [...document.querySelectorAll('.project-link')].map(node => node.textContent.trim()),
-    hrefs: [...document.querySelectorAll('.project-link')].map(node => node.href),
+    labels: [...document.querySelectorAll('.projects:not(.form-history) .project-link')].map(node => node.textContent.trim()),
+    hrefs: [...document.querySelectorAll('.projects:not(.form-history) .project-link')].map(node => node.href),
+    formHistoryLabels: [...document.querySelectorAll('.form-history .project-link')].map(node => node.textContent.trim()),
+    formHistoryHrefs: [...document.querySelectorAll('.form-history .project-link')].map(node => node.href),
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
@@ -135,6 +141,9 @@ async function run(browser, name, viewport) {
   }
   if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
   if (!initial.hrefs[0]?.includes('?room=ROOM-B')) throw new Error(`${name}: last-room link regression`);
+  if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
+  if (!initial.formHistoryHrefs[0]?.includes('FORM-B/viewform')) throw new Error(`${name}: form response link regression`);
+  if (!initial.text.includes('フォーム作成履歴')) throw new Error(`${name}: missing form history section`);
 
   await selectTheme(page, 'システム設定', 'theme-dark');
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');

@@ -21,6 +21,8 @@ const SYNC_OUTBOX_PREFIX = `${STORE_PREFIX}sync_outbox_`;
 const HISTORY_PREFIX = 'syawari_history_';
 const LAST_ROOM_KEY = 'syawari_last_room_id';
 const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
+const FORM_HISTORY_KEY = 'sanpokai-form-builder-history-v1';
+const FORM_HISTORY_LIMIT = 10;
 
 const TOOLS = [
   {
@@ -115,6 +117,28 @@ function readProjects() {
   return { lastRoom, projects: sorted };
 }
 
+function readFormHistory() {
+  const history = parse(localStorage.getItem(FORM_HISTORY_KEY));
+  if (!Array.isArray(history)) return [];
+
+  const seen = new Set();
+  return history.filter((item) => {
+    const formId = String(item?.formId || '').trim();
+    if (!formId || seen.has(formId)) return false;
+    seen.add(formId);
+    return true;
+  }).slice(0, FORM_HISTORY_LIMIT);
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 function formatDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -125,24 +149,24 @@ function formatDate(value) {
 }
 
 function App() {
-  const [{ lastRoom, projects }, setProjects] = useState(() => {
-    try { return readProjects(); } catch { return { lastRoom: '', projects: [] }; }
+  const [{ lastRoom, projects, formHistory }, setPortalState] = useState(() => {
+    try { return { ...readProjects(), formHistory: readFormHistory() }; } catch { return { lastRoom: '', projects: [], formHistory: [] }; }
   });
 
-  const refreshProjects = useCallback(() => {
-    try { setProjects(readProjects()); } catch { setProjects({ lastRoom: '', projects: [] }); }
+  const refreshPortalState = useCallback(() => {
+    try { setPortalState({ ...readProjects(), formHistory: readFormHistory() }); } catch { setPortalState({ lastRoom: '', projects: [], formHistory: [] }); }
   }, []);
 
   useEffect(() => {
     navigator.storage?.persist?.().catch(() => false);
-    const onVisibility = () => { if (!document.hidden) refreshProjects(); };
-    window.addEventListener('storage', refreshProjects);
+    const onVisibility = () => { if (!document.hidden) refreshPortalState(); };
+    window.addEventListener('storage', refreshPortalState);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      window.removeEventListener('storage', refreshProjects);
+      window.removeEventListener('storage', refreshPortalState);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [refreshProjects]);
+  }, [refreshPortalState]);
 
   return (
     <>
@@ -173,6 +197,56 @@ function App() {
             </ClickableTile>
           ))}
         </Layer>
+
+        <section className="projects form-history" aria-labelledby="form-history-title">
+          <h2 id="form-history-title">フォーム作成履歴</h2>
+          {formHistory.length ? (
+            <StructuredListWrapper className="project-list form-history-list" aria-label="フォーム作成履歴">
+              <StructuredListHead>
+                <StructuredListRow head>
+                  <StructuredListCell head>フォーム</StructuredListCell>
+                  <StructuredListCell head>作成日時</StructuredListCell>
+                </StructuredListRow>
+              </StructuredListHead>
+              <StructuredListBody>
+                {formHistory.map((form) => {
+                  const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
+                  const responseUrl = safeExternalUrl(form.responseUrl);
+                  const editUrl = safeExternalUrl(form.editUrl);
+                  const primaryUrl = responseUrl || editUrl;
+                  const primaryLinkLabel = responseUrl ? '回答フォームを開く' : editUrl ? '編集フォームを開く' : 'フォームURLなし';
+                  const createdAt = String(form.createdAt || '').trim();
+                  return (
+                    <StructuredListRow key={form.formId}>
+                      <StructuredListCell>
+                        {primaryUrl ? (
+                          <a
+                            className="project-link"
+                            href={primaryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${label}を新しいタブで開く`}
+                          >{label}</a>
+                        ) : <span className="project-link">{label}</span>}
+                        <span className="project-meta">
+                          {primaryLinkLabel} · ID: {form.formId}
+                          {editUrl && editUrl !== primaryUrl ? (
+                            <> · <a className="form-history__edit-link" href={editUrl} target="_blank" rel="noopener noreferrer">編集</a></>
+                          ) : null}
+                        </span>
+                      </StructuredListCell>
+                      <StructuredListCell>
+                        <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
+                      </StructuredListCell>
+                    </StructuredListRow>
+                  );
+                })}
+              </StructuredListBody>
+            </StructuredListWrapper>
+          ) : (
+            <p className="empty-state">このブラウザで作成したフォームはありません。</p>
+          )}
+        </section>
 
         <section className="projects" aria-labelledby="projects-title">
           <h2 id="projects-title">過去に開いた企画</h2>
