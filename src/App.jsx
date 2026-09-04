@@ -24,6 +24,7 @@ const LAST_ROOM_KEY = 'syawari_last_room_id';
 const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
 const FORM_HISTORY_KEY = 'sanpokai-form-builder-history-v1';
 const FORM_HISTORY_LIMIT = 10;
+const OPEN_PROJECT_LABEL = 'この企画をサークル企画ツールで開く';
 
 const TOOLS = [
   {
@@ -226,7 +227,7 @@ function App() {
       <main id="main" className="portal-page">
         <h1 className="portal-title">ツール</h1>
 
-        <Layer as="section" className="tool-grid" aria-label="利用するツール">
+        <Layer level={0} as="section" className="tool-grid" aria-label="利用するツール">
           {TOOLS.map((tool) => (
             <ClickableTile
               key={tool.title}
@@ -252,7 +253,6 @@ function App() {
               const responseUrl = safeExternalUrl(form.responseUrl);
               const editUrl = safeExternalUrl(form.editUrl);
               const projectUrl = safeProjectToolUrl(form.spreadsheetUrl) || safeProjectToolUrl(form.projectUrl);
-              const projectId = String(form.projectId || '').trim() || (projectUrl ? new URL(projectUrl).searchParams.get('room') || '' : '');
               const createdAt = String(form.createdAt || '').trim();
               return (
                 <ContainedListItem
@@ -261,18 +261,19 @@ function App() {
                   action={projectUrl || responseUrl || editUrl ? (
                     <div className="project-list__actions">
                       {projectUrl && (
-                        <Link href={projectUrl} target="_blank" rel="noopener noreferrer">企画を開く</Link>
+                        <Link href={projectUrl} target="_blank" rel="noopener noreferrer" renderIcon={ArrowRight}>
+                          {OPEN_PROJECT_LABEL}
+                        </Link>
                       )}
                       {(responseUrl || editUrl) && (
                         <OverflowMenu
-                          flipped
                           aria-label={`${label}のフォーム操作`}
                           iconDescription={`${label}のフォーム操作`}
                         >
                           {responseUrl && (
                             <OverflowMenuItem
-                              itemText="応募フォームのリンクをコピー"
-                              onClick={() => copyLink(responseUrl, '応募フォームのリンクをコピーしました')}
+                              itemText="応募用フォームのリンクをコピー"
+                              onClick={() => copyLink(responseUrl, '応募用フォームのリンクをコピーしました')}
                             />
                           )}
                           {editUrl && (
@@ -289,9 +290,6 @@ function App() {
                   <div className="project-list__item">
                     <div className="project-list__primary">
                       <span className="project-title">{label}</span>
-                      <span className="project-meta">
-                        {projectId ? `企画ID: ${projectId} · ` : ''}フォームID: {form.formId}
-                      </span>
                     </div>
                     <time dateTime={createdAt || undefined}>{formatDate(createdAt)}</time>
                   </div>
@@ -314,16 +312,16 @@ function App() {
                   className="project-list__row"
                   action={(
                     <div className="project-list__actions">
-                      <Link href={projectUrl} target="_blank" rel="noopener noreferrer">企画を開く</Link>
+                      <Link href={projectUrl} target="_blank" rel="noopener noreferrer" renderIcon={ArrowRight}>
+                        {OPEN_PROJECT_LABEL}
+                      </Link>
                     </div>
                   )}
                 >
                   <div className="project-list__item">
                     <div className="project-list__primary">
                       <span className="project-title">{label}</span>
-                      <span className="project-meta">
-                        {project.roomId === lastRoom ? `最後に開いた企画 · ID: ${project.roomId}` : `ID: ${project.roomId}`}
-                      </span>
+                      {project.roomId === lastRoom && <span className="project-meta">最後に開いた企画</span>}
                     </div>
                     <time dateTime={project.updatedAt ? new Date(project.updatedAt).toISOString() : undefined}>
                       {formatDate(project.updatedAt)}
