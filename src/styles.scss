@@ -1,4 +1,5 @@
 @use '@carbon/react';
+@use '@carbon/styles/scss/type' as *;
 
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--cds-background); }
@@ -75,13 +76,11 @@ body {
   width: 100%;
   max-width: 99rem;
   margin: 0 auto;
-  padding: 5rem 1rem 5rem;
+  padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-05, 1rem) var(--cds-spacing-09, 3rem);
 }
 .portal-title {
-  margin: 0 0 2rem;
-  font-size: 1.75rem;
-  line-height: 2.25rem;
-  font-weight: 400;
+  @include type-style('heading-04');
+  margin: 0 0 var(--cds-spacing-06, 1.5rem);
 }
 
 .tool-grid {
@@ -89,21 +88,18 @@ body {
   grid-template-columns: 1fr;
   gap: .5rem;
 }
-.tool-tile.cds--tile--clickable {
-  min-height: 9.5rem;
+.tool-tile__content {
+  padding-block-end: var(--cds-spacing-04, .75rem);
 }
 .tool-tile__content h2 {
-  margin: 0 0 .5rem;
-  font-size: 1rem;
-  line-height: 1.375rem;
-  font-weight: 400;
+  @include type-style('body-compact-01');
+  margin: 0 0 var(--cds-spacing-03, .5rem);
 }
 .tool-tile__content p {
   max-width: 36rem;
+  @include type-style('body-compact-01');
   margin: 0;
   color: var(--cds-text-secondary);
-  font-size: .875rem;
-  line-height: 1.25rem;
 }
 .projects {
   width: 100%;
@@ -111,14 +107,14 @@ body {
 }
 .form-history { margin-block-start: var(--cds-spacing-06, 1.5rem); }
 .project-list { width: 100%; }
+.project-list .cds--contained-list-item__content {
+  padding-block: var(--cds-spacing-04, .75rem);
+}
 .project-title {
   display: block;
   overflow-wrap: anywhere;
   color: var(--cds-text-primary);
-  font-size: var(--cds-heading-compact-01-font-size, .875rem);
-  font-weight: var(--cds-heading-compact-01-font-weight, 600);
-  line-height: var(--cds-heading-compact-01-line-height, 1.125rem);
-  letter-spacing: var(--cds-heading-compact-01-letter-spacing, .16px);
+  @include type-style('body-01');
 }
 .project-list__item {
   display: block;
@@ -128,10 +124,7 @@ body {
   display: block;
   margin-block-start: var(--cds-spacing-02, .25rem);
   color: var(--cds-text-secondary);
-  font-size: var(--cds-label-01-font-size, .75rem);
-  font-weight: var(--cds-label-01-font-weight, 400);
-  line-height: var(--cds-label-01-line-height, 1rem);
-  letter-spacing: var(--cds-label-01-letter-spacing, .32px);
+  @include type-style('label-01');
 }
 .project-list__row--form-actions .cds--contained-list-item__content {
   padding-inline-end: calc(
@@ -176,15 +169,13 @@ body {
 }
 
 @media (min-width: 42rem) {
-  .portal-page { padding: 5.5rem 2rem 6rem; }
+  .portal-page { padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-07, 2rem) var(--cds-spacing-10, 4rem); }
   .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-  .tool-tile.cds--tile--clickable { min-height: 11rem; }
   .projects { max-width: calc(75% - 1rem); }
 }
 
 @media (min-width: 66rem) {
   .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; }
-  .tool-tile.cds--tile--clickable { min-height: 12rem; }
   .projects { max-width: calc(50% - 1rem); }
 }
 

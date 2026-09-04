@@ -22,9 +22,9 @@ Viteでビルドした `dist` をGitHub Pagesへ配信します。手書きのCa
 ## 企画一覧の仕組み
 
 GitHub Pages 上では、このサイトと `circle-kikaku-tools` はどちらも `https://mutoshiki.github.io` オリジンになります。
-そのため、このサイトは `circle-kikaku-tools` が保存している `sampokai_v10_split_<roomId>` などのローカル保存データを読み取り、企画名と最終更新日時を表示できます。
+そのため、このサイトは `circle-kikaku-tools` が保存している `sampokai_v10_split_<roomId>` などのローカル保存データを読み取り、企画名と最終閲覧日時を表示できます。`lastOpenedAt` がない既存データは、互換性のため最終更新日時を表示に使います。
 
-既存の `circle-kikaku-tools` 側は変更しません。
+`circle-kikaku-tools` は企画を開いた時刻を `syawari_last_opened_at_<roomId>` に保存し、ポータルは room ID を stable ID として履歴を重複表示しません。
 
 ## ブラウザQA
 

@@ -27,8 +27,11 @@ async function installIsolatedEnvironment(page) {
   await page.evaluate(() => {
     const store = {
       syawari_last_room_id: 'ROOM-B',
+      'syawari_last_opened_at_ROOM-A': '2026-09-04T16:42:00.000Z',
+      'syawari_last_opened_at_ROOM-B': '2026-09-04T08:19:00.000Z',
       'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
+      'syawari_history_ROOM-A': JSON.stringify([{ time: 3000, data: { roomName: '春山企画', lastUpdatedAt: 1500 } }]),
       'sanpokai-form-builder-history-v1': JSON.stringify([
         { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
@@ -137,7 +140,7 @@ async function run(browser, name, viewport) {
 
   const initial = await page.evaluate(() => ({
     tiles: document.querySelectorAll('.cds--tile--clickable').length,
-    tileArrowIcons: document.querySelectorAll('.tool-tile .cds--tile--icon').length,
+    tileLaunchIcons: document.querySelectorAll('.tool-tile .cds--tile--icon').length,
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
@@ -162,14 +165,15 @@ async function run(browser, name, viewport) {
       return rect.right > window.innerWidth || rect.left < 0;
     }),
     clickableRows: document.querySelectorAll('.project-list .cds--contained-list-item--clickable').length,
+    rowHeights: [...document.querySelectorAll('.project-list .cds--contained-list-item')].map(node => node.getBoundingClientRect().height),
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
-  if (initial.tileArrowIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
+  if (initial.tileLaunchIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
   if (!initial.toolGridClass.includes('cds--layer-one') || initial.pageBackground === initial.tileBackground) {
     throw new Error(`${name}: ClickableTile is not using a distinct contextual layer: ${JSON.stringify(initial)}`);
   }
   if (initial.containedLists.length !== 2) throw new Error(`${name}: expected 2 Carbon contained lists, got ${initial.containedLists.length}`);
-  if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--md'))) {
+  if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--xl'))) {
     throw new Error(`${name}: contained list variant or size regression: ${JSON.stringify(initial.containedLists)}`);
   }
   if (initial.containedLists[0].label !== '作成したフォーム' || initial.containedLists[1].label !== '最近開いた企画') {
@@ -179,7 +183,7 @@ async function run(browser, name, viewport) {
   for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近開いた企画', '作成', '最終閲覧']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
-  if (initial.labels[0] !== '夏山企画' || initial.labels[1] !== '春山企画') throw new Error(`${name}: project history ordering regression`);
+  if (initial.labels[0] !== '春山企画' || initial.labels[1] !== '夏山企画') throw new Error(`${name}: project history ordering regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
   if (initial.openIconCount !== 3 || !initial.openIconsDecorative) throw new Error(`${name}: Launch icon anatomy regression`);
   if (initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
@@ -188,6 +192,7 @@ async function run(browser, name, viewport) {
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
   if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
   if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 3) throw new Error(`${name}: project history action geometry regression`);
+  if (initial.rowHeights.some(height => Math.abs(height - 64) > 1)) throw new Error(`${name}: contained list row height drifted from Carbon xl: ${JSON.stringify(initial.rowHeights)}`);
   if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
 
   const rowFocus = await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().evaluate((button) => {
@@ -203,7 +208,7 @@ async function run(browser, name, viewport) {
   await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().focus();
   await page.keyboard.press('Enter');
   const projectPopup = await projectPopupPromise;
-  if (!projectPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: last-room row navigation regression: ${projectPopup.url()}`);
+  if (!projectPopup.url().includes('?room=ROOM-A')) throw new Error(`${name}: recent row navigation regression: ${projectPopup.url()}`);
   await projectPopup.close();
 
   const recentRow = page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable').first();
@@ -212,7 +217,7 @@ async function run(browser, name, viewport) {
   const iconPopupPromise = page.waitForEvent('popup');
   await page.mouse.click(openIconBounds.x + openIconBounds.width / 2, openIconBounds.y + openIconBounds.height / 2);
   const iconPopup = await iconPopupPromise;
-  if (!iconPopup.url().includes('?room=ROOM-B')) throw new Error(`${name}: Launch icon did not activate the row: ${iconPopup.url()}`);
+  if (!iconPopup.url().includes('?room=ROOM-A')) throw new Error(`${name}: Launch icon did not activate the row: ${iconPopup.url()}`);
   await iconPopup.close();
 
   const formPopupPromise = page.waitForEvent('popup');
