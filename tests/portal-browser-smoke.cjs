@@ -141,6 +141,17 @@ async function run(browser, name, viewport) {
   const initial = await page.evaluate(() => ({
     tiles: document.querySelectorAll('.cds--tile--clickable').length,
     tileLaunchIcons: document.querySelectorAll('.tool-tile .cds--tile--icon').length,
+    pictograms: [...document.querySelectorAll('.tool-tile__pictogram svg')].map(node => {
+      const tile = node.closest('.tool-tile').getBoundingClientRect();
+      const rect = node.getBoundingClientRect();
+      return {
+        ariaHidden: node.getAttribute('aria-hidden'),
+        width: rect.width,
+        height: rect.height,
+        topOffset: rect.top - tile.top,
+        leftOffset: rect.left - tile.left,
+      };
+    }),
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
@@ -169,6 +180,13 @@ async function run(browser, name, viewport) {
   }));
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
   if (initial.tileLaunchIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
+  if (initial.pictograms.length !== 4 || initial.pictograms.some(icon => icon.ariaHidden !== 'true' || Math.abs(icon.width - 48) > 1 || Math.abs(icon.height - 48) > 1)) {
+    throw new Error(`${name}: pictogram size or decorative aria regression: ${JSON.stringify(initial.pictograms)}`);
+  }
+  const firstPictogram = initial.pictograms[0];
+  if (initial.pictograms.some(icon => Math.abs(icon.topOffset - firstPictogram.topOffset) > 1 || Math.abs(icon.leftOffset - firstPictogram.leftOffset) > 1)) {
+    throw new Error(`${name}: pictogram alignment drift: ${JSON.stringify(initial.pictograms)}`);
+  }
   if (!initial.toolGridClass.includes('cds--layer-one') || initial.pageBackground === initial.tileBackground) {
     throw new Error(`${name}: ClickableTile is not using a distinct contextual layer: ${JSON.stringify(initial)}`);
   }

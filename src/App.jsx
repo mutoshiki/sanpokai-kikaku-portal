@@ -11,6 +11,12 @@ import {
   ToastNotification,
 } from '@carbon/react';
 import { Launch } from '@carbon/icons-react';
+import {
+  Group,
+  Hiking,
+  ListCheckbox,
+  University,
+} from '@carbon/pictograms-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
@@ -32,21 +38,25 @@ const TOOLS = [
     title: '登山計画書メーカー',
     description: '日付などの基本情報とYAMAPのスクリーンショットから、登山計画書を作成できます。',
     href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/',
+    pictogram: Hiking,
   },
   {
     title: '応募フォームメーカー',
     description: '企画名や日付などを入力して、応募フォームを作成できます。回答はサークル企画ツールに自動で取り込まれます。',
     href: FORM_MAKER_URL,
+    pictogram: ListCheckbox,
   },
   {
     title: 'サークル企画ツール',
     description: '参加者の車割・班割、交通費の精算を1つの企画で管理できます。参加者発表用の文面も作成できます。',
     href: TOOL_URL,
+    pictogram: Group,
   },
   {
     title: '学務提出書類作成ツール',
     description: '企画者から受け取った引き継ぎデータから、学務提出書類を作成できます。',
     href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases',
+    pictogram: University,
   },
 ];
 
@@ -269,22 +279,28 @@ function App() {
         <h1 className="portal-title">ツール</h1>
 
         <Layer level={0} as="section" className="tool-grid" aria-label="利用するツール">
-          {TOOLS.map((tool) => (
-            <ClickableTile
-              key={tool.title}
-              className="tool-tile"
-              href={tool.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              renderIcon={Launch}
-              aria-label={`${tool.title}を新しいタブで開く`}
-            >
-              <div className="tool-tile__content">
-                <h2>{tool.title}</h2>
-                <p>{tool.description}</p>
-              </div>
-            </ClickableTile>
-          ))}
+          {TOOLS.map((tool) => {
+            const Pictogram = tool.pictogram;
+            return (
+              <ClickableTile
+                key={tool.title}
+                className="tool-tile"
+                href={tool.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                renderIcon={Launch}
+                aria-label={`${tool.title}を新しいタブで開く`}
+              >
+                <div className="tool-tile__pictogram" aria-hidden="true">
+                  <Pictogram width={48} height={48} aria-hidden="true" />
+                </div>
+                <div className="tool-tile__content">
+                  <h2>{tool.title}</h2>
+                  <p>{tool.description}</p>
+                </div>
+              </ClickableTile>
+            );
+          })}
         </Layer>
 
         <section className="projects form-history">

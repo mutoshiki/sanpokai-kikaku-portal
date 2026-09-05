@@ -88,6 +88,17 @@ body {
   grid-template-columns: 1fr;
   gap: .5rem;
 }
+.tool-tile {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+}
+.tool-tile__pictogram {
+  display: block;
+  margin-block-end: var(--cds-spacing-05, 1rem);
+  color: var(--cds-icon-primary);
+}
+.tool-tile__pictogram svg { display: block; }
 .tool-tile__content {
   padding-block-end: var(--cds-spacing-04, .75rem);
 }
