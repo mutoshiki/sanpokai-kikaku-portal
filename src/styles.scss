@@ -89,18 +89,25 @@ body {
   gap: .5rem;
 }
 .tool-tile {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  column-gap: var(--cds-spacing-05, 1rem);
+  align-items: start;
   block-size: 100%;
 }
 .tool-tile__pictogram {
-  display: block;
-  margin-block-end: var(--cds-spacing-05, 1rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  inline-size: 3.5rem;
+  min-inline-size: 3.5rem;
   color: var(--cds-icon-primary);
 }
 .tool-tile__pictogram svg { display: block; }
 .tool-tile__content {
+  min-inline-size: 0;
   padding-block-end: var(--cds-spacing-04, .75rem);
+  padding-inline-end: calc(1.25rem + var(--cds-spacing-04, .75rem));
 }
 .tool-tile__content h2 {
   @include type-style('body-compact-01');

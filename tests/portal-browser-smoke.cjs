@@ -152,6 +152,21 @@ async function run(browser, name, viewport) {
         leftOffset: rect.left - tile.left,
       };
     }),
+    toolLayouts: [...document.querySelectorAll('.tool-tile')].map(tile => {
+      const pictogram = tile.querySelector('.tool-tile__pictogram').getBoundingClientRect();
+      const content = tile.querySelector('.tool-tile__content').getBoundingClientRect();
+      const title = tile.querySelector('h2').getBoundingClientRect();
+      const description = tile.querySelector('p').getBoundingClientRect();
+      const launch = tile.querySelector('.cds--tile--icon').getBoundingClientRect();
+      return {
+        iconRight: pictogram.right,
+        contentLeft: content.left,
+        titleLeft: title.left,
+        descriptionLeft: description.left,
+        descriptionRight: description.right,
+        launchLeft: launch.left,
+      };
+    }),
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
@@ -182,6 +197,14 @@ async function run(browser, name, viewport) {
   if (initial.tileLaunchIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
   if (initial.pictograms.length !== 4 || initial.pictograms.some(icon => icon.ariaHidden !== 'true' || Math.abs(icon.width - 48) > 1 || Math.abs(icon.height - 48) > 1)) {
     throw new Error(`${name}: pictogram size or decorative aria regression: ${JSON.stringify(initial.pictograms)}`);
+  }
+  if (initial.toolLayouts.some(layout => (
+    layout.contentLeft - layout.iconRight < 11
+    || Math.abs(layout.titleLeft - layout.contentLeft) > 1
+    || Math.abs(layout.descriptionLeft - layout.contentLeft) > 1
+    || layout.descriptionRight > layout.launchLeft + 1
+  ))) {
+    throw new Error(`${name}: tool tile two-column or Launch spacing regression: ${JSON.stringify(initial.toolLayouts)}`);
   }
   const firstPictogram = initial.pictograms[0];
   if (initial.pictograms.some(icon => Math.abs(icon.topOffset - firstPictogram.topOffset) > 1 || Math.abs(icon.leftOffset - firstPictogram.leftOffset) > 1)) {
