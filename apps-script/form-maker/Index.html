@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f4f4f4;
+      --layer: #ffffff;
+      --field: #f4f4f4;
+      --field-hover: #e8e8e8;
+      --text-primary: #161616;
+      --text-secondary: #525252;
+      --text-helper: #6f6f6f;
+      --border-subtle: #e0e0e0;
+      --border-strong: #8d8d8d;
+      --focus: #0f62fe;
+      --interactive: #0f62fe;
+      --interactive-hover: #0353e9;
+      --interactive-active: #002d9c;
+      --button-text: #ffffff;
+      --support-success: #198038;
+      --support-error: #da1e28;
+      --support-warning: #f1c21b;
+      --notification-error-bg: #fff1f1;
+      --notification-warning-bg: #fdf6dd;
+      --toast-bg: #ffffff;
+      --skeleton: #c6c6c6;
+    }
+
+    :root[data-theme='g100'] {
+      color-scheme: dark;
+      --background: #161616;
+      --layer: #262626;
+      --field: #393939;
+      --field-hover: #474747;
+      --text-primary: #f4f4f4;
+      --text-secondary: #c6c6c6;
+      --text-helper: #a8a8a8;
+      --border-subtle: #393939;
+      --border-strong: #8d8d8d;
+      --focus: #ffffff;
+      --interactive: #78a9ff;
+      --interactive-hover: #a6c8ff;
+      --interactive-active: #4589ff;
+      --button-text: #161616;
+      --support-success: #42be65;
+      --support-error: #ff8389;
+      --support-warning: #f1c21b;
+      --notification-error-bg: #520408;
+      --notification-warning-bg: #3a2b00;
+      --toast-bg: #262626;
+      --skeleton: #525252;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      min-width: 320px;
+      background: var(--background);
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      background: var(--background);
+      color: var(--text-primary);
+      font-family:
+        "IBM Plex Sans JP",
+        "IBM Plex Sans",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        "Noto Sans JP",
+        Arial,
+        sans-serif;
+      font-size: 16px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .shell-header {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--background);
+      padding: 0 16px;
+    }
+
+    .shell-name {
+      min-width: 0;
+      font-size: 14px;
+      line-height: 18px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shell-prefix {
+      font-weight: 400;
+      margin-right: 8px;
+    }
+
+    main {
+      width: 100%;
+    }
+
+    .page-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-gap: 16px;
+      width: 100%;
+      max-width: 1584px;
+      margin: 0 auto;
+      padding: 0 16px 64px;
+    }
+
+    .intro,
+    .form-region,
+    .feedback-region,
+    .history-region {
+      grid-column: 1 / -1;
+      min-width: 0;
+    }
+
+    .intro {
+      padding: 32px 0 24px;
+    }
+
+    .lead {
+      max-width: 640px;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    .tile {
+      width: 100%;
+      min-width: 0;
+      background: var(--layer);
+      padding: 16px;
+    }
+
+    .form-heading,
+    .history-heading {
+      margin: 0 0 24px;
+      font-size: 20px;
+      line-height: 28px;
+      font-weight: 400;
+    }
+
+    .field-stack {
+      display: grid;
+      gap: 24px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field-label {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 16px;
+      letter-spacing: .32px;
+    }
+
+    .text-input,
+    .date-input,
+    .textarea {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      border-bottom: 1px solid var(--border-strong);
+      border-radius: 0;
+      outline: 0;
+      background: var(--field);
+      color: var(--text-primary);
+      padding: 0 16px;
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    .text-input,
+    .date-input {
+      min-height: 48px;
+    }
+
+    .textarea {
+      min-height: 144px;
+      resize: vertical;
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    .text-input::placeholder,
+    .textarea::placeholder {
+      color: var(--text-helper);
+      opacity: 1;
+    }
+
+    .text-input:hover,
+    .date-input:hover,
+    .textarea:hover {
+      background: var(--field-hover);
+    }
+
+    .text-input:focus-visible,
+    .date-input:focus-visible,
+    .textarea:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: -2px;
+    }
+
+    .field-invalid .text-input {
+      outline: 2px solid var(--support-error);
+      outline-offset: -2px;
+    }
+
+    .field-error {
+      display: none;
+      margin: 4px 0 0;
+      color: var(--support-error);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .field-invalid .field-error {
+      display: block;
+    }
+
+    .counter {
+      margin: 4px 0 0;
+      color: var(--text-helper);
+      font-size: 12px;
+      line-height: 16px;
+      text-align: right;
+    }
+
+    .form-actions {
+      margin-top: 32px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid transparent;
+      border-radius: 0;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 14px;
+      line-height: 18px;
+      cursor: pointer;
+      text-decoration: none;
+      touch-action: manipulation;
+    }
+
+    .button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .button-primary {
+      background: #0f62fe;
+      color: #ffffff;
+    }
+
+    .button-primary:hover {
+      background: #0353e9;
+    }
+
+    .button-primary:active {
+      background: #002d9c;
+    }
+
+    .button-tertiary,
+    .button-ghost {
+      background: transparent;
+      color: var(--interactive);
+      border-color: var(--interactive);
+    }
+
+    .button-tertiary:hover,
+    .button-ghost:hover {
+      background: color-mix(in srgb, var(--interactive) 12%, transparent);
+    }
+
+    .button-ghost {
+      border-color: transparent;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .5;
+    }
+
+    .loading {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 18px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--skeleton);
+      border-top-color: var(--interactive);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      flex: 0 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .feedback-region {
+      margin-top: 24px;
+    }
+
+    .notification {
+      border-left: 3px solid var(--support-error);
+      background: var(--notification-error-bg);
+      padding: 14px 16px;
+    }
+
+    .notification.warning {
+      border-left-color: var(--support-warning);
+      background: var(--notification-warning-bg);
+    }
+
+    .notification-title {
+      margin: 0;
+      font-size: 14px;
+      line-height: 18px;
+      font-weight: 600;
+    }
+
+    .notification-body {
+      margin: 4px 0 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    .result-tile {
+      margin-top: 24px;
+    }
+
+    .result-kicker {
+      margin: 0 0 8px;
+      color: var(--support-success);
+      font-size: 12px;
+      line-height: 16px;
+      letter-spacing: .32px;
+    }
+
+    .result-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 32px;
+      font-weight: 400;
+    }
+
+    .result-meta {
+      margin: 8px 0 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 20px;
+      overflow-wrap: anywhere;
+    }
+
+    .result-actions {
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .history-region {
+      margin-top: 32px;
+    }
+
+    .history-heading {
+      margin-bottom: 16px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .history-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .history-meta {
+      margin: 8px 0 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 18px;
+      overflow-wrap: anywhere;
+    }
+
+    .history-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 10000;
+      right: 16px;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      width: min(360px, calc(100vw - 32px));
+      background: var(--toast-bg);
+      color: var(--text-primary);
+      border-left: 3px solid var(--support-success);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (min-width: 672px) {
+      .page-grid {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        column-gap: 32px;
+        padding-right: 32px;
+        padding-left: 32px;
+      }
+
+      .intro {
+        padding-top: 48px;
+        padding-bottom: 32px;
+      }
+
+      .tile {
+        padding: 24px;
+      }
+
+      .form-actions .button {
+        max-width: 320px;
+      }
+
+      .result-actions,
+      .history-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1056px) and (pointer: fine) {
+      .page-grid {
+        grid-template-columns: repeat(16, minmax(0, 1fr));
+      }
+
+      .intro,
+      .form-region,
+      .feedback-region,
+      .history-region {
+        grid-column: 3 / span 10;
+      }
+
+      .intro {
+        padding-top: 64px;
+      }
+    }
+
+    @media (pointer: coarse), (hover: none) {
+      .page-grid {
+        padding-right: 16px;
+        padding-left: 16px;
+      }
+
+      .intro,
+      .form-region,
+      .feedback-region,
+      .history-region {
+        grid-column: 1 / -1;
+      }
+
+      .button {
+        min-height: 48px;
+      }
+
+      .form-actions .button {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .shell-header {
+        padding: 0 12px;
+      }
+
+      .page-grid {
+        padding-right: 12px;
+        padding-left: 12px;
+      }
+
+      .intro {
+        padding-top: 24px;
+        padding-bottom: 20px;
+      }
+
+      .tile {
+        padding: 16px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="shell-header" aria-label="山歩会企画フォームメーカー">
+    <div class="shell-name">
+      <span class="shell-prefix">山歩会</span>企画フォームメーカー
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="page-grid">
+      <section class="intro" aria-label="説明">
+        <p class="lead">最低限の入力で簡単に企画の応募フォームを作成できます。</p>
+      </section>
+
+      <section class="form-region" aria-labelledby="formHeading">
+        <div class="tile">
+          <form id="formMaker" novalidate>
+            <h1 id="formHeading" class="form-heading">企画情報</h1>
+
+            <div class="field-stack">
+              <div class="field" id="planNameField">
+                <label class="field-label" for="planName">企画名（必須）</label>
+                <input class="text-input" id="planName" name="planName" type="text" placeholder="例：黒斑山ハイキング" maxlength="100" autocomplete="off" required>
+                <div class="counter"><span id="planNameCount">0</span>/100</div>
+                <p class="field-error" id="planNameError">企画名を入力してください。</p>
+              </div>
+
+              <div class="field" id="editorEmailField">
+                <label class="field-label" for="editorEmail">編集者メールアドレス（必須）</label>
+                <input class="text-input" id="editorEmail" name="editorEmail" type="email" placeholder="example@gmail.com" autocomplete="email" inputmode="email" required>
+                <p class="field-error" id="editorEmailError">有効なメールアドレスを入力してください。</p>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="eventDate">開催日</label>
+                <input class="date-input" id="eventDate" name="eventDate" type="date" autocomplete="off">
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="deadline">回答期限</label>
+                <input class="date-input" id="deadline" name="deadline" type="datetime-local" autocomplete="off">
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="description">企画説明</label>
+                <textarea class="textarea" id="description" name="description" placeholder="企画の内容、集合場所、注意事項など" maxlength="3000" rows="5"></textarea>
+                <div class="counter"><span id="descriptionCount">0</span>/3000</div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button id="submitButton" class="button button-primary" type="submit">Googleフォームを作成</button>
+              <div id="loadingIndicator" class="loading" role="status" hidden>
+                <span class="spinner" aria-hidden="true"></span>
+                <span>Googleフォームを作成しています…</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="feedbackRegion" class="feedback-region" aria-live="polite">
+        <div id="errorNotification" class="notification" role="alert" hidden>
+          <p class="notification-title">フォームを作成できませんでした</p>
+          <p class="notification-body" id="errorText"></p>
+        </div>
+
+        <div id="result" class="tile result-tile" hidden>
+          <p class="result-kicker">作成完了</p>
+          <h2 class="result-title">応募フォームを作成しました</h2>
+          <p id="resultTitle" class="result-meta"></p>
+          <p id="editorStatus" class="result-meta"></p>
+
+          <div id="editorWarningNotification" class="notification warning" role="status" hidden>
+            <p class="notification-title">編集権限を追加できませんでした</p>
+            <p class="notification-body" id="editorWarningText"></p>
+          </div>
+
+          <div class="result-actions">
+            <button id="responseCopyButton" class="button button-tertiary" type="button">応募フォームのリンクをコピー</button>
+            <button id="editCopyButton" class="button button-tertiary" type="button">応募フォームの編集者用リンクをコピー</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="historyRegion" class="history-region" hidden>
+        <h2 class="history-heading">この端末の作成履歴</h2>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="copyToast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    const LOCAL_HISTORY_KEY = 'sanpokai-form-builder-history-v1';
+    const LOCAL_HISTORY_LIMIT = 10;
+    let currentResult = null;
+    let toastTimer = null;
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function getValue(id) {
+      const element = $(id);
+      return element ? String(element.value || '') : '';
+    }
+
+    function isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    }
+
+    function setInvalid(fieldId, invalid, message) {
+      const field = $(fieldId + 'Field');
+      const error = $(fieldId + 'Error');
+      if (!field || !error) return;
+
+      field.classList.toggle('field-invalid', invalid);
+      error.textContent = message || '';
+      const input = $(fieldId);
+      if (input) {
+        input.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+        if (invalid) {
+          input.setAttribute('aria-describedby', fieldId + 'Error');
+        } else {
+          input.removeAttribute('aria-describedby');
+        }
+      }
+    }
+
+    function validateForm() {
+      const planName = getValue('planName').trim();
+      const editorEmail = getValue('editorEmail').trim();
+      let firstInvalid = null;
+
+      const planInvalid = !planName;
+      setInvalid('planName', planInvalid, '企画名を入力してください。');
+      if (planInvalid) firstInvalid = $('planName');
+
+      const emailInvalid = !isValidEmail(editorEmail);
+      setInvalid(
+        'editorEmail',
+        emailInvalid,
+        editorEmail ? '有効なメールアドレスを入力してください。' : '編集者メールアドレスを入力してください。'
+      );
+      if (!firstInvalid && emailInvalid) firstInvalid = $('editorEmail');
+
+      if (firstInvalid) {
+        firstInvalid.focus({ preventScroll: true });
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+      return true;
+    }
+
+    function setSubmitting(isSubmitting) {
+      $('submitButton').disabled = isSubmitting;
+      $('submitButton').hidden = isSubmitting;
+      $('loadingIndicator').hidden = !isSubmitting;
+    }
+
+    function hideFeedback() {
+      $('errorNotification').hidden = true;
+      $('result').hidden = true;
+      $('editorWarningNotification').hidden = true;
+    }
+
+    function showError(message) {
+      $('errorText').textContent = message || '時間をおいて、もう一度お試しください。';
+      $('errorNotification').hidden = false;
+      requestAnimationFrame(() => {
+        $('errorNotification').scrollIntoView({
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'nearest'
+        });
+      });
+    }
+
+    function handleSuccess(response) {
+      setSubmitting(false);
+      currentResult = response || null;
+      $('resultTitle').textContent = response && response.title ? response.title : '';
+      $('editorStatus').textContent = response && response.editorGranted ? response.editorEmail + ' に編集権限を付与しました。' : '';
+
+      if (response && !response.editorGranted) {
+        $('editorWarningText').textContent = response.editorWarning || 'メールアドレスとGoogleアカウントの状態を確認してください。';
+        $('editorWarningNotification').hidden = false;
+      }
+
+      saveLocalHistory(response);
+      renderLocalHistory();
+      $('result').hidden = false;
+      requestAnimationFrame(() => {
+        $('result').scrollIntoView({
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'nearest'
+        });
+      });
+    }
+
+    function submitForm(event) {
+      event.preventDefault();
+      if (!validateForm()) return;
+
+      hideFeedback();
+      setSubmitting(true);
+
+      const data = {
+        planName: getValue('planName').trim(),
+        editorEmail: getValue('editorEmail').trim(),
+        eventDate: getValue('eventDate'),
+        deadline: getValue('deadline'),
+        description: getValue('description')
+      };
+
+      if (!window.google || !google.script || !google.script.run) {
+        setSubmitting(false);
+        showError('Apps Scriptとの接続を確認できませんでした。ページを再読み込みしてください。');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(handleSuccess)
+        .withFailureHandler(error => {
+          setSubmitting(false);
+          showError(error && error.message ? error.message : 'フォームの作成に失敗しました。');
+        })
+        .createForm(data);
+    }
+
+    async function copyText(text) {
+      if (!text) throw new Error('コピーするリンクがありません。');
+
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) throw new Error('リンクをコピーできませんでした。');
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      $('copyToast').textContent = message;
+      $('copyToast').hidden = false;
+      toastTimer = setTimeout(() => {
+        $('copyToast').hidden = true;
+      }, 3000);
+    }
+
+    async function copyLink(url, successMessage) {
+      try {
+        await copyText(url);
+        showToast(successMessage);
+      } catch (error) {
+        showError(error && error.message ? error.message : 'リンクをコピーできませんでした。');
+      }
+    }
+
+    function readLocalHistory() {
+      try {
+        const value = JSON.parse(localStorage.getItem(LOCAL_HISTORY_KEY) || '[]');
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveLocalHistory(response) {
+      if (!response || !response.formId) return;
+      const history = readLocalHistory().filter(item => item && item.formId !== response.formId);
+      history.unshift({
+        formId: response.formId,
+        title: response.title || '',
+        editorEmail: response.editorEmail || '',
+        editorGranted: Boolean(response.editorGranted),
+        createdAt: response.createdAt || '',
+        responseUrl: response.responseUrl || '',
+        editUrl: response.editUrl || ''
+      });
+      try {
+        localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(history.slice(0, LOCAL_HISTORY_LIMIT)));
+      } catch (error) {
+        console.warn('フォーム履歴をこの端末に保存できませんでした。', error);
+      }
+      notifyHistoryHost('history-update');
+    }
+
+    function createHistoryButton(label, url, successMessage) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button button-ghost';
+      button.textContent = label;
+      button.addEventListener('click', () => copyLink(url, successMessage));
+      return button;
+    }
+
+    function renderLocalHistory() {
+      const history = readLocalHistory();
+      const list = $('historyList');
+      list.replaceChildren();
+
+      if (!history.length) {
+        $('historyRegion').hidden = true;
+        return;
+      }
+
+      history.forEach(item => {
+        const tile = document.createElement('article');
+        tile.className = 'tile';
+
+        const title = document.createElement('h3');
+        title.className = 'history-title';
+        title.textContent = item.title || '応募フォーム';
+
+        const meta = document.createElement('p');
+        meta.className = 'history-meta';
+        meta.textContent = [item.createdAt, item.editorEmail].filter(Boolean).join(' ・ ');
+
+        const actions = document.createElement('div');
+        actions.className = 'history-actions';
+        actions.append(
+          createHistoryButton('応募フォームのリンクをコピー', item.responseUrl, 'フォームのリンクをコピーしました'),
+          createHistoryButton('編集者用リンクをコピー', item.editUrl, '編集者用リンクをコピーしました')
+        );
+
+        tile.append(title, meta, actions);
+        list.appendChild(tile);
+      });
+
+      $('historyRegion').hidden = false;
+    }
+
+    $('formMaker').addEventListener('submit', submitForm);
+
+    $('responseCopyButton').addEventListener('click', () => {
+      if (currentResult) {
+        copyLink(currentResult.responseUrl, 'フォームのリンクをコピーしました');
+      }
+    });
+
+    $('editCopyButton').addEventListener('click', () => {
+      if (currentResult) {
+        copyLink(currentResult.editUrl, '編集者用リンクをコピーしました');
+      }
+    });
+
+    $('planName').addEventListener('input', event => {
+      $('planNameCount').textContent = String(event.target.value.length);
+      if (event.target.value.trim()) setInvalid('planName', false, '');
+    });
+
+    $('description').addEventListener('input', event => {
+      $('descriptionCount').textContent = String(event.target.value.length);
+    });
+
+    $('editorEmail').addEventListener('input', event => {
+      if (isValidEmail(event.target.value.trim())) setInvalid('editorEmail', false, '');
+    });
+
+    renderLocalHistory();
+
+
+const FORM_HISTORY_HOST_SOURCE = 'sanpokai-form-history-host';
+const FORM_HISTORY_CHILD_SOURCE = 'sanpokai-form-history-child';
+let formHistoryChannel = '';
+let formHistoryTargetOrigin = '';
+function getTrustedHistoryTargetOrigin(value) {
+  try {
+    const url = new URL(value);
+    if (url.origin !== value) return '';
+    if (url.protocol === 'https:' && url.hostname === 'mutoshiki.github.io') return url.origin;
+    if (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)) return url.origin;
+  } catch (error) {}
+  return '';
+}
+function applyThemePreference(preference) {
+  const useDark = preference === 'dark'
+    || (preference !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const theme = useDark ? 'g100' : 'white';
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = useDark ? 'dark' : 'light';
+}
+
+function notifyHistoryHost(type) {
+  if (!formHistoryChannel || !formHistoryTargetOrigin) return;
+  window.top.postMessage({
+    source: FORM_HISTORY_CHILD_SOURCE,
+    channel: formHistoryChannel,
+    type,
+    history: readLocalHistory()
+  }, formHistoryTargetOrigin);
+}
+function mergeHostHistory(incoming) {
+  const merged = new Map();
+  for (const item of [...readLocalHistory(), ...(Array.isArray(incoming) ? incoming : [])]) {
+    if (!item || typeof item.formId !== 'string' || !item.formId.trim()) continue;
+    const previous = merged.get(item.formId);
+    merged.set(item.formId, previous ? { ...previous, ...item } : item);
+  }
+  const history = [...merged.values()]
+    .sort((a, b) => (Date.parse(b.createdAt || '') || 0) - (Date.parse(a.createdAt || '') || 0))
+    .slice(0, LOCAL_HISTORY_LIMIT);
+  try { localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(history)); } catch (error) {}
+  renderLocalHistory();
+}
+window.addEventListener('message', event => {
+  if (event.source !== window.top || event.origin !== formHistoryTargetOrigin) return;
+  const message = event.data;
+  if (message?.source !== FORM_HISTORY_HOST_SOURCE
+    || message.channel !== formHistoryChannel
+    || message.type !== 'history-state') return;
+  mergeHostHistory(message.history);
+});
+if (google?.script?.url?.getLocation) {
+  google.script.url.getLocation(location => {
+    const parameters = location?.parameter || {};
+    applyThemePreference(String(parameters.theme || 'system'));
+    formHistoryChannel = String(parameters.historyChannel || '').slice(0, 200);
+    formHistoryTargetOrigin = getTrustedHistoryTargetOrigin(String(parameters.historyOrigin || ''));
+    if (formHistoryChannel && formHistoryTargetOrigin) notifyHistoryHost('history-ready');
+  });
+}
+
+  </script>
+</body>
+</html>

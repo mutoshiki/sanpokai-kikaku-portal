@@ -29,8 +29,10 @@ GitHub Pages 上では、このサイトと企画ツールはどちらも `https
 
 フォームメーカーの親ページは同じフォームIDの履歴を更新日時で統合し、作成日時の新しい10件を残します。関連アプリから開く場合も、この親ページを経由して履歴を共有します。
 
+Apps Scriptフォームメーカーの管理対象ソースは `apps-script/form-maker/` にあります。親ページはGoogleの中間ラッパーを経由した通知元を検証し、フォームメーカー側は許可originの親とだけ履歴を送受信して、受け取った履歴をローカルへ統合します。詳細な同期方法は同ディレクトリのREADMEを参照してください。
+
 ## ブラウザQA
 
 Quality Guardはビルド後の画面をChromiumで390×844と1280×900の両方で描画し、Carbon ClickableTile、ContainedList、4ツールのリンク、企画履歴の名称・並び順、履歴アクション、横overflow、console/page errorを検査します。管理ポリシーで通常URLナビゲーションが制限される環境でも同じ確認ができるよう、自己完結したビルドを `about:blank + page.setContent` で読み込む方式です。
 
-履歴ロジックは `npm run test:history`、画面とテーマ操作は `npm run test:browser`、ビルド成果物の同一オリジン2タブ連携は `node tests/portal-history-origin-smoke.cjs` で確認できます。
+履歴ロジックとApps Script連携は `npm run test:history`、画面とテーマ操作は `npm run test:browser`、ビルド成果物の同一オリジン2タブ連携は `node tests/portal-history-origin-smoke.cjs` で確認できます。Apps Scriptの統合検査は本物のフォーム作成や共有を行わず、成功応答をテスト環境内で模擬します。

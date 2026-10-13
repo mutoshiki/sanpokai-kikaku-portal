@@ -75,6 +75,7 @@
 
   <script type="module">
     import { mergeFormHistories } from './history-utils.js';
+    import { isTrustedAppMessage } from './message-origin.js';
 
     (() => {
       const KEY = 'sanpokai-theme-preference-v1';
@@ -135,24 +136,6 @@
         }, targetOrigin);
       }
 
-      function isTrustedAppMessage(event) {
-        try {
-          const hostname = new URL(event.origin).hostname;
-          const trustedOrigin = hostname === 'script.google.com'
-            || hostname === 'script.googleusercontent.com'
-            || hostname.endsWith('.script.googleusercontent.com');
-          if (!trustedOrigin) return false;
-          let source = event.source;
-          for (let depth = 0; source && depth < 8; depth += 1) {
-            if (source === frame.contentWindow) return true;
-            const parent = source.parent;
-            if (!parent || parent === source) return false;
-            source = parent;
-          }
-          return false;
-        } catch { return false; }
-      }
-
       function resolveTheme(pref) {
         return pref === 'dark' || (pref === 'system' && media.matches) ? 'g100' : 'white';
       }
@@ -170,6 +153,7 @@
         url.searchParams.set('theme', VALID.has(pref) ? pref : 'system');
         url.searchParams.set('themeChannel', themeChannel);
         url.searchParams.set('historyChannel', historyChannel);
+        url.searchParams.set('historyOrigin', window.location.origin);
         return url.href;
       }
 
@@ -194,7 +178,7 @@
       });
 
       window.addEventListener('message', (event) => {
-        if (!isTrustedAppMessage(event)) return;
+        if (!isTrustedAppMessage(event, frame.contentWindow)) return;
         const message = event.data;
         if (message?.source === 'sanpokai-theme-child') {
           if (message.channel !== themeChannel) return;
