@@ -5,7 +5,8 @@
 - Script IDは`.clasp.example.json`を参照してください。
 - 元ソースは2026-10-13にApps Scriptエディタから取得した`Code.gs`、`Index.html`、`appsscript.json`です。取得後、フォーム履歴の保存失敗を許容する処理とテーマ連携を`Index.html`へ実装し、エディタの編集ソースへ保存しました。
 - 取得時の稼働デプロイはv25でした。2026-10-13に同じデプロイIDのv26を公開し、URLとアクセス設定は維持しています。公開URLはポータルの`public/form-maker/index.html`で管理します。
-- GitHub Pagesの修正版は現在PRで公開手続き中です。Pages反映とproduction smokeの完了後、mainのcommit SHAをこのリリース記録へ追記します。
+- GitHub PagesはPR #14、main commit `f03a1f822becd973139165c0f92cf25501495e74`で公開しました。GitHub Actions run `38384436553`のproduction smokeは成功し、g100テーマと準備完了通知を確認しています。隔離ブラウザ診断でも架空の親履歴がApps Script画面へ届くことを確認しました。
+- Apps Script切り戻し先はv25、Pagesの直前mainは`a4a8b0515b6e887a0d5bf9ccb7d95c585716904d`です。v25へ戻すとorigin拒否の不具合も再発するため、必要時は修正版を前進デプロイしてください。
 - `.clasp.json`と`.clasprc.json`は認証・プロジェクト設定を含むため、Gitへ追加しません。
 
 ## 同期
