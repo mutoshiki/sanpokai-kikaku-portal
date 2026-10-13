@@ -41,8 +41,8 @@ async function installIsolatedEnvironment(page) {
         { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
         { formId: 'FORM-C', planName: '紅葉応募フォーム', createdAt: '2026-07-31T10:00:00.000Z' },
-        { formId: 'FORM-D', planName: '雪山応募フォーム', createdAt: '2026-07-30T10:00:00.000Z' },
-        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: '2026-07-29T10:00:00.000Z' },
+        { formId: 'FORM-D', planName: '雪山応募フォーム', createdAt: '2026-07-30T10:00:00.000Z', editUrl: 'https://docs.google.com/forms/d/FORM-D/edit' },
+        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: '2026-07-29T10:00:00.000Z', responseUrl: 'javascript:alert(1)', editUrl: 'data:text/html,unsafe', projectUrl: 'javascript:alert(2)' },
       ]),
     };
     Object.defineProperty(window, 'localStorage', {
@@ -268,6 +268,30 @@ async function run(browser, name, viewport) {
   if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: independent history expansion failed`);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: visibility refresh reset expanded history`);
+  const formActionAudit = await page.locator('#form-history-list .cds--contained-list-item').evaluateAll(rows => rows.map(row => ({
+    name: row.querySelector('.project-title')?.textContent.trim(),
+    responseText: row.querySelector('.history-response-link')?.textContent.trim() || '',
+    responseHref: row.querySelector('.history-response-link')?.getAttribute('href') || '',
+    responseTarget: row.querySelector('.history-response-link')?.getAttribute('target') || '',
+    responseRel: row.querySelector('.history-response-link')?.getAttribute('rel') || '',
+    responseName: row.querySelector('.history-response-link')?.getAttribute('aria-label') || '',
+    projectText: row.querySelector('.history-project-link')?.textContent.trim() || '',
+    projectHref: row.querySelector('.history-project-link')?.getAttribute('href') || '',
+    projectName: row.querySelector('.history-project-link')?.getAttribute('aria-label') || '',
+    menuCount: row.querySelectorAll('.cds--overflow-menu').length,
+    contentOrder: [...row.querySelector('.project-list__item')?.children || []].map(node => node.tagName),
+  })));
+  const [fullForm, responseOnlyForm, noUrlForm, editOnlyForm, unsafeForm] = formActionAudit;
+  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B')) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
+  if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.projectText || noUrlForm.responseText || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
+  if (editOnlyForm.menuCount !== 1 || editOnlyForm.name !== '雪山応募フォーム') throw new Error(`${name}: edit-only form lost its copy menu: ${JSON.stringify(editOnlyForm)}`);
+  if (JSON.stringify(fullForm.contentOrder.slice(0, 3)) !== JSON.stringify(['SPAN', 'TIME', 'DIV']) || !fullForm.contentOrder.includes('SPAN')) throw new Error(`${name}: form name/date/action order regression: ${JSON.stringify(fullForm.contentOrder)}`);
+  const editOnlyRow = page.locator('#form-history-list .cds--contained-list-item').filter({ has: page.getByText('雪山応募フォーム', { exact: true }) });
+  await editOnlyRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  const editOnlyItems = await page.getByRole('menuitem').allTextContents();
+  if (JSON.stringify(editOnlyItems.map(text => text.trim())) !== JSON.stringify(['編集用リンクをコピー'])) throw new Error(`${name}: edit-only menu exposed a missing response link: ${JSON.stringify(editOnlyItems)}`);
+  await page.keyboard.press('Escape');
   await page.evaluate(() => {
     localStorage.setItem('sanpo-react:v1:LIVE-UPDATE:room', JSON.stringify({ roomName: '更新中に追加された企画', lastUpdatedAt: 1700000000000 }));
     window.dispatchEvent(new StorageEvent('storage', { key: 'sanpo-react:v1:LIVE-UPDATE:room' }));

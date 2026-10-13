@@ -161,10 +161,17 @@ body {
 }
 .history-project-link {
   display: inline-block;
-  margin-block-start: var(--cds-spacing-03, .5rem);
   color: var(--cds-link-primary);
   @include type-style('label-01');
 }
+.project-list__form-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--cds-spacing-03, .5rem) var(--cds-spacing-05, 1rem);
+  margin-block-start: var(--cds-spacing-03, .5rem);
+}
+.project-list__form-links a { overflow-wrap: anywhere; }
 .history-message {
   display: flex;
   flex-wrap: wrap;

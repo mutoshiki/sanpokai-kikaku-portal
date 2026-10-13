@@ -217,9 +217,12 @@ function App() {
               </OverflowMenu></div> : undefined}
             >
               <div className="project-list__item">
-                {responseUrl ? <a className="project-title history-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを新しいタブで開く`}>{label}</a> : <span className="project-title">{label}</span>}
+                <span className="project-title">{label}</span>
                 <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成 ${formatDate(createdAt)}`}</time>
-                {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を新しいタブで開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                {(responseUrl || projectUrl) && <div className="project-list__form-links">
+                  {responseUrl && <a className="history-link history-response-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを開く`}>応募フォームを開く</a>}
+                  {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                </div>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
               </div>
             </ContainedListItem>
