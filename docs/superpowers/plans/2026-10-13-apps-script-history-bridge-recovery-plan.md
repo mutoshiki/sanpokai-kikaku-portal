@@ -23,15 +23,17 @@
 
 ## 実装状況（2026-10-13）
 
-- ローカル実装、Apps Script編集ソースへの保存、Apps Script v26の本番デプロイまで完了。既存デプロイIDは維持。GitHubへのpushとPages公開は実行中。
+- ローカル実装、Apps Script編集ソースへの保存、Apps Script v26の本番デプロイ、GitHubへのpush、Pages公開まで完了。
 - Apps Scriptの`Code.gs`、`Index.html`、`appsscript.json`をエディタから取得した。`clasp clone`は権限不足で失敗したため、アカウント全体のApps Script API設定は変更していない。Apps Scriptエディタのマニフェスト表示設定も取得後に元へ戻した。
 - 本番実行時の通知originは`*-script.googleusercontent.com`形式だった。既存の許可条件がこの形式を拒否し、準備中表示が残っていた。iframeのsource ancestryも確認し、該当Googleホスト形式をテスト可能な独立関数に切り出して許可した。
 - レビューで履歴の送信先と受信元の検証不足が見つかったため、ポータルが`historyOrigin`を渡し、Apps Scriptは`https://mutoshiki.github.io`またはローカル検証用loopback originだけを許可するようにした。子からの送信はこのoriginへ固定し、親からの履歴受信も`event.origin`を検証する。任意サイトへの漏えいと履歴注入の両方を回帰テストで再現後に防いだ。
 - フォームメーカーの保存済み編集ソースに、親テーマを反映する処理とlocalStorage保存失敗時も成功UI・親通知を続行する処理を追加した。
 - 既存のproduction smokeは、実際の子画面がCarbon Reactではなく独自CSSのHTMLであるのにCarbon React用のselectorを読んでいた。期待条件を実際の`data-theme='g100'`と背景色へ合わせ、dark theme assertionは残した。
 - 自動検証は履歴14件、Apps Scriptクライアントの統合smoke、portal browser/theme/focus smoke、同一origin履歴smoke、Pages deployment contract、Vite buildが成功。BuildにはCarbon font assetの未解決参照警告がある。
-- Apps Script v26は本番デプロイ済みだが、GitHub Pagesの修正版はまだ公開していないため、両者を通したproduction smokeは未実施。
+- Apps Script v26とPagesの修正版を公開し、GitHub Actionsのproduction smokeで履歴準備完了とg100表示を確認した。別の隔離Playwright診断では架空履歴がApps Script子画面に表示されることも確認した。フォーム作成や実データ送信は行っていない。
 - 2026-10-13、Apps Script v26を既存デプロイID`AKfycbwveM99euD8V5dxB6xLPYlpHuIc-KJlaaP8LHffh6ZMQBnAmO6XwX_ijQG-brUgqZmj`へ公開した。デプロイ説明は`History bridge origin and privacy fix (2026-10-13)`。実行ユーザーとアクセス対象は既存設定を維持。
+- PR #14はmain commit `f03a1f822becd973139165c0f92cf25501495e74`としてマージ済み。GitHub Actions run `38384436553`でPages build/deployとproduction smokeが成功。公開先は`https://mutoshiki.github.io/sanpokai-kikaku-portal/`。
+- 切り戻し先はApps Scriptデプロイのv25、およびPagesの直前main commit `a4a8b0515b6e887a0d5bf9ccb7d95c585716904d`。v25へ戻す場合は既知のorigin検証欠陥も戻るため、通常はv26を維持して修正版を前進デプロイする。
 - `clasp`によるデプロイ済みv25とプロジェクト編集ソースの完全比較、およびv24/v25差分比較は未完了。したがって、取得ソースが現行デプロイの全ファイルと完全一致すると断定しない。
 
 ## 停止時点の状態と確認済みの事実
@@ -99,24 +101,24 @@ Apps Scriptエディタで`Index.html`へ履歴ブリッジを追記し、既存
 
 **Interfaces:** 既存のproduction smokeは公開ポータル・Apps Scriptラッパー内のテーマ状態を確認する。完了条件は`document.documentElement.dataset.theme === 'g100'`に相当する子画面の状態を得ることで、assertion自体は保持する。
 
-- [ ] run `38373328106`のログと`tests/production-pages-smoke.cjs`の実行段階を照合し、テーマ設定・保存・Google wrapper横断のどのassertで失敗したかを確定する。
-- [ ] 公開サイトへ依存しない再現テストまたは診断ログを追加し、host preference、iframe URL、子の解決テーマ、通知受信時刻を個別に記録する。
+- [x] run `38373328106`は子画面のテーマ確認で失敗していた。実HTMLは`data-theme`を使う独自HTML UIで、smokeが存在しないReact用`data-carbon-theme`を参照していたことを確認した。
+- [x] 回帰smokeでhost preference、iframe URLのtheme/channel/origin、子画面のresolved theme、準備完了による待機解除を個別に確認する。
 - [x] Google wrapperから届く実際のホスト名を観測し、既存origin検証が拒否することを確認した。親メッセージ到着後の`historyChannel`通知でhost側が準備済みになる経路をローカル自動テストに追加した。
-- [x] smokeのテーマassertionを実際のHTML子アプリに合わせて維持・修正し、mock統合smokeでlight/dark適用を検証した。公開URLに対する更新後のproduction smokeは未実施。
+- [x] smokeのテーマassertionを実際のHTML子アプリに合わせて維持・修正し、mock統合smokeと公開後production smokeでlight/dark適用を検証した。
 
 ### Task 4：公開前の一式確認とリリース記録を用意する
 
 **Files:** `README.md`、`tests/production-pages-smoke.cjs`、CI workflow、Apps Scriptデプロイ手順。
 
 - [x] `npm run test:history`（14 tests + Apps Script client smoke）、`npm run build`、`npm run test:browser`、`node tests/portal-history-origin-smoke.cjs`、`node tests/deployment-contract.cjs`を実行し成功を確認した。
-- [ ] 修正は未公開のため、公開URLへのproduction smokeは実施していない。PagesとApps Scriptを同じ修正版に更新した後に、g100と履歴ready/updateを一体で確認する。
-- [ ] 公開手順にApps Scriptの版・デプロイID、Pagesのcommit SHA、切り戻し先を記録できる項目を加える。Apps Scriptのみ、Pagesのみの更新で契約がずれる場合の復旧手順も記す。
-- [ ] 本番変更はこの計画の実装完了後にユーザーが明示的に再開を指示した場合にだけ実施する。本番確認はフォームの作成・送信なしで可能な範囲に限定し、実データ検証が必要なら別途明示する。
+- [x] Apps Script v26とPages公開後にproduction smokeを実施。g100表示と履歴readyによる準備中表示の解除を確認し、隔離した架空履歴が子画面に表示されることも確認した。
+- [x] Apps Script版・デプロイID、Pages commit SHA、直前の切り戻し先をこの記録に記載。片側だけが更新された場合は、両側のorigin/channel契約を揃えてから前進デプロイする。
+- [x] 本番変更はユーザーの明示的な再指示を受けて実施した。フォームの作成・送信や実データ送信は行っていない。
 
 ## 完了条件
 
 - Apps Script v25相当の完全なソースが管理され、稼働中のデプロイ版との差分が説明できる。
 - 初期履歴、更新、空履歴、遅延通知、無効通知、10件制限が自動テストで検証される。
-- 公開Smokeでフォームメーカーがreadyとなり、待機表示が残留しない。
+- 公開Smokeでフォームメーカーがreadyとなり、待機表示が残留しない。隔離した架空履歴が子画面へ表示される。
 - Carbon g100のproduction-smoke失敗原因が修正・検証されるか、Google実行環境の制約として根拠付きで範囲を特定する。
 - 変更・検証・デプロイ版が追跡可能で、フォームの実作成・送信なしに確認できた範囲が明記される。
