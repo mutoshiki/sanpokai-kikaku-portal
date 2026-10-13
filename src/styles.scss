@@ -82,7 +82,7 @@ body {
   padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-05, 1rem) var(--cds-spacing-09, 3rem);
 }
 .portal-title {
-  @include type-style('heading-04');
+  @include type-style('heading-03');
   margin: 0 0 var(--cds-spacing-06, 1.5rem);
 }
 .section-heading {
@@ -91,9 +91,7 @@ body {
 }
 
 .tool-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--cds-spacing-03, .5rem);
+  display: block;
 }
 .tool-tile {
   display: grid;
@@ -119,6 +117,7 @@ body {
 .tool-tile__content h3 {
   @include type-style('heading-compact-01');
   margin: 0 0 var(--cds-spacing-03, .5rem);
+  line-break: strict;
 }
 .tool-tile__content p {
   max-width: 36rem;
@@ -238,13 +237,6 @@ body {
 
 @include breakpoint(md) {
   .portal-page { padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-07, 2rem) var(--cds-spacing-10, 4rem); }
-  .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cds-spacing-05, 1rem); }
-  .projects { max-width: calc(75% - var(--cds-spacing-05, 1rem)); }
-}
-
-@include breakpoint(lg) {
-  .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--cds-spacing-07, 2rem); }
-  .projects { max-width: calc(50% - var(--cds-spacing-05, 1rem)); }
 }
 
 @include breakpoint-down(md) {

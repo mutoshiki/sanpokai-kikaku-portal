@@ -34,7 +34,7 @@ async function installIsolatedEnvironment(page) {
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
       'sampokai_v10_split_ROOM-D': JSON.stringify({ roomName: '秋山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-E': JSON.stringify({ roomName: '冬山企画', lastUpdatedAt: 900 }),
-      'sampokai_v10_split_ROOM-F': JSON.stringify({ roomName: '春の企画', lastUpdatedAt: 800 }),
+      'sampokai_v10_split_ROOM-F': JSON.stringify({ roomName: '長い企画名NoSpaceWithoutBreaks1234567890123456789012345678901234567890', lastUpdatedAt: 800 }),
       'sanpo-react:v1:ROOM-C:room': JSON.stringify({ roomName: 'React企画', lastUpdatedAt: 3000 }),
       'syawari_history_ROOM-A': JSON.stringify([{ time: 3000, data: { roomName: '春山企画', lastUpdatedAt: 1500 } }]),
       'sanpokai-form-builder-history-v1': JSON.stringify([
@@ -42,7 +42,7 @@ async function installIsolatedEnvironment(page) {
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
         { formId: 'FORM-C', planName: '紅葉応募フォーム', createdAt: '2026-07-31T10:00:00.000Z' },
         { formId: 'FORM-D', planName: '雪山応募フォーム', createdAt: '2026-07-30T10:00:00.000Z', editUrl: 'https://docs.google.com/forms/d/FORM-D/edit' },
-        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: '2026-07-29T10:00:00.000Z', responseUrl: 'javascript:alert(1)', editUrl: 'data:text/html,unsafe', projectUrl: 'javascript:alert(2)' },
+        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: 'invalid date', responseUrl: 'javascript:alert(1)', editUrl: 'data:text/html,unsafe', projectUrl: 'javascript:alert(2)' },
       ]),
     };
     Object.defineProperty(window, 'localStorage', {
@@ -176,6 +176,37 @@ async function run(browser, name, viewport) {
         launchLeft: launch.left,
       };
     }),
+    toolColumns: [...document.querySelectorAll('.tool-tile')].map(tile => {
+      const column = tile.closest('[class*="cds--css-grid-column"], [class*="cds--col-"]');
+      const rect = column?.getBoundingClientRect();
+      return { className: column?.className || '', left: Math.round(rect?.left || 0), top: Math.round(rect?.top || 0) };
+    }),
+    historyColumns: [...document.querySelectorAll('.history-grid > [class*="cds--css-grid-column"], .history-grid > [class*="cds--col-"]')].map(column => ({
+      width: column.getBoundingClientRect().width,
+      gridWidth: column.parentElement.getBoundingClientRect().width,
+      className: column.className,
+    })),
+    toolGridCarbonClass: document.querySelector('.tools-grid')?.className || '',
+    titleFontSize: parseFloat(getComputedStyle(document.querySelector('.portal-title')).fontSize),
+    formTileTitleFinalGlyphTop: (() => {
+      const node = document.querySelectorAll('.tool-tile h3')[1]?.firstChild;
+      if (!node || node.nodeType !== Node.TEXT_NODE || node.textContent.length < 2) return null;
+      const range = document.createRange();
+      range.setStart(node, node.textContent.length - 1);
+      range.setEnd(node, node.textContent.length);
+      return range.getBoundingClientRect().top;
+    })(),
+    formTileTitlePreviousGlyphTop: (() => {
+      const node = document.querySelectorAll('.tool-tile h3')[1]?.firstChild;
+      if (!node || node.nodeType !== Node.TEXT_NODE || node.textContent.length < 2) return null;
+      const range = document.createRange();
+      range.setStart(node, node.textContent.length - 2);
+      range.setEnd(node, node.textContent.length - 1);
+      return range.getBoundingClientRect().top;
+    })(),
+    sectionHeadingFontSize: parseFloat(getComputedStyle(document.querySelector('.section-heading')).fontSize),
+    toolDescriptionFontSize: parseFloat(getComputedStyle(document.querySelector('.tool-tile__content p')).fontSize),
+    historyDateFontSize: parseFloat(getComputedStyle(document.querySelector('.project-list__item time')).fontSize),
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
@@ -207,6 +238,13 @@ async function run(browser, name, viewport) {
     clickableRows: document.querySelectorAll('.project-list .cds--contained-list-item--clickable').length,
     rowHeights: [...document.querySelectorAll('.project-list .cds--contained-list-item')].map(node => node.getBoundingClientRect().height),
   }));
+  const themeTrigger = page.getByRole('button', { name: 'テーマ設定：システム設定' });
+  if (await themeTrigger.getAttribute('aria-expanded') === 'true') {
+    await themeTrigger.focus();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[aria-label^="テーマ設定"]')?.getAttribute('aria-expanded') === 'false');
+  }
+  await page.screenshot({ path: path.join(OUT, `${name}-initial.png`), fullPage: true });
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
   if (initial.tileLaunchIcons !== 4 || initial.tileNestedInteractive) throw new Error(`${name}: ClickableTile icon or nesting regression`);
   if (initial.pictograms.length !== 4 || initial.pictograms.some(icon => icon.ariaHidden !== 'true' || Math.abs(icon.width - 48) > 1 || Math.abs(icon.height - 48) > 1)) {
@@ -228,7 +266,7 @@ async function run(browser, name, viewport) {
     throw new Error(`${name}: ClickableTile is not using a distinct contextual layer: ${JSON.stringify(initial)}`);
   }
   if (initial.containedLists.length !== 2) throw new Error(`${name}: expected 2 Carbon contained lists, got ${initial.containedLists.length}`);
-  if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--xl'))) {
+  if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--lg'))) {
     throw new Error(`${name}: contained list variant or size regression: ${JSON.stringify(initial.containedLists)}`);
   }
   if (initial.containedLists[0].label !== '最近開いた企画' || initial.containedLists[1].label !== '作成したフォーム') {
@@ -243,7 +281,31 @@ async function run(browser, name, viewport) {
   if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['最近開いた企画', 'ツール', '作成したフォーム'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
   if (initial.projectRowCount !== 3 || initial.formRowCount !== 3 || initial.historyToggles.length !== 2) throw new Error(`${name}: history preview does not start at three rows: ${JSON.stringify(initial)}`);
   if (initial.historyToggles.some(toggle => toggle.expanded !== 'false' || !toggle.controls)) throw new Error(`${name}: preview toggle semantics regression: ${JSON.stringify(initial.historyToggles)}`);
+  const toolColumnCount = viewport.width < 672 ? 1 : viewport.width < 1056 ? 2 : 4;
+  const toolRowTops = [...new Set(initial.toolColumns.map(column => column.top))];
+  const hasSpan = (classes, breakpoint, span) => classes.includes(`cds--${breakpoint}:col-span-${span}`) || classes.includes(`cds--col-${breakpoint}-${span}`);
+  if (initial.toolColumns.length !== 4 || initial.toolColumns.some(column => !hasSpan(column.className, 'sm', 4) || !hasSpan(column.className, 'md', 4) || !hasSpan(column.className, 'lg', 4))) throw new Error(`${name}: Carbon tool column spans regression: ${JSON.stringify(initial.toolColumns)}`);
+  if (!initial.toolGridCarbonClass.includes('cds--css-grid--narrow') || !initial.toolGridCarbonClass.includes('cds--css-grid--with-row-gap') || toolRowTops.length !== Math.ceil(4 / toolColumnCount)) throw new Error(`${name}: Carbon tool grid column count regression: ${JSON.stringify(initial)}`);
+  if (initial.historyColumns.length !== 2 || initial.historyColumns.some(column => column.width / column.gridWidth < 0.85 || !hasSpan(column.className, 'sm', 4) || !hasSpan(column.className, 'md', 8) || !hasSpan(column.className, 'lg', 16))) throw new Error(`${name}: full-width history grid regression: ${JSON.stringify(initial.historyColumns)}`);
+  if (Math.abs(initial.titleFontSize - 20) > 1) throw new Error(`${name}: portal title is not Carbon heading-03: ${initial.titleFontSize}px`);
+  if (initial.formTileTitleFinalGlyphTop !== null && initial.formTileTitlePreviousGlyphTop !== null && Math.abs(initial.formTileTitleFinalGlyphTop - initial.formTileTitlePreviousGlyphTop) > 1) throw new Error(`${name}: Japanese prolonged sound mark wrapped alone in tool title`);
+  if (Math.abs(initial.sectionHeadingFontSize - 14) > 1 || Math.abs(initial.toolDescriptionFontSize - 14) > 1 || Math.abs(initial.historyDateFontSize - 12) > 1) throw new Error(`${name}: Carbon type hierarchy regression: ${JSON.stringify({ sectionHeadingFontSize: initial.sectionHeadingFontSize, toolDescriptionFontSize: initial.toolDescriptionFontSize, historyDateFontSize: initial.historyDateFontSize })}`);
   if (!initial.describedTiles) throw new Error(`${name}: a tool tile does not reference its description`);
+  const toolsTopBeforeBulk = await page.locator('#tools-heading').evaluate(node => node.getBoundingClientRect().top);
+  await page.evaluate(() => {
+    localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: Array.from({ length: 100 }, (_, index) => ({
+      roomId: `BULK-${index + 1}`, name: `大量履歴${index + 1}`, updatedAt: 1000 + index,
+    })) }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#project-history-list .history-link').length === 3);
+  const toolsTopAfterBulk = await page.locator('#tools-heading').evaluate(node => node.getBoundingClientRect().top);
+  if (Math.abs(toolsTopAfterBulk - toolsTopBeforeBulk) > 1) throw new Error(`${name}: hidden history moved tools after 100 records were added`);
+  await page.evaluate(() => {
+    localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: [] }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#project-history-list .history-link').length === 3);
   if (initial.openIconCount !== 3 || !initial.openIconsDecorative) throw new Error(`${name}: Launch icon anatomy regression`);
   if (!initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
     throw new Error(`${name}: obsolete history copy or IDs remain`);
@@ -251,7 +313,7 @@ async function run(browser, name, viewport) {
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
   if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
   if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 0) throw new Error(`${name}: project history action geometry regression`);
-  if (initial.rowHeights.some(height => height < 64)) throw new Error(`${name}: contained list row is shorter than Carbon xl: ${JSON.stringify(initial.rowHeights)}`);
+  if (initial.rowHeights.some(height => height < 48)) throw new Error(`${name}: contained list row is shorter than Carbon lg: ${JSON.stringify(initial.rowHeights)}`);
   if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
 
   const projectToggle = page.getByRole('button', { name: '最近開いた企画をすべて見る' });
@@ -266,10 +328,19 @@ async function run(browser, name, viewport) {
   await page.getByRole('button', { name: '最近開いた企画をすべて見る' }).click();
   await page.getByRole('button', { name: '作成したフォームをすべて見る' }).click();
   if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: independent history expansion failed`);
+  const longProjectLayout = await page.locator('#project-history-list .history-link').filter({ hasText: '長い企画名NoSpace' }).evaluate(node => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+    text: node.textContent.trim(),
+    overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+  if (longProjectLayout.scrollWidth > longProjectLayout.clientWidth + 1 || longProjectLayout.overflowX > 1) throw new Error(`${name}: long no-space project name overflowed: ${JSON.stringify(longProjectLayout)}`);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: visibility refresh reset expanded history`);
   const formActionAudit = await page.locator('#form-history-list .cds--contained-list-item').evaluateAll(rows => rows.map(row => ({
     name: row.querySelector('.project-title')?.textContent.trim(),
+    createdText: row.querySelector('time')?.textContent.trim() || '',
+    createdDateTime: row.querySelector('time')?.getAttribute('datetime') || '',
     responseText: row.querySelector('.history-response-link')?.textContent.trim() || '',
     responseHref: row.querySelector('.history-response-link')?.getAttribute('href') || '',
     responseTarget: row.querySelector('.history-response-link')?.getAttribute('target') || '',
@@ -285,6 +356,7 @@ async function run(browser, name, viewport) {
   if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B')) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
   if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.projectText || noUrlForm.responseText || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
   if (editOnlyForm.menuCount !== 1 || editOnlyForm.name !== '雪山応募フォーム') throw new Error(`${name}: edit-only form lost its copy menu: ${JSON.stringify(editOnlyForm)}`);
+  if (unsafeForm.createdText !== '作成日時不明' || unsafeForm.createdDateTime) throw new Error(`${name}: invalid form timestamp was not shown as unknown: ${JSON.stringify(unsafeForm)}`);
   if (JSON.stringify(fullForm.contentOrder.slice(0, 3)) !== JSON.stringify(['SPAN', 'TIME', 'DIV']) || !fullForm.contentOrder.includes('SPAN')) throw new Error(`${name}: form name/date/action order regression: ${JSON.stringify(fullForm.contentOrder)}`);
   const editOnlyRow = page.locator('#form-history-list .cds--contained-list-item').filter({ has: page.getByText('雪山応募フォーム', { exact: true }) });
   await editOnlyRow.locator('.cds--overflow-menu').focus();

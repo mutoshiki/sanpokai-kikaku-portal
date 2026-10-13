@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Button,
   ClickableTile,
+  Column,
   ContainedList,
   ContainedListItem,
   Header,
   HeaderName,
+  Grid,
   Layer,
   OverflowMenu,
   OverflowMenuItem,
@@ -166,40 +168,45 @@ function App() {
 
   const toolsSection = (
     <section key="tools" className="tools-section" aria-labelledby="tools-heading">
-      <h2 id="tools-heading" className="section-heading">ツール</h2>
       <Layer level={0} as="div" className="tool-grid" aria-label="利用するツール">
-        {TOOLS.map((tool, index) => {
-          const Pictogram = tool.pictogram;
-          const descriptionId = `tool-description-${index}`;
-          return (
-            <ClickableTile
-              key={tool.title}
-              className="tool-tile"
-              href={tool.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              renderIcon={Launch}
-              aria-label={`${tool.title}を新しいタブで開く`}
-              aria-describedby={descriptionId}
-            >
-              <div className="tool-tile__pictogram" aria-hidden="true"><Pictogram width={48} height={48} aria-hidden="true" /></div>
-              <div className="tool-tile__content">
-                <h3>{tool.title}</h3>
-                <p id={descriptionId}>{tool.description}</p>
-              </div>
-            </ClickableTile>
-          );
-        })}
+        <Grid narrow withRowGap className="tools-grid">
+          <Column sm={4} md={8} lg={16}><h2 id="tools-heading" className="section-heading">ツール</h2></Column>
+          {TOOLS.map((tool, index) => {
+            const Pictogram = tool.pictogram;
+            const descriptionId = `tool-description-${index}`;
+            return (
+              <Column key={tool.title} sm={4} md={4} lg={4}>
+                <ClickableTile
+                  className="tool-tile"
+                  href={tool.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  renderIcon={Launch}
+                  aria-label={`${tool.title}を新しいタブで開く`}
+                  aria-describedby={descriptionId}
+                >
+                  <div className="tool-tile__pictogram" aria-hidden="true"><Pictogram width={48} height={48} aria-hidden="true" /></div>
+                  <div className="tool-tile__content">
+                    <h3>{tool.title}</h3>
+                    <p id={descriptionId}>{tool.description}</p>
+                  </div>
+                </ClickableTile>
+              </Column>
+            );
+          })}
+        </Grid>
       </Layer>
     </section>
   );
 
   const formsSection = (
     <section key="forms" className="history-section projects form-history" aria-labelledby="forms-heading">
-      <h2 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h2>
-      {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
-      {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
-      <ContainedList id="form-history-list" className="project-list form-history-list" kind="on-page" size="xl" aria-labelledby="forms-heading">
+      <Grid className="history-grid">
+        <Column sm={4} md={8} lg={16}>
+          <h2 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h2>
+          {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
+          {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
+          <ContainedList id="form-history-list" className="project-list form-history-list" kind="on-page" size="lg" aria-labelledby="forms-heading">
         {portalState.forms.forms.length ? portalState.forms.forms.slice(0, showAllForms ? undefined : HISTORY_PREVIEW_LIMIT).map((form) => {
           const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
           const responseUrl = safeExternalUrl(form.responseUrl);
@@ -228,25 +235,29 @@ function App() {
             </ContainedListItem>
           );
         }) : portalState.forms.status !== 'unavailable' ? <ContainedListItem>{formInfo.heading} 上の「応募フォームメーカー」からフォームを作成すると、ここに表示されます。</ContainedListItem> : <ContainedListItem>フォーム履歴を表示できません。</ContainedListItem>}
-      </ContainedList>
-      {portalState.forms.forms.length > HISTORY_PREVIEW_LIMIT && <Button
-        className="history-toggle"
-        kind="ghost"
-        size="sm"
-        aria-label={showAllForms ? '作成したフォームを折りたたむ' : '作成したフォームをすべて見る'}
-        aria-expanded={showAllForms}
-        aria-controls="form-history-list"
-        onClick={() => setShowAllForms(value => !value)}
-      >{showAllForms ? '表示を減らす' : 'すべて見る'}</Button>}
+          </ContainedList>
+          {portalState.forms.forms.length > HISTORY_PREVIEW_LIMIT && <Button
+            className="history-toggle"
+            kind="ghost"
+            size="sm"
+            aria-label={showAllForms ? '作成したフォームを折りたたむ' : '作成したフォームをすべて見る'}
+            aria-expanded={showAllForms}
+            aria-controls="form-history-list"
+            onClick={() => setShowAllForms(value => !value)}
+          >{showAllForms ? '表示を減らす' : 'すべて見る'}</Button>}
+        </Column>
+      </Grid>
     </section>
   );
 
   const projectsSection = (
     <section key="projects" className="history-section projects" aria-labelledby="projects-heading">
-      <h2 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近開いた企画</h2>
-      {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
-      {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
-      <ContainedList id="project-history-list" className="project-list" kind="on-page" size="xl" aria-labelledby="projects-heading">
+      <Grid className="history-grid">
+        <Column sm={4} md={8} lg={16}>
+          <h2 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近開いた企画</h2>
+          {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
+          {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
+          <ContainedList id="project-history-list" className="project-list" kind="on-page" size="lg" aria-labelledby="projects-heading">
         {portalState.projects.projects.length ? portalState.projects.projects.slice(0, showAllProjects ? undefined : HISTORY_PREVIEW_LIMIT).map((project) => {
           const label = project.name || '名称未設定の企画';
           const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
@@ -258,16 +269,18 @@ function App() {
             </div>
           </ContainedListItem>;
         }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading} 上の「サークル企画ツール」から企画を開くと、ここに表示されます。</ContainedListItem> : <ContainedListItem>企画履歴を表示できません。</ContainedListItem>}
-      </ContainedList>
-      {portalState.projects.projects.length > HISTORY_PREVIEW_LIMIT && <Button
-        className="history-toggle"
-        kind="ghost"
-        size="sm"
-        aria-label={showAllProjects ? '最近開いた企画を折りたたむ' : '最近開いた企画をすべて見る'}
-        aria-expanded={showAllProjects}
-        aria-controls="project-history-list"
-        onClick={() => setShowAllProjects(value => !value)}
-      >{showAllProjects ? '表示を減らす' : 'すべて見る'}</Button>}
+          </ContainedList>
+          {portalState.projects.projects.length > HISTORY_PREVIEW_LIMIT && <Button
+            className="history-toggle"
+            kind="ghost"
+            size="sm"
+            aria-label={showAllProjects ? '最近開いた企画を折りたたむ' : '最近開いた企画をすべて見る'}
+            aria-expanded={showAllProjects}
+            aria-controls="project-history-list"
+            onClick={() => setShowAllProjects(value => !value)}
+          >{showAllProjects ? '表示を減らす' : 'すべて見る'}</Button>}
+        </Column>
+      </Grid>
     </section>
   );
 
