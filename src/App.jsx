@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Button,
   ClickableTile,
@@ -103,8 +103,18 @@ function App() {
   const toastTimer = useRef(null);
   const projectHeadingRef = useRef(null);
   const formHeadingRef = useRef(null);
+  const pendingHistoryFocusRef = useRef(null);
 
-  const refreshPortalState = useCallback(() => setPortalState(loadPortalState()), []);
+  const refreshPortalState = useCallback(() => {
+    const activeElement = document.activeElement;
+    const section = activeElement?.closest?.('.history-section');
+    if (section?.classList.contains('form-history')) {
+      pendingHistoryFocusRef.current = { element: activeElement, section: 'forms' };
+    } else if (section?.classList.contains('projects')) {
+      pendingHistoryFocusRef.current = { element: activeElement, section: 'projects' };
+    }
+    setPortalState(loadPortalState());
+  }, []);
 
   useEffect(() => {
     navigator.storage?.persist?.().catch(() => false);
@@ -120,19 +130,13 @@ function App() {
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  useEffect(() => {
-    if (showAllProjects && portalState.projects.projects.length <= HISTORY_PREVIEW_LIMIT) {
-      projectHeadingRef.current?.focus();
-      setShowAllProjects(false);
-    }
-  }, [portalState.projects.projects.length, showAllProjects]);
-
-  useEffect(() => {
-    if (showAllForms && portalState.forms.forms.length <= HISTORY_PREVIEW_LIMIT) {
-      formHeadingRef.current?.focus();
-      setShowAllForms(false);
-    }
-  }, [portalState.forms.forms.length, showAllForms]);
+  useLayoutEffect(() => {
+    const pending = pendingHistoryFocusRef.current;
+    if (!pending) return;
+    pendingHistoryFocusRef.current = null;
+    if (pending.element?.isConnected) return;
+    (pending.section === 'forms' ? formHeadingRef : projectHeadingRef).current?.focus();
+  }, [portalState]);
 
   const showToast = useCallback((message) => {
     clearTimeout(toastTimer.current);

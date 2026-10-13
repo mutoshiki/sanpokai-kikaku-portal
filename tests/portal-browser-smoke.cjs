@@ -548,7 +548,24 @@ async function run(browser, name, viewport) {
       })) }));
       window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
     }, { count, themeKey: THEME_KEY });
-    await page.waitForFunction(expected => document.querySelectorAll('#project-history-list .history-link').length === Math.min(expected, 3), count);
+    await page.waitForFunction(expected => {
+      const expanded = document.querySelector('.projects:not(.form-history) .history-toggle')?.getAttribute('aria-expanded') === 'true';
+      return document.querySelectorAll('#project-history-list .history-link').length === Math.min(expected, expanded ? expected : 3);
+    }, count);
+  }
+  async function setFormCount(count) {
+    await page.evaluate(({ count }) => {
+      localStorage.setItem('sanpokai-form-builder-history-v1', JSON.stringify(Array.from({ length: count }, (_, index) => ({
+        formId: `BOUNDARY-FORM-${index + 1}`,
+        planName: `境界確認フォーム${index + 1}`,
+        createdAt: `2026-10-${String(14 - index).padStart(2, '0')}T10:00:00.000Z`,
+      }))));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai-form-builder-history-v1' }));
+    }, { count });
+    await page.waitForFunction(expected => {
+      const expanded = document.querySelector('.form-history .history-toggle')?.getAttribute('aria-expanded') === 'true';
+      return document.querySelectorAll('#form-history-list .cds--contained-list-item').length === Math.max(1, Math.min(expected, expanded ? expected : 3));
+    }, count);
   }
   for (const count of [0, 1, 3]) {
     await setProjectCount(count);
@@ -562,6 +579,33 @@ async function run(browser, name, viewport) {
   await setProjectCount(2);
   await page.waitForFunction(() => document.activeElement?.id === 'projects-heading');
   if (await page.locator('.projects:not(.form-history) .history-toggle').count() !== 0) throw new Error(`${name}: updated short history retained a toggle`);
+
+  await setProjectCount(4);
+  const projectCollapseButton = page.getByRole('button', { name: '最近開いた企画を折りたたむ' });
+  if (await projectCollapseButton.count()) await projectCollapseButton.click();
+  const projectExpandButton = page.getByRole('button', { name: '最近開いた企画をすべて見る' });
+  await projectExpandButton.focus();
+  await setProjectCount(2);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'projects-heading') throw new Error(`${name}: collapsed project toggle removal did not move focus to its heading`);
+  await setProjectCount(4);
+  await page.getByRole('button', { name: '最近開いた企画をすべて見る' }).click();
+  await page.locator('.tool-tile').first().focus();
+  await setProjectCount(2);
+  if (await page.locator('.tool-tile').first().evaluate(node => node === document.activeElement) !== true) throw new Error(`${name}: project refresh stole focus from a still-visible tool`);
+  await setProjectCount(4);
+  if (await page.locator('#project-history-list .history-link').count() !== 4 || await page.getByRole('button', { name: '最近開いた企画を折りたたむ' }).getAttribute('aria-expanded') !== 'true') throw new Error(`${name}: expanded project history did not recover after a short refresh`);
+
+  await setFormCount(4);
+  await page.getByRole('button', { name: '作成したフォームをすべて見る' }).focus();
+  await setFormCount(2);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'forms-heading') throw new Error(`${name}: collapsed form toggle removal did not move focus to its heading`);
+  await setFormCount(4);
+  await page.getByRole('button', { name: '作成したフォームをすべて見る' }).click();
+  await page.locator('.tool-tile').first().focus();
+  await setFormCount(2);
+  if (await page.locator('.tool-tile').first().evaluate(node => node === document.activeElement) !== true) throw new Error(`${name}: form refresh stole focus from a still-visible tool`);
+  await setFormCount(4);
+  if (await page.locator('#form-history-list .cds--contained-list-item').count() !== 4 || await page.getByRole('button', { name: '作成したフォームを折りたたむ' }).getAttribute('aria-expanded') !== 'true') throw new Error(`${name}: expanded form history did not recover after a short refresh`);
 
   const focus = await focusFirstTileWithKeyboard(page);
   const focusInvisible = focus.outlineStyle === 'none' || focus.outlineWidth === '0px' || focus.outlineColor === 'rgba(0, 0, 0, 0)' || focus.outlineColor === 'transparent';
