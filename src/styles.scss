@@ -1,4 +1,7 @@
 @use '@carbon/react';
+@use '@carbon/grid/scss/breakpoint' as *;
+@use '@carbon/grid/scss/config' as grid;
+@use 'sass:map';
 @use '@carbon/styles/scss/type' as *;
 
 * { box-sizing: border-box; }
@@ -74,7 +77,7 @@ body {
 
 .portal-page {
   width: 100%;
-  max-width: 99rem;
+  max-width: map.get(map.get(grid.$grid-breakpoints, max), width);
   margin: 0 auto;
   padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-05, 1rem) var(--cds-spacing-09, 3rem);
 }
@@ -82,11 +85,15 @@ body {
   @include type-style('heading-04');
   margin: 0 0 var(--cds-spacing-06, 1.5rem);
 }
+.section-heading {
+  @include type-style('heading-compact-01');
+  margin: 0 0 var(--cds-spacing-04, .75rem);
+}
 
 .tool-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: .5rem;
+  gap: var(--cds-spacing-03, .5rem);
 }
 .tool-tile {
   display: grid;
@@ -107,15 +114,15 @@ body {
 .tool-tile__content {
   min-inline-size: 0;
   padding-block-end: var(--cds-spacing-04, .75rem);
-  padding-inline-end: calc(1.25rem + var(--cds-spacing-04, .75rem));
+  padding-inline-end: calc(var(--cds-icon-size-02, 1.25rem) + var(--cds-spacing-04, .75rem));
 }
-.tool-tile__content h2 {
-  @include type-style('body-compact-01');
+.tool-tile__content h3 {
+  @include type-style('heading-compact-01');
   margin: 0 0 var(--cds-spacing-03, .5rem);
 }
 .tool-tile__content p {
   max-width: 36rem;
-  @include type-style('body-compact-01');
+  @include type-style('body-01');
   margin: 0;
   color: var(--cds-text-secondary);
 }
@@ -137,6 +144,42 @@ body {
 .project-list__item {
   display: block;
   width: 100%;
+}
+.history-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-03, .5rem);
+  text-decoration: none;
+}
+.history-link__icon { flex: 0 0 auto; color: var(--cds-icon-primary); }
+.history-link:hover { text-decoration: underline; }
+.history-link:focus-visible,
+.history-project-link:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+.history-project-link {
+  display: inline-block;
+  margin-block-start: var(--cds-spacing-03, .5rem);
+  color: var(--cds-link-primary);
+  @include type-style('label-01');
+}
+.history-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cds-spacing-03, .5rem);
+  margin: 0 0 var(--cds-spacing-03, .5rem);
+  color: var(--cds-text-secondary);
+  @include type-style('body-compact-01');
+}
+.history-message p { margin: 0; }
+.copy-error {
+  display: block;
+  margin-block-start: var(--cds-spacing-03, .5rem);
+  color: var(--cds-text-error);
+  @include type-style('label-01');
 }
 .project-list__item time {
   display: block;
@@ -186,18 +229,18 @@ body {
   white-space: nowrap;
 }
 
-@media (min-width: 42rem) {
+@include breakpoint(md) {
   .portal-page { padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-07, 2rem) var(--cds-spacing-10, 4rem); }
-  .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-  .projects { max-width: calc(75% - 1rem); }
+  .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cds-spacing-05, 1rem); }
+  .projects { max-width: calc(75% - var(--cds-spacing-05, 1rem)); }
 }
 
-@media (min-width: 66rem) {
-  .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; }
-  .projects { max-width: calc(50% - 1rem); }
+@include breakpoint(lg) {
+  .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--cds-spacing-07, 2rem); }
+  .projects { max-width: calc(50% - var(--cds-spacing-05, 1rem)); }
 }
 
-@media (max-width: 41.99rem) {
+@include breakpoint-down(md) {
   .projects,
   .form-history { margin-block-start: var(--cds-spacing-06, 1.5rem); }
 }
@@ -205,9 +248,9 @@ body {
 .toast-host {
   position: fixed;
   z-index: 9000;
-  inset-block-end: 1rem;
-  inset-inline-end: 1rem;
-  max-inline-size: min(24rem, calc(100vw - 2rem));
+  inset-block-end: var(--cds-spacing-05, 1rem);
+  inset-inline-end: var(--cds-spacing-05, 1rem);
+  max-inline-size: min(24rem, calc(100vw - (2 * var(--cds-spacing-05, 1rem))));
 }
 
 @media (prefers-reduced-motion: reduce) {

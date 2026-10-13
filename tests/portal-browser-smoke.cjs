@@ -29,8 +29,10 @@ async function installIsolatedEnvironment(page) {
       syawari_last_room_id: 'ROOM-B',
       'syawari_last_opened_at_ROOM-A': '2026-09-04T16:42:00.000Z',
       'syawari_last_opened_at_ROOM-B': '2026-09-04T08:19:00.000Z',
+      'syawari_last_opened_at_ROOM-C': '2026-09-05T08:19:00.000Z',
       'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
+      'sanpo-react:v1:ROOM-C:room': JSON.stringify({ roomName: 'React企画', lastUpdatedAt: 3000 }),
       'syawari_history_ROOM-A': JSON.stringify([{ time: 3000, data: { roomName: '春山企画', lastUpdatedAt: 1500 } }]),
       'sanpokai-form-builder-history-v1': JSON.stringify([
         { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
@@ -72,13 +74,14 @@ async function installIsolatedEnvironment(page) {
     Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
-      value: { writeText: async value => { window.__QA_COPIED__ = value; } },
+      value: { writeText: async value => { if (window.__QA_CLIPBOARD_FAIL__) throw new Error('clipboard denied'); window.__QA_COPIED__ = value; } },
     });
   });
 }
 
 async function selectTheme(page, currentLabel, id) {
-  await page.getByRole('button', { name: `テーマ設定：${currentLabel}` }).click();
+  const trigger = page.getByRole('button', { name: `テーマ設定：${currentLabel}` });
+  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
   await page.locator(`label[for="${id}"]`).click();
 }
 
@@ -99,7 +102,7 @@ async function waitForSurfaceTokens(page) {
 async function focusFirstTileWithKeyboard(page) {
   await page.evaluate(() => document.activeElement?.blur?.());
   let reached = false;
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; i < 32; i += 1) {
     await page.keyboard.press('Tab');
     reached = await page.evaluate(() => document.activeElement?.classList?.contains('tool-tile') === true);
     if (reached) break;
@@ -133,7 +136,7 @@ async function run(browser, name, viewport) {
 
   await installIsolatedEnvironment(page);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '山歩会企画ポータル', level: 1 }).waitFor({ timeout: 60000 });
   await page.getByRole('button', { name: 'テーマ設定：システム設定' }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
   await waitForSurfaceTokens(page);
@@ -155,7 +158,7 @@ async function run(browser, name, viewport) {
     toolLayouts: [...document.querySelectorAll('.tool-tile')].map(tile => {
       const pictogram = tile.querySelector('.tool-tile__pictogram').getBoundingClientRect();
       const content = tile.querySelector('.tool-tile__content').getBoundingClientRect();
-      const title = tile.querySelector('h2').getBoundingClientRect();
+      const title = tile.querySelector('h3').getBoundingClientRect();
       const description = tile.querySelector('p').getBoundingClientRect();
       const launch = tile.querySelector('.cds--tile--icon').getBoundingClientRect();
       return {
@@ -170,7 +173,7 @@ async function run(browser, name, viewport) {
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
-      label: node.querySelector('.cds--contained-list__label')?.textContent.trim() || '',
+      label: document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
       itemCount: node.querySelectorAll('.cds--contained-list-item').length,
     })),
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -180,9 +183,11 @@ async function run(browser, name, viewport) {
     toolGridClass: document.querySelector('.tool-grid')?.className || '',
     labels: [...document.querySelectorAll('.projects:not(.form-history) .project-title')].map(node => node.textContent.trim()),
     formHistoryLabels: [...document.querySelectorAll('.form-history .project-title')].map(node => node.textContent.trim()),
-    openIconCount: document.querySelectorAll('.projects .project-list__open-icon svg').length,
-    openIconsDecorative: [...document.querySelectorAll('.projects .project-list__open-icon svg')].every(node => node.getAttribute('aria-hidden') === 'true'),
-    nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.querySelector('a, button')),
+    sectionOrder: [...document.querySelectorAll('main > section')].map(node => node.querySelector('h2')?.textContent.trim()),
+    describedTiles: [...document.querySelectorAll('.tool-tile')].every(node => node.getAttribute('aria-describedby') && document.getElementById(node.getAttribute('aria-describedby'))?.textContent.trim()),
+    openIconCount: document.querySelectorAll('.projects:not(.form-history) .history-link__icon').length,
+    openIconsDecorative: [...document.querySelectorAll('.projects:not(.form-history) .history-link__icon')].every(node => node.getAttribute('aria-hidden') === 'true'),
+    nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.tagName === 'BUTTON' && node.querySelector('a, button')),
     formActionLinks: document.querySelectorAll('.form-history .cds--contained-list-item__action a').length,
     formOverflowMenus: document.querySelectorAll('.form-history .cds--overflow-menu').length,
     projectActionLinks: document.querySelectorAll('.projects:not(.form-history) .cds--contained-list-item__action a').length,
@@ -217,28 +222,37 @@ async function run(browser, name, viewport) {
   if (initial.containedLists.some(list => !list.className.includes('cds--contained-list--on-page') || !list.className.includes('cds--contained-list--xl'))) {
     throw new Error(`${name}: contained list variant or size regression: ${JSON.stringify(initial.containedLists)}`);
   }
-  if (initial.containedLists[0].label !== '作成したフォーム' || initial.containedLists[1].label !== '最近開いた企画') {
+  if (initial.containedLists[0].label !== '最近開いた企画' || initial.containedLists[1].label !== '作成したフォーム') {
     throw new Error(`${name}: contained list labels regression: ${JSON.stringify(initial.containedLists)}`);
   }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
   for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近開いた企画', '作成', '最終閲覧']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
-  if (initial.labels[0] !== '春山企画' || initial.labels[1] !== '夏山企画') throw new Error(`${name}: project history ordering regression`);
+  if (initial.labels[0] !== 'React企画' || initial.labels[1] !== '春山企画' || initial.labels[2] !== '夏山企画') throw new Error(`${name}: project history ordering or current React storage regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
+  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['最近開いた企画', '作成したフォーム', 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
+  if (!initial.describedTiles) throw new Error(`${name}: a tool tile does not reference its description`);
+  await page.evaluate(() => {
+    localStorage.setItem('sanpo-react:v1:LIVE-UPDATE:room', JSON.stringify({ roomName: '更新中に追加された企画', lastUpdatedAt: 1700000000000 }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpo-react:v1:LIVE-UPDATE:room' }));
+  });
+  await page.getByRole('link', { name: /更新中に追加された企画/ }).waitFor();
+  const updatedOrder = await page.locator('main > section h2').allTextContents();
+  if (JSON.stringify(updatedOrder) !== JSON.stringify(initial.sectionOrder)) throw new Error(`${name}: history update moved the focused section order`);
   if (initial.openIconCount !== 3 || !initial.openIconsDecorative) throw new Error(`${name}: Launch icon anatomy regression`);
-  if (initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
+  if (!initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
     throw new Error(`${name}: obsolete history copy or IDs remain`);
   }
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
   if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression`);
-  if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 3) throw new Error(`${name}: project history action geometry regression`);
-  if (initial.rowHeights.some(height => Math.abs(height - 64) > 1)) throw new Error(`${name}: contained list row height drifted from Carbon xl: ${JSON.stringify(initial.rowHeights)}`);
+  if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 0) throw new Error(`${name}: project history action geometry regression`);
+  if (initial.rowHeights.some(height => height < 64)) throw new Error(`${name}: contained list row is shorter than Carbon xl: ${JSON.stringify(initial.rowHeights)}`);
   if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
 
-  const rowFocus = await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().evaluate((button) => {
-    button.focus();
-    const focus = getComputedStyle(button, '::after');
+  const rowFocus = await page.locator('.projects:not(.form-history) .history-link').first().evaluate((link) => {
+    link.focus();
+    const focus = getComputedStyle(link);
     return { outlineStyle: focus.outlineStyle, outlineColor: focus.outlineColor, outlineWidth: focus.outlineWidth };
   });
   if (rowFocus.outlineStyle === 'none' || rowFocus.outlineWidth === '0px' || rowFocus.outlineColor === 'rgba(0, 0, 0, 0)') {
@@ -246,27 +260,33 @@ async function run(browser, name, viewport) {
   }
 
   const projectPopupPromise = page.waitForEvent('popup');
-  await page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable .cds--contained-list-item__content').first().focus();
+  await page.locator('.projects:not(.form-history) .history-link').first().focus();
   await page.keyboard.press('Enter');
   const projectPopup = await projectPopupPromise;
-  if (!projectPopup.url().includes('?room=ROOM-A')) throw new Error(`${name}: recent row navigation regression: ${projectPopup.url()}`);
+  if (!projectPopup.url().includes('?room=ROOM-C')) throw new Error(`${name}: recent row navigation regression: ${projectPopup.url()}`);
   await projectPopup.close();
 
-  const recentRow = page.locator('.projects:not(.form-history) .cds--contained-list-item--clickable').first();
-  const openIconBounds = await recentRow.locator('.project-list__open-icon').boundingBox();
+  const recentRow = page.locator('.projects:not(.form-history) .history-link').first();
+  const openIconBounds = await recentRow.locator('.history-link__icon').boundingBox();
   if (!openIconBounds) throw new Error(`${name}: Launch icon has no hit area`);
   const iconPopupPromise = page.waitForEvent('popup');
   await page.mouse.click(openIconBounds.x + openIconBounds.width / 2, openIconBounds.y + openIconBounds.height / 2);
   const iconPopup = await iconPopupPromise;
-  if (!iconPopup.url().includes('?room=ROOM-A')) throw new Error(`${name}: Launch icon did not activate the row: ${iconPopup.url()}`);
+  if (!iconPopup.url().includes('?room=ROOM-C')) throw new Error(`${name}: Launch icon did not activate the row: ${iconPopup.url()}`);
   await iconPopup.close();
 
-  const formPopupPromise = page.waitForEvent('popup');
-  await page.locator('.form-history .cds--contained-list-item--clickable .cds--contained-list-item__content').first().focus();
+  const responsePopupPromise = page.waitForEvent('popup');
+  await page.locator('.form-history .history-link').first().focus();
   await page.keyboard.press('Enter');
-  const formPopup = await formPopupPromise;
-  if (!formPopup.url().includes('?room=PROJECT-B')) throw new Error(`${name}: form project link regression: ${formPopup.url()}`);
-  await formPopup.close();
+  const responsePopup = await responsePopupPromise;
+  if (!responsePopup.url().includes('/forms/d/FORM-B/viewform')) throw new Error(`${name}: response link destination regression: ${responsePopup.url()}`);
+  await responsePopup.close();
+
+  const formProjectPopupPromise = page.waitForEvent('popup');
+  await page.locator('.form-history .history-project-link').first().click();
+  const formProjectPopup = await formProjectPopupPromise;
+  if (!formProjectPopup.url().includes('?room=PROJECT-B')) throw new Error(`${name}: explicit project link regression: ${formProjectPopup.url()}`);
+  await formProjectPopup.close();
 
   const formRow = page.locator('.form-history .cds--contained-list-item').first();
   await formRow.locator('.cds--overflow-menu').focus();
@@ -292,6 +312,16 @@ async function run(browser, name, viewport) {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/viewform') throw new Error(`${name}: response URL copy regression`);
+
+  await page.locator('.toast-host button').click();
+  await page.evaluate(() => { window.__QA_CLIPBOARD_FAIL__ = true; });
+  await formRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '応募フォームのリンクをコピー' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('alert').filter({ hasText: 'コピーできませんでした' }).waitFor();
+  if (await page.getByText('応募フォームのリンクをコピーしました').count()) throw new Error(`${name}: clipboard failure showed a success message`);
+  await page.evaluate(() => { window.__QA_CLIPBOARD_FAIL__ = false; });
 
   await formRow.locator('.cds--overflow-menu').focus();
   await page.keyboard.press('Enter');
@@ -378,7 +408,7 @@ async function run(browser, name, viewport) {
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
 
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '山歩会企画ポータル', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'dark') throw new Error(`${name}: theme lost on reload-equivalent render`);
@@ -402,8 +432,10 @@ async function run(browser, name, viewport) {
     env: { ...process.env, CHROMIUM_POLICY_DIR: process.env.CHROMIUM_POLICY_DIR || '/tmp/empty-chromium-policy' },
   });
   try {
-    await run(browser, 'mobile-390x844', { width: 390, height: 844 });
-    await run(browser, 'desktop-1280x900', { width: 1280, height: 900 });
+    for (const width of [320, 390, 640, 672, 1056, 1280]) {
+      const name = width === 640 ? 'zoom-200-effective-640' : `viewport-${width}`;
+      await run(browser, name, { width, height: 900 });
+    }
   } finally {
     await browser.close();
   }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   GlobalTheme,
   HeaderGlobalAction,
@@ -92,29 +92,46 @@ export function useThemePreference() {
 export function ThemeHeaderControl() {
   const { preference, resolvedTheme, setPreference } = useThemePreference();
   const [expanded, setExpanded] = useState(false);
+  const triggerRef = useRef(null);
+  const closePanel = () => {
+    setExpanded(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
   const currentLabel = preference === SYSTEM ? 'システム設定' : preference === LIGHT ? 'ライト' : 'ダーク';
 
   const selectPreference = (value) => {
     setPreference(value);
-    setExpanded(false);
   };
+
+  useEffect(() => {
+    if (!expanded) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePanel();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [expanded]);
 
   return (
     <>
       <HeaderGlobalBar>
         <HeaderGlobalAction
+          ref={triggerRef}
           aria-label={`テーマ設定：${currentLabel}`}
           aria-expanded={expanded}
+          aria-controls="theme-preference-panel"
           isActive={expanded}
           tooltipAlignment="end"
-          onClick={() => setExpanded((value) => !value)}
+          onClick={() => expanded ? closePanel() : setExpanded(true)}
         >
           <Settings size={20} />
         </HeaderGlobalAction>
       </HeaderGlobalBar>
-      <HeaderPanel aria-label="テーマ設定" expanded={expanded}>
+      <HeaderPanel id="theme-preference-panel" aria-label="テーマ設定" aria-hidden={!expanded} inert={!expanded} expanded={expanded}>
         <div className="theme-preference-panel__content">
-          <p className="theme-preference-panel__title">表示テーマ</p>
           <RadioButtonGroup
             legendText="表示テーマ"
             name="theme-preference"

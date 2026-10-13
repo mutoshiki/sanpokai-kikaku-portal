@@ -72,11 +72,11 @@ async function run(browser, preference, expectedTheme) {
   const page = await context.newPage();
   await installEnvironment(page, preference);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: 'ツール', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '山歩会企画ポータル', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
 
   const emptyLists = await page.evaluate(() => [...document.querySelectorAll('.cds--contained-list')].map(node => ({
-    label: node.querySelector('.cds--contained-list__label')?.textContent.trim() || '',
+    label: document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
     itemCount: node.querySelectorAll('.cds--contained-list-item').length,
     itemButtons: node.querySelectorAll('.cds--contained-list-item button').length,
   })));
@@ -86,6 +86,27 @@ async function run(browser, preference, expectedTheme) {
   if (emptyLists[0]?.label !== '作成したフォーム' || emptyLists[1]?.label !== '最近開いた企画') {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
+
+  const themeButton = page.getByRole('button', { name: /テーマ設定/ });
+  await themeButton.click();
+  if (await themeButton.getAttribute('aria-expanded') !== 'true') throw new Error(`${preference}: theme panel did not open`);
+  if (await themeButton.getAttribute('aria-controls') !== 'theme-preference-panel') throw new Error(`${preference}: theme trigger does not control the panel`);
+  await page.locator('#theme-system').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => document.getElementById('theme-light')?.checked);
+  if (await themeButton.getAttribute('aria-expanded') !== 'true') throw new Error(`${preference}: changing theme closed the panel`);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => document.getElementById('theme-dark')?.checked);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.querySelector('[aria-label^="テーマ設定"]')?.getAttribute('aria-expanded') === 'false');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('テーマ設定：'));
+  await page.keyboard.press('Tab');
+  if (!await page.evaluate(() => document.activeElement?.classList?.contains('tool-tile'))) {
+    throw new Error(`${preference}: Tab moved into the closed theme panel instead of to page content`);
+  }
+  await page.locator('#theme-preference-panel input').evaluateAll(nodes => {
+    if (nodes.some(node => node === document.activeElement)) throw new Error('closed panel retained focus');
+  });
 
   const toolLinks = await page.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
   if (!toolLinks.some(href => href && href.includes('/form-maker/'))) {
