@@ -142,7 +142,7 @@ async function waitForAnimations(page) {
     if (!embedded) await page.waitForTimeout(1500);
   }
   if (!embedded) throw new Error('embedded Apps Script form UI did not reach the g100 theme inside the Google wrapper');
-  if (embedded.bodyBackground !== 'rgb(22, 22, 22)' || embedded.headerBackground === 'rgb(255, 255, 255)') {
+  if (embedded.bodyBackground !== 'rgb(22, 22, 22)' || embedded.headerBackground !== 'rgb(22, 22, 22)') {
     throw new Error(`embedded form UI did not apply its dark surfaces: ${JSON.stringify(embedded)}`);
   }
   if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded form UI overflow: ${JSON.stringify(embedded)}`);
