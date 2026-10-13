@@ -33,21 +33,30 @@
     #form-maker-frame {
       display: block;
       width: 100%;
-      height: 100vh;
-      height: 100dvh;
+      height: calc(100vh - 3.5rem);
+      height: calc(100dvh - 3.5rem);
       border: 0;
       background: var(--host-bg);
       color-scheme: inherit;
     }
     .fallback {
-      position: fixed;
-      inset: auto 1rem max(1rem, env(safe-area-inset-bottom)) 1rem;
-      z-index: -1;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      min-height: 3.5rem;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
       margin: 0;
+      padding: .5rem 1rem max(.5rem, env(safe-area-inset-bottom));
       font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
       color: var(--host-text);
+      background: var(--host-bg);
+      border-top: 1px solid color-mix(in srgb, var(--host-text) 20%, transparent);
     }
     .fallback a { color: #0f62fe; }
+    .loading-message { margin: 0; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
@@ -57,23 +66,34 @@
     allow="clipboard-write; web-share"
     referrerpolicy="strict-origin-when-cross-origin"
   ></iframe>
-  <p class="fallback">表示できない場合は <a href="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec">フォームメーカーを直接開く</a></p>
+  <div class="fallback" id="form-maker-status" role="status" aria-live="polite">
+    <p class="loading-message" id="form-maker-message">フォームメーカーを準備しています。</p>
+    <a href="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec" target="_blank" rel="noopener noreferrer">フォームメーカーを直接開く</a>
+  </div>
 
-  <script>
+  <script type="module">
+    import { mergeFormHistories } from './history-utils.js';
+
     (() => {
       const KEY = 'sanpokai-theme-preference-v1';
       const VALID = new Set(['system', 'light', 'dark']);
       const HISTORY_KEY = 'sanpokai-form-builder-history-v1';
-      const HISTORY_LIMIT = 10;
       const HISTORY_CHILD_SOURCE = 'sanpokai-form-history-child';
       const HISTORY_HOST_SOURCE = 'sanpokai-form-history-host';
       const APP_URL = 'https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec';
       const frame = document.getElementById('form-maker-frame');
+      const status = document.getElementById('form-maker-status');
+      const messageNode = document.getElementById('form-maker-message');
       const meta = document.querySelector('meta[name="theme-color"]');
       const media = window.matchMedia('(prefers-color-scheme: dark)');
       const themeChannel = createChannel('theme');
       const historyChannel = createChannel('history');
       let preference = readPreference();
+      let historyReady = false;
+      const fallbackTimer = window.setTimeout(() => {
+        if (historyReady) return;
+        messageNode.textContent = '読み込みに時間がかかっています。';
+      }, 10000);
 
       function createChannel(prefix) {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -90,45 +110,45 @@
         }
       }
 
-      function normalizeHistory(items) {
-        if (!Array.isArray(items)) return [];
-        const seen = new Set();
-        const next = [];
-        for (const item of items) {
-          const formId = String(item?.formId || '').trim();
-          if (!formId || seen.has(formId)) continue;
-          seen.add(formId);
-          next.push({ ...item, formId });
-          if (next.length >= HISTORY_LIMIT) break;
-        }
-        return next;
-      }
-
       function readHistory() {
         try {
-          return normalizeHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'));
+          const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+          return Array.isArray(value) ? value : [];
         } catch {
           return [];
         }
       }
 
-      function mergeHistory(primary, secondary) {
-        return normalizeHistory([...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])]);
-      }
-
       function saveHistory(history) {
-        const normalized = normalizeHistory(history);
-        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(normalized)); } catch {}
-        return normalized;
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch {}
+        return history;
       }
 
-      function sendHistory(target, history) {
+      function sendHistory(target, history, targetOrigin) {
         target?.postMessage?.({
           source: HISTORY_HOST_SOURCE,
           channel: historyChannel,
           type: 'history-state',
           history,
-        }, '*');
+        }, targetOrigin);
+      }
+
+      function isTrustedAppMessage(event) {
+        try {
+          const hostname = new URL(event.origin).hostname;
+          const trustedOrigin = hostname === 'script.google.com'
+            || hostname === 'script.googleusercontent.com'
+            || hostname.endsWith('.script.googleusercontent.com');
+          if (!trustedOrigin) return false;
+          let source = event.source;
+          for (let depth = 0; source && depth < 8; depth += 1) {
+            if (source === frame.contentWindow) return true;
+            const parent = source.parent;
+            if (!parent || parent === source) return false;
+            source = parent;
+          }
+          return false;
+        } catch { return false; }
       }
 
       function resolveTheme(pref) {
@@ -172,6 +192,7 @@
       });
 
       window.addEventListener('message', (event) => {
+        if (!isTrustedAppMessage(event)) return;
         const message = event.data;
         if (message?.source === 'sanpokai-theme-child') {
           if (message.channel !== themeChannel) return;
@@ -184,11 +205,16 @@
 
         if (message?.source !== HISTORY_CHILD_SOURCE || message.channel !== historyChannel) return;
         if (message.type !== 'history-ready' && message.type !== 'history-update') return;
+        if (message.type === 'history-ready') {
+          historyReady = true;
+          window.clearTimeout(fallbackTimer);
+          status.hidden = true;
+        }
         const stored = readHistory();
         const merged = message.type === 'history-ready'
-          ? saveHistory(mergeHistory(stored, message.history))
-          : saveHistory(mergeHistory(message.history, stored));
-        sendHistory(event.source, merged);
+          ? saveHistory(mergeFormHistories(stored, message.history))
+          : saveHistory(mergeFormHistories(stored, message.history));
+        sendHistory(event.source, merged, event.origin);
       });
     })();
   </script>

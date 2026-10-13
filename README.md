@@ -19,13 +19,18 @@ UIは React 19 + 公式 `@carbon/react` をソースのownerとしています�
 
 Viteでビルドした `dist` をGitHub Pagesへ配信します。手書きのCarbon風コンポーネントへ戻さず、React/Carbon側でUIを管理します。
 
-## 企画一覧の仕組み
+## 履歴の仕組み
 
-GitHub Pages 上では、このサイトと `circle-kikaku-tools` はどちらも `https://mutoshiki.github.io` オリジンになります。
-そのため、このサイトは `circle-kikaku-tools` が保存している `sampokai_v10_split_<roomId>` などのローカル保存データを読み取り、企画名と最終閲覧日時を表示できます。`lastOpenedAt` がない既存データは、互換性のため最終更新日時を表示に使います。
+GitHub Pages 上では、このサイトと企画ツールはどちらも `https://mutoshiki.github.io` オリジンになります。同じブラウザの `localStorage` を読み、旧保存形式とReact版の `sanpo-react:v1:<encodedRoomId>:room` の両方から企画名・更新日時を表示します。
 
-`circle-kikaku-tools` は企画を開いた時刻を `syawari_last_opened_at_<roomId>` に保存し、ポータルは room ID を stable ID として履歴を重複表示しません。
+企画ツールは企画を開いた時刻を索引 `sanpokai_portal_project_history_v1` と互換キー `syawari_last_opened_at_<roomId>` に保存します。room IDで統合し、閲覧日時がない既存企画は更新日時を「最終更新」として表示します。企画とフォームの履歴状態は別々に読み取るため、片方の破損で他方を空表示にしません。
+
+履歴はブラウザ単位です。別端末や別ブラウザとの同期は行いません。空の履歴と読み取りエラーは別の状態として表示します。
+
+フォームメーカーの親ページは同じフォームIDの履歴を更新日時で統合し、作成日時の新しい10件を残します。関連アプリから開く場合も、この親ページを経由して履歴を共有します。
 
 ## ブラウザQA
 
 Quality Guardはビルド後の画面をChromiumで390×844と1280×900の両方で描画し、Carbon ClickableTile、ContainedList、4ツールのリンク、企画履歴の名称・並び順、履歴アクション、横overflow、console/page errorを検査します。管理ポリシーで通常URLナビゲーションが制限される環境でも同じ確認ができるよう、自己完結したビルドを `about:blank + page.setContent` で読み込む方式です。
+
+履歴ロジックは `npm run test:history`、画面とテーマ操作は `npm run test:browser`、ビルド成果物の同一オリジン2タブ連携は `node tests/portal-history-origin-smoke.cjs` で確認できます。

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Button,
   ClickableTile,
   ContainedList,
   ContainedListItem,
@@ -10,167 +11,47 @@ import {
   OverflowMenuItem,
   ToastNotification,
 } from '@carbon/react';
-import { Launch } from '@carbon/icons-react';
-import {
-  Group,
-  Hiking,
-  ListCheckbox,
-  University,
-} from '@carbon/pictograms-react';
+import { Launch, Renew } from '@carbon/icons-react';
+import { Group, Hiking, ListCheckbox, University } from '@carbon/pictograms-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
+import {
+  isRelevantPortalStorageKey,
+  normalizePortalDate,
+  readFormIndex,
+  readProjectIndex,
+} from './portalHistory.js';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
-const STORE_PREFIX = 'sampokai_v10_split_';
-const SYNC_BASE_PREFIX = `${STORE_PREFIX}sync_base_`;
-const SYNC_OUTBOX_PREFIX = `${STORE_PREFIX}sync_outbox_`;
-const HISTORY_PREFIX = 'syawari_history_';
-const OPENED_AT_PREFIX = 'syawari_last_opened_at_';
-const LAST_ROOM_KEY = 'syawari_last_room_id';
-const PROJECT_REGISTRY_KEY = 'sanpokai_portal_project_history_v1';
-const FORM_HISTORY_KEY = 'sanpokai-form-builder-history-v1';
 const FORM_HISTORY_LIMIT = 10;
 const RESPONSE_LINK_COPY_LABEL = '応募フォームのリンクをコピー';
 const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
 
 const TOOLS = [
-  {
-    title: '登山計画書メーカー',
-    description: '日付などの基本情報とYAMAPのスクリーンショットから、登山計画書を作成できます。',
-    href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/',
-    pictogram: Hiking,
-  },
-  {
-    title: '応募フォームメーカー',
-    description: '企画名や日付などを入力して、応募フォームを作成できます。回答はサークル企画ツールに自動で取り込まれます。',
-    href: FORM_MAKER_URL,
-    pictogram: ListCheckbox,
-  },
-  {
-    title: 'サークル企画ツール',
-    description: '参加者の車割・班割、交通費の精算を1つの企画で管理できます。参加者発表用の文面も作成できます。',
-    href: TOOL_URL,
-    pictogram: Group,
-  },
-  {
-    title: '学務提出書類作成ツール',
-    description: '企画者から受け取った引き継ぎデータから、学務提出書類を作成できます。',
-    href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases',
-    pictogram: University,
-  },
+  { title: '登山計画書メーカー', description: 'YAMAPの画像と基本情報から登山計画書を作成します。', href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/', pictogram: Hiking },
+  { title: '応募フォームメーカー', description: '参加者を募集するGoogleフォームを作成します。', href: FORM_MAKER_URL, pictogram: ListCheckbox },
+  { title: 'サークル企画ツール', description: '参加者の車割・班割と交通費の精算を管理します。', href: TOOL_URL, pictogram: Group },
+  { title: '学務提出書類作成ツール', description: '引き継ぎデータから書類を作成します。GitHubでアプリをダウンロードできます。', href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases', pictogram: University },
 ];
 
-function parse(value) {
+function loadPortalState() {
+  let projects;
+  let forms;
   try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === 'object' ? parsed : null;
+    projects = readProjectIndex(localStorage);
+    forms = readFormIndex(localStorage);
   } catch {
-    return null;
+    projects = { status: 'unavailable', projects: [], errors: ['企画履歴を読み取れません'] };
+    forms = { status: 'unavailable', forms: [], errors: ['フォーム履歴を読み取れません'] };
   }
-}
-
-function toTimestamp(value) {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim()) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return numeric;
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  if (value && typeof value === 'object') {
-    const seconds = Number(value.seconds ?? value._seconds);
-    if (Number.isFinite(seconds)) return seconds * 1000;
-  }
-  return 0;
-}
-
-function readProjects() {
-  const projects = new Map();
-  const merge = (roomId, data = {}) => {
-    const normalizedRoomId = String(roomId || '').trim();
-    if (!normalizedRoomId) return;
-    const current = projects.get(normalizedRoomId) || { roomId: normalizedRoomId, name: '', updatedAt: 0, lastOpenedAt: 0 };
-    const updatedAt = toTimestamp(data.lastUpdatedAt ?? data.updatedAt ?? data.meta?.updatedAt);
-    const lastOpenedAt = toTimestamp(data.lastOpenedAt ?? data.lastOpened);
-    const nextName = String(data.roomName ?? data.name ?? '').trim();
-    projects.set(normalizedRoomId, {
-      roomId: normalizedRoomId,
-      name: nextName || current.name || '',
-      updatedAt: Math.max(current.updatedAt || 0, updatedAt),
-      lastOpenedAt: Math.max(current.lastOpenedAt || 0, lastOpenedAt),
-    });
-  };
-
-  const registry = parse(localStorage.getItem(PROJECT_REGISTRY_KEY));
-  if (Array.isArray(registry?.projects)) registry.projects.forEach((project) => merge(project?.roomId, project || {}));
-
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (key.startsWith(OPENED_AT_PREFIX)) {
-      merge(key.slice(OPENED_AT_PREFIX.length), { lastOpenedAt: localStorage.getItem(key) });
-      continue;
-    }
-    if (key.startsWith(SYNC_BASE_PREFIX)) {
-      merge(key.slice(SYNC_BASE_PREFIX.length), parse(localStorage.getItem(key)) || {});
-      continue;
-    }
-    if (key.startsWith(STORE_PREFIX) && !key.startsWith(SYNC_OUTBOX_PREFIX)) {
-      merge(key.slice(STORE_PREFIX.length), parse(localStorage.getItem(key)) || {});
-      continue;
-    }
-    if (key.startsWith(HISTORY_PREFIX)) {
-      const roomId = key.slice(HISTORY_PREFIX.length);
-      const history = parse(localStorage.getItem(key));
-      if (Array.isArray(history) && history.length) {
-        const latest = history.reduce((best, item) => toTimestamp(item?.time) > toTimestamp(best?.time) ? item : best, history[0]);
-        merge(roomId, {
-          ...(latest?.data || {}),
-          lastUpdatedAt: toTimestamp(latest?.data?.lastUpdatedAt ?? latest?.data?.updatedAt ?? latest?.time),
-        });
-      } else {
-        merge(roomId, {});
-      }
-    }
-  }
-
-  const lastRoom = localStorage.getItem(LAST_ROOM_KEY) || '';
-  if (lastRoom && !projects.has(lastRoom)) merge(lastRoom, {});
-
-  const sorted = [...projects.values()].sort((a, b) => {
-    const aRecent = a.lastOpenedAt || a.updatedAt;
-    const bRecent = b.lastOpenedAt || b.updatedAt;
-    return bRecent - aRecent;
-  });
-
-  try {
-    localStorage.setItem(PROJECT_REGISTRY_KEY, JSON.stringify({ version: 1, projects: sorted, savedAt: Date.now() }));
-  } catch (error) {
-    console.warn('企画一覧の永続履歴を保存できませんでした。', error);
-  }
-  return { lastRoom, projects: sorted };
-}
-
-function readFormHistory() {
-  const history = parse(localStorage.getItem(FORM_HISTORY_KEY));
-  if (!Array.isArray(history)) return [];
-
-  const seen = new Set();
-  return history.filter((item) => {
-    const formId = String(item?.formId || '').trim();
-    if (!formId || seen.has(formId)) return false;
-    seen.add(formId);
-    return true;
-  }).slice(0, FORM_HISTORY_LIMIT);
+  return { projects, forms };
 }
 
 function safeExternalUrl(value) {
   try {
     const url = new URL(String(value || '').trim());
     return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
 function safeProjectToolUrl(value) {
@@ -179,10 +60,8 @@ function safeProjectToolUrl(value) {
   try {
     const expected = new URL(TOOL_URL);
     const candidate = new URL(url);
-    return candidate.origin === expected.origin && candidate.pathname === expected.pathname ? candidate.href : '';
-  } catch {
-    return '';
-  }
+    return candidate.origin === expected.origin && candidate.pathname === expected.pathname && candidate.searchParams.has('room') ? candidate.href : '';
+  } catch { return ''; }
 }
 
 function markProjectOpened(value) {
@@ -190,11 +69,7 @@ function markProjectOpened(value) {
   if (!url) return;
   const roomId = new URL(url).searchParams.get('room');
   if (!roomId) return;
-  try {
-    localStorage.setItem(`${OPENED_AT_PREFIX}${roomId}`, String(Date.now()));
-  } catch {
-    // Opening the project remains available when local storage is unavailable.
-  }
+  try { localStorage.setItem(`syawari_last_opened_at_${roomId}`, String(Date.now())); } catch { /* Navigation is still available. */ }
 }
 
 function openExternalUrl(value) {
@@ -205,32 +80,39 @@ function openExternalUrl(value) {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  }).format(date);
+  const timestamp = normalizePortalDate(value);
+  if (timestamp === null) return '—';
+  return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(timestamp);
+}
+
+function sectionStatus(status, emptyMessage) {
+  if (status === 'unavailable') return { heading: '履歴を読み込めませんでした', detail: '保存領域を確認して、もう一度読み込んでください。', empty: false };
+  if (status === 'partial') return { heading: emptyMessage, detail: '一部の履歴を読み取れませんでした。表示できる項目を残しています。', empty: false };
+  return { heading: emptyMessage, detail: '', empty: true };
 }
 
 function App() {
-  const [{ projects, formHistory }, setPortalState] = useState(() => {
-    try { return { ...readProjects(), formHistory: readFormHistory() }; } catch { return { lastRoom: '', projects: [], formHistory: [] }; }
-  });
+  const [portalState, setPortalState] = useState(loadPortalState);
   const [toast, setToast] = useState('');
+  const [copyErrors, setCopyErrors] = useState({});
   const toastTimer = useRef(null);
+  const initialHistoryOrder = useRef(null);
+  if (initialHistoryOrder.current === null) {
+    initialHistoryOrder.current = portalState.projects.projects.length || portalState.forms.forms.length
+      ? ['projects', 'forms', 'tools']
+      : ['tools', 'forms', 'projects'];
+  }
 
-  const refreshPortalState = useCallback(() => {
-    try { setPortalState({ ...readProjects(), formHistory: readFormHistory() }); } catch { setPortalState({ lastRoom: '', projects: [], formHistory: [] }); }
-  }, []);
+  const refreshPortalState = useCallback(() => setPortalState(loadPortalState()), []);
 
   useEffect(() => {
     navigator.storage?.persist?.().catch(() => false);
+    const onStorage = (event) => { if (event.key === null || isRelevantPortalStorageKey(event.key)) refreshPortalState(); };
     const onVisibility = () => { if (!document.hidden) refreshPortalState(); };
-    window.addEventListener('storage', refreshPortalState);
+    window.addEventListener('storage', onStorage);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      window.removeEventListener('storage', refreshPortalState);
+      window.removeEventListener('storage', onStorage);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [refreshPortalState]);
@@ -240,173 +122,135 @@ function App() {
   const showToast = useCallback((message) => {
     clearTimeout(toastTimer.current);
     setToast(message);
-    toastTimer.current = setTimeout(() => setToast(''), 3000);
+    toastTimer.current = setTimeout(() => setToast(''), 5000);
   }, []);
 
-  const copyLink = useCallback(async (url, message) => {
+  const copyLink = useCallback(async (url, message, errorId) => {
     if (!url) return;
     try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(url);
-      } else {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(url);
+      else {
         const textarea = document.createElement('textarea');
         textarea.value = url;
         textarea.setAttribute('readonly', '');
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
-        textarea.style.pointerEvents = 'none';
         document.body.appendChild(textarea);
         textarea.select();
         const copied = document.execCommand('copy');
         textarea.remove();
-        if (!copied) return;
+        if (!copied) throw new Error('Clipboard unavailable');
       }
+      setCopyErrors(errors => ({ ...errors, [errorId]: '' }));
       showToast(message);
     } catch {
-      // Clipboard failures do not create a second alert surface in the portal.
+      setCopyErrors(errors => ({ ...errors, [errorId]: 'コピーできませんでした。もう一度お試しください。' }));
     }
   }, [showToast]);
 
-  return (
-    <>
-      <a className="skip-link" href="#main">本文へ移動</a>
-      <Header aria-label="山歩会企画ツール一覧">
-        <HeaderName href="./" prefix="">山歩会企画ツール一覧</HeaderName>
-        <ThemeHeaderControl />
-      </Header>
+  const projectInfo = sectionStatus(portalState.projects.status, 'このブラウザで開いた企画はありません。');
+  const formInfo = sectionStatus(portalState.forms.status, 'このブラウザで作成したフォームはありません。');
 
-      <main id="main" className="portal-page">
-        <h1 className="portal-title">ツール</h1>
-
-        <Layer level={0} as="section" className="tool-grid" aria-label="利用するツール">
-          {TOOLS.map((tool) => {
-            const Pictogram = tool.pictogram;
-            return (
-              <ClickableTile
-                key={tool.title}
-                className="tool-tile"
-                href={tool.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                renderIcon={Launch}
-                aria-label={`${tool.title}を新しいタブで開く`}
-              >
-                <div className="tool-tile__pictogram" aria-hidden="true">
-                  <Pictogram width={48} height={48} aria-hidden="true" />
-                </div>
-                <div className="tool-tile__content">
-                  <h2>{tool.title}</h2>
-                  <p>{tool.description}</p>
-                </div>
-              </ClickableTile>
-            );
-          })}
-        </Layer>
-
-        <section className="projects form-history">
-          <ContainedList className="project-list form-history-list" kind="on-page" size="xl" label="作成したフォーム">
-            {formHistory.length ? formHistory.map((form) => {
-              const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
-              const responseUrl = safeExternalUrl(form.responseUrl);
-              const editUrl = safeExternalUrl(form.editUrl);
-              const projectUrl = safeProjectToolUrl(form.spreadsheetUrl) || safeProjectToolUrl(form.projectUrl);
-              const createdAt = String(form.createdAt || '').trim();
-              return (
-                <ContainedListItem
-                  key={form.formId}
-                  className={`project-list__row${projectUrl ? ' project-list__row--form-actions' : ''}`}
-                  onClick={projectUrl ? () => openExternalUrl(projectUrl) : undefined}
-                  action={projectUrl || responseUrl || editUrl ? (
-                    <div className="project-list__actions">
-                      {(responseUrl || editUrl) && (
-                        <OverflowMenu
-                          aria-label={`${label}のフォーム操作`}
-                          iconDescription={`${label}のフォーム操作`}
-                          flipped
-                          menuOptionsClass="project-list__form-menu"
-                          onClick={(event) => event?.stopPropagation?.()}
-                        >
-                          {responseUrl && (
-                            <OverflowMenuItem
-                              itemText={RESPONSE_LINK_COPY_LABEL}
-                              onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`)}
-                            />
-                          )}
-                          {editUrl && (
-                            <OverflowMenuItem
-                              itemText={EDIT_LINK_COPY_LABEL}
-                              onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`)}
-                            />
-                          )}
-                        </OverflowMenu>
-                      )}
-                      {projectUrl && (
-                        <span className="project-list__open-icon" aria-hidden="true">
-                          <Launch size={20} />
-                        </span>
-                      )}
-                    </div>
-                  ) : undefined}
-                >
-                  <div className="project-list__item">
-                    <span className="project-title">{label}</span>
-                    <time dateTime={createdAt || undefined}>作成 {formatDate(createdAt)}</time>
-                  </div>
-                </ContainedListItem>
-              );
-            }) : (
-              <ContainedListItem>このブラウザで作成したフォームはありません。</ContainedListItem>
-            )}
-          </ContainedList>
-        </section>
-
-        <section className="projects">
-          <ContainedList className="project-list" kind="on-page" size="xl" label="最近開いた企画">
-            {projects.length ? projects.map((project) => {
-              const label = project.name || '名称未設定の企画';
-              const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
-              const lastOpenedAt = project.lastOpenedAt || project.updatedAt;
-              return (
-                <ContainedListItem
-                  key={project.roomId}
-                  className="project-list__row"
-                  onClick={() => openExternalUrl(projectUrl)}
-                  action={(
-                    <div className="project-list__actions">
-                      <span className="project-list__open-icon" aria-hidden="true">
-                        <Launch size={20} />
-                      </span>
-                    </div>
-                  )}
-                >
-                  <div className="project-list__item">
-                    <span className="project-title">{label}</span>
-                    <time dateTime={lastOpenedAt ? new Date(lastOpenedAt).toISOString() : undefined}>
-                      最終閲覧 {formatDate(lastOpenedAt)}
-                    </time>
-                  </div>
-                </ContainedListItem>
-              );
-            }) : (
-              <ContainedListItem>このブラウザで開いた企画はありません。</ContainedListItem>
-            )}
-          </ContainedList>
-        </section>
-      </main>
-
-      {toast && (
-        <div className="toast-host">
-          <ToastNotification
-            kind="success"
-            title={toast}
-            timeout={0}
-            lowContrast
-            onCloseButtonClick={() => setToast('')}
-          />
-        </div>
-      )}
-    </>
+  const toolsSection = (
+    <section key="tools" className="tools-section" aria-labelledby="tools-heading">
+      <h2 id="tools-heading" className="section-heading">ツール</h2>
+      <Layer level={0} as="div" className="tool-grid" aria-label="利用するツール">
+        {TOOLS.map((tool, index) => {
+          const Pictogram = tool.pictogram;
+          const descriptionId = `tool-description-${index}`;
+          return (
+            <ClickableTile
+              key={tool.title}
+              className="tool-tile"
+              href={tool.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              renderIcon={Launch}
+              aria-label={`${tool.title}を新しいタブで開く`}
+              aria-describedby={descriptionId}
+            >
+              <div className="tool-tile__pictogram" aria-hidden="true"><Pictogram width={48} height={48} aria-hidden="true" /></div>
+              <div className="tool-tile__content">
+                <h3>{tool.title}</h3>
+                <p id={descriptionId}>{tool.description}</p>
+              </div>
+            </ClickableTile>
+          );
+        })}
+      </Layer>
+    </section>
   );
+
+  const formsSection = (
+    <section key="forms" className="history-section projects form-history" aria-labelledby="forms-heading">
+      <h2 id="forms-heading" className="section-heading">作成したフォーム</h2>
+      {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
+      {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
+      <ContainedList className="project-list form-history-list" kind="on-page" size="xl" aria-labelledby="forms-heading">
+        {portalState.forms.forms.length ? portalState.forms.forms.slice(0, FORM_HISTORY_LIMIT).map((form) => {
+          const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
+          const responseUrl = safeExternalUrl(form.responseUrl);
+          const editUrl = safeExternalUrl(form.editUrl);
+          const projectUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
+          const createdAt = normalizePortalDate(form.createdAt);
+          const errorId = `form-${form.formId}`;
+          return (
+            <ContainedListItem
+              key={form.formId}
+              className={`project-list__row${responseUrl || editUrl ? ' project-list__row--form-actions' : ''}`}
+              action={(responseUrl || editUrl) ? <div className="project-list__actions"><OverflowMenu aria-label={`${label}のフォーム操作`} iconDescription={`${label}のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
+                {responseUrl && <OverflowMenuItem itemText={RESPONSE_LINK_COPY_LABEL} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)} />}
+                {editUrl && <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />}
+              </OverflowMenu></div> : undefined}
+            >
+              <div className="project-list__item">
+                {responseUrl ? <a className="project-title history-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを新しいタブで開く`}>{label}</a> : <span className="project-title">{label}</span>}
+                <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>作成 {formatDate(createdAt)}</time>
+                {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を新しいタブで開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
+              </div>
+            </ContainedListItem>
+          );
+        }) : portalState.forms.status !== 'unavailable' ? <ContainedListItem>{formInfo.heading} 上の「応募フォームメーカー」からフォームを作成すると、ここに表示されます。</ContainedListItem> : <ContainedListItem>フォーム履歴を表示できません。</ContainedListItem>}
+      </ContainedList>
+    </section>
+  );
+
+  const projectsSection = (
+    <section key="projects" className="history-section projects" aria-labelledby="projects-heading">
+      <h2 id="projects-heading" className="section-heading">最近開いた企画</h2>
+      {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
+      {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
+      <ContainedList className="project-list" kind="on-page" size="xl" aria-labelledby="projects-heading">
+        {portalState.projects.projects.length ? portalState.projects.projects.map((project) => {
+          const label = project.name || '名称未設定の企画';
+          const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
+          const lastOpenedAt = normalizePortalDate(project.lastOpenedAt);
+          const updatedAt = normalizePortalDate(project.updatedAt);
+          const displayDate = lastOpenedAt ?? updatedAt;
+          const dateLabel = lastOpenedAt === null && updatedAt !== null ? '最終更新' : '最終閲覧';
+          return <ContainedListItem key={project.roomId} className="project-list__row">
+            <div className="project-list__item">
+              <a className="project-title history-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}をサークル企画ツールで新しいタブに開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>{label}<Launch className="history-link__icon" size={20} aria-hidden="true" /></a>
+              <time dateTime={displayDate === null ? undefined : new Date(displayDate).toISOString()}>{dateLabel} {formatDate(displayDate)}</time>
+            </div>
+          </ContainedListItem>;
+        }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading} 上の「サークル企画ツール」から企画を開くと、ここに表示されます。</ContainedListItem> : <ContainedListItem>企画履歴を表示できません。</ContainedListItem>}
+      </ContainedList>
+    </section>
+  );
+
+  const sections = { tools: toolsSection, forms: formsSection, projects: projectsSection };
+
+  return <>
+    <a className="skip-link" href="#main">本文へ移動</a>
+    <Header aria-label="山歩会企画ポータル"><HeaderName href="./" prefix="">山歩会企画ポータル</HeaderName><ThemeHeaderControl /></Header>
+    <main id="main" className="portal-page">
+      <h1 className="portal-title">山歩会企画ポータル</h1>
+      {initialHistoryOrder.current.map(name => sections[name])}
+    </main>
+    {toast && <div className="toast-host"><ToastNotification kind="success" title={toast} timeout={5000} lowContrast onCloseButtonClick={() => setToast('')} /></div>}
+  </>;
 }
 
 export default App;
