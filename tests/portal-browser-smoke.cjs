@@ -32,11 +32,17 @@ async function installIsolatedEnvironment(page) {
       'syawari_last_opened_at_ROOM-C': '2026-09-05T08:19:00.000Z',
       'sampokai_v10_split_ROOM-A': JSON.stringify({ roomName: '春山企画', lastUpdatedAt: 1000 }),
       'sampokai_v10_split_ROOM-B': JSON.stringify({ roomName: '夏山企画', lastUpdatedAt: 2000 }),
+      'sampokai_v10_split_ROOM-D': JSON.stringify({ roomName: '秋山企画', lastUpdatedAt: 1000 }),
+      'sampokai_v10_split_ROOM-E': JSON.stringify({ roomName: '冬山企画', lastUpdatedAt: 900 }),
+      'sampokai_v10_split_ROOM-F': JSON.stringify({ roomName: '春の企画', lastUpdatedAt: 800 }),
       'sanpo-react:v1:ROOM-C:room': JSON.stringify({ roomName: 'React企画', lastUpdatedAt: 3000 }),
       'syawari_history_ROOM-A': JSON.stringify([{ time: 3000, data: { roomName: '春山企画', lastUpdatedAt: 1500 } }]),
       'sanpokai-form-builder-history-v1': JSON.stringify([
         { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
+        { formId: 'FORM-C', planName: '紅葉応募フォーム', createdAt: '2026-07-31T10:00:00.000Z' },
+        { formId: 'FORM-D', planName: '雪山応募フォーム', createdAt: '2026-07-30T10:00:00.000Z' },
+        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: '2026-07-29T10:00:00.000Z' },
       ]),
     };
     Object.defineProperty(window, 'localStorage', {
@@ -183,6 +189,9 @@ async function run(browser, name, viewport) {
     toolGridClass: document.querySelector('.tool-grid')?.className || '',
     labels: [...document.querySelectorAll('.projects:not(.form-history) .project-title')].map(node => node.textContent.trim()),
     formHistoryLabels: [...document.querySelectorAll('.form-history .project-title')].map(node => node.textContent.trim()),
+    projectRowCount: document.querySelectorAll('.projects:not(.form-history) .cds--contained-list-item').length,
+    formRowCount: document.querySelectorAll('.form-history .cds--contained-list-item').length,
+    historyToggles: [...document.querySelectorAll('.history-toggle')].map(node => ({ name: node.getAttribute('aria-label'), expanded: node.getAttribute('aria-expanded'), controls: node.getAttribute('aria-controls') })),
     sectionOrder: [...document.querySelectorAll('main > section')].map(node => node.querySelector('h2')?.textContent.trim()),
     describedTiles: [...document.querySelectorAll('.tool-tile')].every(node => node.getAttribute('aria-describedby') && document.getElementById(node.getAttribute('aria-describedby'))?.textContent.trim()),
     openIconCount: document.querySelectorAll('.projects:not(.form-history) .history-link__icon').length,
@@ -231,15 +240,10 @@ async function run(browser, name, viewport) {
   }
   if (initial.labels[0] !== 'React企画' || initial.labels[1] !== '春山企画' || initial.labels[2] !== '夏山企画') throw new Error(`${name}: project history ordering or current React storage regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
-  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['最近開いた企画', '作成したフォーム', 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
+  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['最近開いた企画', 'ツール', '作成したフォーム'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
+  if (initial.projectRowCount !== 3 || initial.formRowCount !== 3 || initial.historyToggles.length !== 2) throw new Error(`${name}: history preview does not start at three rows: ${JSON.stringify(initial)}`);
+  if (initial.historyToggles.some(toggle => toggle.expanded !== 'false' || !toggle.controls)) throw new Error(`${name}: preview toggle semantics regression: ${JSON.stringify(initial.historyToggles)}`);
   if (!initial.describedTiles) throw new Error(`${name}: a tool tile does not reference its description`);
-  await page.evaluate(() => {
-    localStorage.setItem('sanpo-react:v1:LIVE-UPDATE:room', JSON.stringify({ roomName: '更新中に追加された企画', lastUpdatedAt: 1700000000000 }));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpo-react:v1:LIVE-UPDATE:room' }));
-  });
-  await page.getByRole('link', { name: /更新中に追加された企画/ }).waitFor();
-  const updatedOrder = await page.locator('main > section h2').allTextContents();
-  if (JSON.stringify(updatedOrder) !== JSON.stringify(initial.sectionOrder)) throw new Error(`${name}: history update moved the focused section order`);
   if (initial.openIconCount !== 3 || !initial.openIconsDecorative) throw new Error(`${name}: Launch icon anatomy regression`);
   if (!initial.text.includes('企画を開く') || initial.text.includes('企画ID:') || initial.text.includes('フォームID:') || /(?:^|\n)ID:/.test(initial.text)) {
     throw new Error(`${name}: obsolete history copy or IDs remain`);
@@ -250,12 +254,36 @@ async function run(browser, name, viewport) {
   if (initial.rowHeights.some(height => height < 64)) throw new Error(`${name}: contained list row is shorter than Carbon xl: ${JSON.stringify(initial.rowHeights)}`);
   if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
 
+  const projectToggle = page.getByRole('button', { name: '最近開いた企画をすべて見る' });
+  await projectToggle.focus();
+  await page.keyboard.press('Enter');
+  if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6) throw new Error(`${name}: project preview did not expand to all six records`);
+  if (await page.locator('#form-history-list .cds--contained-list-item').count() !== 3) throw new Error(`${name}: project expansion changed form history`);
+  if (await page.getByRole('button', { name: '最近開いた企画を折りたたむ' }).getAttribute('aria-expanded') !== 'true') throw new Error(`${name}: expanded project ARIA state missing`);
+  await page.keyboard.press('Space');
+  if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 3) throw new Error(`${name}: project history did not collapse to three records`);
+  if (await page.evaluate(() => !document.activeElement?.classList.contains('history-toggle'))) throw new Error(`${name}: collapsing history lost button focus`);
+  await page.getByRole('button', { name: '最近開いた企画をすべて見る' }).click();
+  await page.getByRole('button', { name: '作成したフォームをすべて見る' }).click();
+  if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: independent history expansion failed`);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 6 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: visibility refresh reset expanded history`);
+  await page.evaluate(() => {
+    localStorage.setItem('sanpo-react:v1:LIVE-UPDATE:room', JSON.stringify({ roomName: '更新中に追加された企画', lastUpdatedAt: 1700000000000 }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpo-react:v1:LIVE-UPDATE:room' }));
+  });
+  await page.getByRole('link', { name: /更新中に追加された企画/ }).waitFor();
+  const updatedOrder = await page.locator('main > section h2').allTextContents();
+  if (JSON.stringify(updatedOrder) !== JSON.stringify(initial.sectionOrder)) throw new Error(`${name}: history update moved the focused section order`);
+  if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 7 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 5) throw new Error(`${name}: storage refresh reset expanded history`);
+
   const rowFocus = await page.locator('.projects:not(.form-history) .history-link').first().evaluate((link) => {
     link.focus();
     const focus = getComputedStyle(link);
-    return { outlineStyle: focus.outlineStyle, outlineColor: focus.outlineColor, outlineWidth: focus.outlineWidth };
+    return { outlineStyle: focus.outlineStyle, outlineColor: focus.outlineColor, outlineWidth: focus.outlineWidth, boxShadow: focus.boxShadow };
   });
-  if (rowFocus.outlineStyle === 'none' || rowFocus.outlineWidth === '0px' || rowFocus.outlineColor === 'rgba(0, 0, 0, 0)') {
+  const rowFocusInvisible = rowFocus.outlineStyle === 'none' && (rowFocus.outlineWidth === '0px' || rowFocus.outlineColor === 'rgba(0, 0, 0, 0)') && (!rowFocus.boxShadow || rowFocus.boxShadow === 'none');
+  if (rowFocusInvisible) {
     throw new Error(`${name}: contained list row focus indicator is missing: ${JSON.stringify(rowFocus)}`);
   }
 
@@ -412,6 +440,32 @@ async function run(browser, name, viewport) {
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'dark') throw new Error(`${name}: theme lost on reload-equivalent render`);
+
+  async function setProjectCount(count) {
+    await page.evaluate(({ count, themeKey }) => {
+      localStorage.clear();
+      localStorage.setItem(themeKey, 'dark');
+      localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: Array.from({ length: count }, (_, index) => ({
+        roomId: `BOUNDARY-${index + 1}`,
+        name: `境界確認企画${index + 1}`,
+        updatedAt: 1000 + index,
+      })) }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+    }, { count, themeKey: THEME_KEY });
+    await page.waitForFunction(expected => document.querySelectorAll('#project-history-list .history-link').length === Math.min(expected, 3), count);
+  }
+  for (const count of [0, 1, 3]) {
+    await setProjectCount(count);
+    if (await page.locator('.projects:not(.form-history) .history-toggle').count() !== 0) throw new Error(`${name}: history boundary ${count} incorrectly showed a toggle`);
+  }
+  await setProjectCount(4);
+  if (await page.locator('.projects:not(.form-history) .history-toggle').count() !== 1) throw new Error(`${name}: four-item history did not show a toggle`);
+  await page.getByRole('button', { name: '最近開いた企画をすべて見る' }).click();
+  const collapseButton = page.getByRole('button', { name: '最近開いた企画を折りたたむ' });
+  await collapseButton.focus();
+  await setProjectCount(2);
+  await page.waitForFunction(() => document.activeElement?.id === 'projects-heading');
+  if (await page.locator('.projects:not(.form-history) .history-toggle').count() !== 0) throw new Error(`${name}: updated short history retained a toggle`);
 
   const focus = await focusFirstTileWithKeyboard(page);
   const focusInvisible = focus.outlineStyle === 'none' || focus.outlineWidth === '0px' || focus.outlineColor === 'rgba(0, 0, 0, 0)' || focus.outlineColor === 'transparent';

@@ -83,9 +83,14 @@ async function run(browser, preference, expectedTheme) {
   if (emptyLists.length !== 2 || emptyLists.some(list => list.itemCount !== 1 || list.itemButtons !== 0)) {
     throw new Error(`${preference}: empty contained list state is not non-interactive: ${JSON.stringify(emptyLists)}`);
   }
-  if (emptyLists[0]?.label !== '作成したフォーム' || emptyLists[1]?.label !== '最近開いた企画') {
+  if (emptyLists[0]?.label !== '最近開いた企画' || emptyLists[1]?.label !== '作成したフォーム') {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
+  const sectionOrder = await page.locator('main > section h2').allTextContents();
+  if (JSON.stringify(sectionOrder) !== JSON.stringify(['最近開いた企画', 'ツール', '作成したフォーム'])) {
+    throw new Error(`${preference}: empty portal section order regression: ${JSON.stringify(sectionOrder)}`);
+  }
+  if (await page.locator('.history-toggle').count() !== 0) throw new Error(`${preference}: empty history showed an expansion control`);
 
   const themeButton = page.getByRole('button', { name: /テーマ設定/ });
   await themeButton.click();

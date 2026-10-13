@@ -15,6 +15,7 @@ import { Launch, Renew } from '@carbon/icons-react';
 import { Group, Hiking, ListCheckbox, University } from '@carbon/pictograms-react';
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
 import {
+  getProjectDisplayDate,
   isRelevantPortalStorageKey,
   normalizePortalDate,
   readFormIndex,
@@ -23,7 +24,7 @@ import {
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
-const FORM_HISTORY_LIMIT = 10;
+const HISTORY_PREVIEW_LIMIT = 3;
 const RESPONSE_LINK_COPY_LABEL = '応募フォームのリンクをコピー';
 const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
 
@@ -95,13 +96,11 @@ function App() {
   const [portalState, setPortalState] = useState(loadPortalState);
   const [toast, setToast] = useState('');
   const [copyErrors, setCopyErrors] = useState({});
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const [showAllForms, setShowAllForms] = useState(false);
   const toastTimer = useRef(null);
-  const initialHistoryOrder = useRef(null);
-  if (initialHistoryOrder.current === null) {
-    initialHistoryOrder.current = portalState.projects.projects.length || portalState.forms.forms.length
-      ? ['projects', 'forms', 'tools']
-      : ['tools', 'forms', 'projects'];
-  }
+  const projectHeadingRef = useRef(null);
+  const formHeadingRef = useRef(null);
 
   const refreshPortalState = useCallback(() => setPortalState(loadPortalState()), []);
 
@@ -118,6 +117,20 @@ function App() {
   }, [refreshPortalState]);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    if (showAllProjects && portalState.projects.projects.length <= HISTORY_PREVIEW_LIMIT) {
+      projectHeadingRef.current?.focus();
+      setShowAllProjects(false);
+    }
+  }, [portalState.projects.projects.length, showAllProjects]);
+
+  useEffect(() => {
+    if (showAllForms && portalState.forms.forms.length <= HISTORY_PREVIEW_LIMIT) {
+      formHeadingRef.current?.focus();
+      setShowAllForms(false);
+    }
+  }, [portalState.forms.forms.length, showAllForms]);
 
   const showToast = useCallback((message) => {
     clearTimeout(toastTimer.current);
@@ -183,11 +196,11 @@ function App() {
 
   const formsSection = (
     <section key="forms" className="history-section projects form-history" aria-labelledby="forms-heading">
-      <h2 id="forms-heading" className="section-heading">作成したフォーム</h2>
+      <h2 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h2>
       {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
       {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
-      <ContainedList className="project-list form-history-list" kind="on-page" size="xl" aria-labelledby="forms-heading">
-        {portalState.forms.forms.length ? portalState.forms.forms.slice(0, FORM_HISTORY_LIMIT).map((form) => {
+      <ContainedList id="form-history-list" className="project-list form-history-list" kind="on-page" size="xl" aria-labelledby="forms-heading">
+        {portalState.forms.forms.length ? portalState.forms.forms.slice(0, showAllForms ? undefined : HISTORY_PREVIEW_LIMIT).map((form) => {
           const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
           const responseUrl = safeExternalUrl(form.responseUrl);
           const editUrl = safeExternalUrl(form.editUrl);
@@ -205,7 +218,7 @@ function App() {
             >
               <div className="project-list__item">
                 {responseUrl ? <a className="project-title history-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを新しいタブで開く`}>{label}</a> : <span className="project-title">{label}</span>}
-                <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>作成 {formatDate(createdAt)}</time>
+                <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成 ${formatDate(createdAt)}`}</time>
                 {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を新しいタブで開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
               </div>
@@ -213,30 +226,45 @@ function App() {
           );
         }) : portalState.forms.status !== 'unavailable' ? <ContainedListItem>{formInfo.heading} 上の「応募フォームメーカー」からフォームを作成すると、ここに表示されます。</ContainedListItem> : <ContainedListItem>フォーム履歴を表示できません。</ContainedListItem>}
       </ContainedList>
+      {portalState.forms.forms.length > HISTORY_PREVIEW_LIMIT && <Button
+        className="history-toggle"
+        kind="ghost"
+        size="sm"
+        aria-label={showAllForms ? '作成したフォームを折りたたむ' : '作成したフォームをすべて見る'}
+        aria-expanded={showAllForms}
+        aria-controls="form-history-list"
+        onClick={() => setShowAllForms(value => !value)}
+      >{showAllForms ? '表示を減らす' : 'すべて見る'}</Button>}
     </section>
   );
 
   const projectsSection = (
     <section key="projects" className="history-section projects" aria-labelledby="projects-heading">
-      <h2 id="projects-heading" className="section-heading">最近開いた企画</h2>
+      <h2 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近開いた企画</h2>
       {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
       {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
-      <ContainedList className="project-list" kind="on-page" size="xl" aria-labelledby="projects-heading">
-        {portalState.projects.projects.length ? portalState.projects.projects.map((project) => {
+      <ContainedList id="project-history-list" className="project-list" kind="on-page" size="xl" aria-labelledby="projects-heading">
+        {portalState.projects.projects.length ? portalState.projects.projects.slice(0, showAllProjects ? undefined : HISTORY_PREVIEW_LIMIT).map((project) => {
           const label = project.name || '名称未設定の企画';
           const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
-          const lastOpenedAt = normalizePortalDate(project.lastOpenedAt);
-          const updatedAt = normalizePortalDate(project.updatedAt);
-          const displayDate = lastOpenedAt ?? updatedAt;
-          const dateLabel = lastOpenedAt === null && updatedAt !== null ? '最終更新' : '最終閲覧';
+          const { timestamp: displayDate, label: dateLabel } = getProjectDisplayDate(project);
           return <ContainedListItem key={project.roomId} className="project-list__row">
             <div className="project-list__item">
               <a className="project-title history-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}をサークル企画ツールで新しいタブに開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>{label}<Launch className="history-link__icon" size={20} aria-hidden="true" /></a>
-              <time dateTime={displayDate === null ? undefined : new Date(displayDate).toISOString()}>{dateLabel} {formatDate(displayDate)}</time>
+              <time dateTime={displayDate === null ? undefined : new Date(displayDate).toISOString()}>{displayDate === null ? dateLabel : `${dateLabel} ${formatDate(displayDate)}`}</time>
             </div>
           </ContainedListItem>;
         }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading} 上の「サークル企画ツール」から企画を開くと、ここに表示されます。</ContainedListItem> : <ContainedListItem>企画履歴を表示できません。</ContainedListItem>}
       </ContainedList>
+      {portalState.projects.projects.length > HISTORY_PREVIEW_LIMIT && <Button
+        className="history-toggle"
+        kind="ghost"
+        size="sm"
+        aria-label={showAllProjects ? '最近開いた企画を折りたたむ' : '最近開いた企画をすべて見る'}
+        aria-expanded={showAllProjects}
+        aria-controls="project-history-list"
+        onClick={() => setShowAllProjects(value => !value)}
+      >{showAllProjects ? '表示を減らす' : 'すべて見る'}</Button>}
     </section>
   );
 
@@ -247,7 +275,9 @@ function App() {
     <Header aria-label="山歩会企画ポータル"><HeaderName href="./" prefix="">山歩会企画ポータル</HeaderName><ThemeHeaderControl /></Header>
     <main id="main" className="portal-page">
       <h1 className="portal-title">山歩会企画ポータル</h1>
-      {initialHistoryOrder.current.map(name => sections[name])}
+      {sections.projects}
+      {sections.tools}
+      {sections.forms}
     </main>
     {toast && <div className="toast-host"><ToastNotification kind="success" title={toast} timeout={5000} lowContrast onCloseButtonClick={() => setToast('')} /></div>}
   </>;
