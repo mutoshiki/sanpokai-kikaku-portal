@@ -27,14 +27,16 @@
       color: var(--host-text);
     }
     body {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
       overflow: hidden;
       overscroll-behavior: none;
     }
     #form-maker-frame {
       display: block;
       width: 100%;
-      height: calc(100vh - 3.5rem);
-      height: calc(100dvh - 3.5rem);
+      height: 100%;
+      min-height: 0;
       border: 0;
       background: var(--host-bg);
       color-scheme: inherit;
