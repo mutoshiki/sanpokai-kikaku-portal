@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - run: npm install --package-lock-only
       - run: npm ci
+      - name: Run history unit tests
+        run: npm run test:history
       - run: npm run build
       - name: Verify Pages deployment contract
         run: node tests/deployment-contract.cjs
