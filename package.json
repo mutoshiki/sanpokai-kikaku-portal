@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:browser": "node tests/portal-browser-smoke.cjs && node tests/portal-focus-smoke.cjs",
-    "test:history": "node --test tests/portal-history.test.mjs tests/form-history.test.mjs"
+    "test:history": "node --test tests/portal-history.test.mjs tests/form-history.test.mjs tests/message-origin.test.mjs && node tests/apps-script-client-smoke.cjs"
   },
   "dependencies": {
     "@carbon/icons-react": "^11.68.0",

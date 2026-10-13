@@ -122,9 +122,9 @@ async function waitForAnimations(page) {
         const text = await frame.locator('body').innerText({ timeout: 1500 });
         if (!text.includes('編集者メールアドレス') || !text.includes('Googleフォームを作成')) continue;
         embedded = await frame.evaluate(() => ({
-          theme: document.documentElement.dataset.carbonTheme || '',
+          theme: document.documentElement.dataset.theme || '',
           bodyBackground: getComputedStyle(document.body).backgroundColor,
-          headerBackground: document.querySelector('.cds--header') ? getComputedStyle(document.querySelector('.cds--header')).backgroundColor : '',
+          headerBackground: document.querySelector('.shell-header') ? getComputedStyle(document.querySelector('.shell-header')).backgroundColor : '',
           preference: localStorage.getItem('sanpokai-theme-preference-v1'),
           viewportWidth: document.documentElement.clientWidth,
           documentWidth: document.documentElement.scrollWidth,
@@ -135,11 +135,11 @@ async function waitForAnimations(page) {
     }
     if (!embedded) await page.waitForTimeout(1500);
   }
-  if (!embedded) throw new Error('embedded Apps Script React UI did not reach Carbon g100 inside the Google wrapper');
-  if ([embedded.bodyBackground, embedded.headerBackground].includes('rgb(255, 255, 255)')) {
-    throw new Error(`embedded React UI leaked white surfaces in dark mode: ${JSON.stringify(embedded)}`);
+  if (!embedded) throw new Error('embedded Apps Script form UI did not reach the g100 theme inside the Google wrapper');
+  if (embedded.bodyBackground !== 'rgb(22, 22, 22)' || embedded.headerBackground === 'rgb(255, 255, 255)') {
+    throw new Error(`embedded form UI did not apply its dark surfaces: ${JSON.stringify(embedded)}`);
   }
-  if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded React UI overflow: ${JSON.stringify(embedded)}`);
+  if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded form UI overflow: ${JSON.stringify(embedded)}`);
   await page.screenshot({ path: `${OUT}/form-maker-host-dark.png`, fullPage: true });
 
   if (pageErrors.length) throw new Error(`production page errors: ${pageErrors.join(' | ')}`);
