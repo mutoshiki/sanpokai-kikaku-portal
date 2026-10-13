@@ -89,6 +89,14 @@ async function main() {
     await formPage.goto(`${origin}${BASE}form-maker/`);
     const directLink = formPage.getByRole('link', { name: 'フォームメーカーを直接開く' });
     await directLink.waitFor();
+    const loadingLayout = await formPage.evaluate(() => ({
+      viewportHeight: window.innerHeight,
+      frameHeight: document.getElementById('form-maker-frame').getBoundingClientRect().height,
+      statusHeight: document.getElementById('form-maker-status').getBoundingClientRect().height,
+    }));
+    if (Math.abs(loadingLayout.frameHeight + loadingLayout.statusHeight - loadingLayout.viewportHeight) > 2) {
+      throw new Error(`Recovery status does not fit beside the iframe: ${JSON.stringify(loadingLayout)}`);
+    }
     await directLink.evaluate(node => {
       const style = getComputedStyle(node);
       if (style.visibility === 'hidden' || style.display === 'none') throw new Error('Recovery link is hidden before iframe readiness');
@@ -98,6 +106,13 @@ async function main() {
       window.postMessage({ source: 'sanpokai-form-history-child', channel, type: 'history-ready', history: [{ formId: 'SPOOF', createdAt: '2027-01-02' }] }, '*');
     });
     await formPage.waitForFunction(() => document.getElementById('form-maker-status')?.hidden === true);
+    const readyLayout = await formPage.evaluate(() => ({
+      viewportHeight: window.innerHeight,
+      frameHeight: document.getElementById('form-maker-frame').getBoundingClientRect().height,
+    }));
+    if (Math.abs(readyLayout.frameHeight - readyLayout.viewportHeight) > 2) {
+      throw new Error(`Iframe did not reclaim the hidden recovery area: ${JSON.stringify(readyLayout)}`);
+    }
     const merged = await producer.evaluate(key => JSON.parse(localStorage.getItem(key)), FORM_KEY);
     if (merged.length !== 10 || merged[0]?.formId !== 'NEW-FORM' || merged.some(form => form.formId === 'OLD-0' || form.formId === 'SPOOF')) throw new Error(`Form merge or message-origin validation failed: ${JSON.stringify(merged.map(form => form.formId))}`);
 

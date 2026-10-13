@@ -95,15 +95,22 @@ async function waitForAnimations(page) {
       background: getComputedStyle(document.body).backgroundColor,
       themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '',
       viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: window.innerHeight,
       documentWidth: document.documentElement.scrollWidth,
+      documentHeight: document.documentElement.scrollHeight,
       frameWidth: rect?.width || 0,
       frameHeight: rect?.height || 0,
+      statusHidden: document.getElementById('form-maker-status')?.hidden ?? true,
+      statusHeight: document.getElementById('form-maker-status')?.getBoundingClientRect().height || 0,
       frameSrc: frame?.src || '',
     };
   });
   if (host.theme !== 'g100' || host.preference !== 'dark') throw new Error(`embedded host theme did not persist: ${JSON.stringify(host)}`);
   if (host.background === 'rgb(255, 255, 255)' || host.themeColor.toLowerCase() !== '#161616') throw new Error(`embedded host retained white chrome: ${JSON.stringify(host)}`);
-  if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || host.frameHeight < 800) throw new Error(`embedded host layout regression: ${JSON.stringify(host)}`);
+  const occupiedHostHeight = host.frameHeight + (host.statusHidden ? 0 : host.statusHeight);
+  if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || Math.abs(occupiedHostHeight - host.viewportHeight) > 2 || host.documentHeight > host.viewportHeight + 2) {
+    throw new Error(`embedded host layout regression: ${JSON.stringify({ ...host, occupiedHostHeight })}`);
+  }
   if (!/[?&]theme=dark(?:&|$)/.test(host.frameSrc) || !/[?&]themeChannel=[^&]+/.test(host.frameSrc)) {
     throw new Error(`embedded host did not pass theme/channel through iframe URL: ${host.frameSrc}`);
   }
