@@ -122,14 +122,20 @@ async function waitForAnimations(page) {
         const text = await frame.locator('body').innerText({ timeout: 1500 });
         if (!text.includes('編集者メールアドレス') || !text.includes('Googleフォームを作成')) continue;
         embedded = await frame.evaluate(() => ({
-          theme: document.documentElement.dataset.theme || '',
+          theme: document.documentElement.dataset.carbonTheme || '',
+          darkSelected: document.querySelector('#theme-dark')?.checked === true,
+          resolvedThemeLabel: document.body.innerText.includes('現在の表示：ダーク'),
           bodyBackground: getComputedStyle(document.body).backgroundColor,
-          headerBackground: document.querySelector('.shell-header') ? getComputedStyle(document.querySelector('.shell-header')).backgroundColor : '',
-          preference: localStorage.getItem('sanpokai-theme-preference-v1'),
+          headerBackground: document.querySelector('header, [role="banner"]')
+            ? getComputedStyle(document.querySelector('header, [role="banner"]')).backgroundColor
+            : '',
           viewportWidth: document.documentElement.clientWidth,
           documentWidth: document.documentElement.scrollWidth,
         }));
-        if (embedded.theme !== 'g100') embedded = null;
+        if (embedded.theme !== 'g100'
+          || !embedded.darkSelected
+          || !embedded.resolvedThemeLabel
+          || embedded.bodyBackground !== 'rgb(22, 22, 22)') embedded = null;
         if (embedded) break;
       } catch {}
     }
