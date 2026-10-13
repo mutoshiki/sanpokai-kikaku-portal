@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
+import * as portalHistory from '../src/portalHistory.js';
+
+const {
+  FORM_HISTORY_KEY,
+  PROJECT_REGISTRY_KEY,
   isRelevantPortalStorageKey,
   normalizePortalDate,
   persistProjectIndex,
   readFormIndex,
   readProjectIndex,
-} from '../src/portalHistory.js';
+} = portalHistory;
 
 function storage(values = {}) {
   const data = new Map(Object.entries(values));
@@ -77,4 +81,66 @@ test('storage filtering includes producer keys and ignores unrelated keys', () =
   assert.equal(isRelevantPortalStorageKey('sanpokai-form-builder-history-v1'), true);
   assert.equal(isRelevantPortalStorageKey('sanpokai_portal_project_history_v1'), true);
   assert.equal(isRelevantPortalStorageKey('random-key'), false);
+});
+
+test('keeps missing lastOpenedAt null and displays updatedAt', () => {
+  const store = storage({
+    [PROJECT_REGISTRY_KEY]: JSON.stringify({ projects: [
+      { roomId: 'UPDATED', name: '更新だけ', updatedAt: 2000 },
+      { roomId: 'MISSING', name: '日時なし' },
+    ] }),
+  });
+  const result = readProjectIndex(store);
+  const updated = result.projects.find(project => project.roomId === 'UPDATED');
+  const missing = result.projects.find(project => project.roomId === 'MISSING');
+  assert.equal(updated.lastOpenedAt, null);
+  assert.equal(updated.updatedAt, 2000);
+  assert.deepEqual(portalHistory.getProjectDisplayDate(updated), { timestamp: 2000, label: '最終更新' });
+  assert.deepEqual(portalHistory.getProjectDisplayDate(missing), { timestamp: null, label: '日時不明' });
+});
+
+test('normalizes absent and non-positive portal timestamps', () => {
+  for (const value of [null, undefined, '', '   ', 'bad date', 0, '0', -1, '-1', NaN, Infinity, 8.64e15 + 1, {}, { seconds: '' }, { seconds: 0 }, { _seconds: 0 }]) {
+    assert.equal(normalizePortalDate(value), null, `expected ${String(value)} to be absent`);
+  }
+  assert.equal(normalizePortalDate(1), 1);
+  assert.equal(normalizePortalDate('2000'), 2000);
+  assert.equal(normalizePortalDate('1970-01-01T00:00:00.001Z'), 1);
+  assert.equal(normalizePortalDate({ seconds: 2 }), 2000);
+  assert.equal(normalizePortalDate({ _seconds: 3 }), 3000);
+});
+
+test('keeps same-name projects separate and orders undated projects last', () => {
+  const store = storage({
+    [PROJECT_REGISTRY_KEY]: JSON.stringify({ projects: [
+      { roomId: 'TIED-B', name: '同じ名前', lastOpenedAt: 20 },
+      { roomId: 'UNDATED-B', name: '日時なし' },
+      { roomId: 'TIED-A', name: '同じ名前', lastOpenedAt: 20 },
+      { roomId: 'UNDATED-A', name: '別の企画' },
+      { roomId: 'OLDER', name: '古い企画', updatedAt: 10 },
+    ] }),
+  });
+  const result = readProjectIndex(store);
+  assert.deepEqual(result.projects.map(project => project.roomId), ['TIED-A', 'TIED-B', 'OLDER', 'UNDATED-A', 'UNDATED-B']);
+  assert.equal(result.projects.filter(project => project.name === '同じ名前').length, 2);
+});
+
+test('sorts form history by creation time without rewriting storage', () => {
+  const store = storage({
+    [FORM_HISTORY_KEY]: JSON.stringify([
+      { formId: 'OLD', createdAt: 100 },
+      { formId: 'TIED-B', createdAt: 200, responseUrl: 'https://example.test/b' },
+      { formId: 'UNDATED-B', title: '欠損' },
+      { formId: 'TIED-A', createdAt: '200' },
+      { formId: 'INVALID', createdAt: 'not-a-date' },
+      { formId: 'UNDATED-A', createdAt: 0 },
+      null,
+    ]),
+  });
+  const result = readFormIndex(store);
+  assert.equal(result.status, 'partial');
+  assert.deepEqual(result.forms.map(form => form.formId), ['TIED-A', 'TIED-B', 'OLD', 'INVALID', 'UNDATED-A', 'UNDATED-B']);
+  assert.deepEqual(result.forms.map(form => form.createdAt), [200, 200, 100, null, null, null]);
+  assert.equal(result.forms[1].responseUrl, 'https://example.test/b');
+  assert.equal(store.writes, 0);
 });

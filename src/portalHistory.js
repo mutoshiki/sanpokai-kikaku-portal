@@ -21,10 +21,13 @@ export function normalizePortalDate(value) {
     const numeric = Number(value);
     timestamp = Number.isFinite(numeric) ? numeric : Date.parse(value);
   } else if (value && typeof value === 'object') {
-    const seconds = Number(value.seconds ?? value._seconds);
-    if (Number.isFinite(seconds)) timestamp = seconds * 1000;
+    const rawSeconds = value.seconds ?? value._seconds;
+    if (rawSeconds !== undefined && rawSeconds !== null && rawSeconds !== '') {
+      const seconds = Number(rawSeconds);
+      if (Number.isFinite(seconds)) timestamp = seconds * 1000;
+    }
   }
-  return Number.isFinite(timestamp) && Math.abs(timestamp) <= MAX_DATE ? timestamp : null;
+  return Number.isFinite(timestamp) && timestamp > 0 && timestamp <= MAX_DATE ? timestamp : null;
 }
 
 function sourceRecord(data, source, order) {
@@ -115,12 +118,29 @@ export function readProjectIndex(storage) {
       || ({ react: 3, legacy: 2, registry: 1, opened: 0 }[b.source] - { react: 3, legacy: 2, registry: 1, opened: 0 }[a.source])
       || b.order - a.order,
     )[0];
-    const maxDate = key => records.reduce((best, record) => Math.max(best, record[key] ?? 0), 0) || 0;
+    const maxDate = key => {
+      const values = records.map(record => record[key]).filter(value => value !== null);
+      return values.length ? Math.max(...values) : null;
+    };
     return { roomId, name: named?.name || '', updatedAt: maxDate('updatedAt'), lastOpenedAt: maxDate('lastOpenedAt') };
-  }).sort((a, b) => (b.lastOpenedAt || b.updatedAt) - (a.lastOpenedAt || a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }).sort((a, b) => {
+    const aDate = a.lastOpenedAt ?? a.updatedAt;
+    const bDate = b.lastOpenedAt ?? b.updatedAt;
+    if (aDate === null && bDate !== null) return 1;
+    if (aDate !== null && bDate === null) return -1;
+    return (bDate ?? 0) - (aDate ?? 0) || a.roomId.localeCompare(b.roomId);
+  });
 
   const status = errors.length ? (projects.length ? 'partial' : 'unavailable') : (foundData ? 'ready' : 'empty');
   return { status, projects, errors };
+}
+
+export function getProjectDisplayDate(project) {
+  const lastOpenedAt = normalizePortalDate(project?.lastOpenedAt);
+  if (lastOpenedAt !== null) return { timestamp: lastOpenedAt, label: '最終閲覧' };
+  const updatedAt = normalizePortalDate(project?.updatedAt);
+  if (updatedAt !== null) return { timestamp: updatedAt, label: '最終更新' };
+  return { timestamp: null, label: '日時不明' };
 }
 
 export function readFormIndex(storage) {
@@ -137,8 +157,13 @@ export function readFormIndex(storage) {
       if (!item || typeof item !== 'object' || Array.isArray(item) || !formId) { errors.push('フォーム履歴の一部に不正な項目があります'); continue; }
       if (seen.has(formId)) continue;
       seen.add(formId);
-      forms.push({ ...item, formId });
+      forms.push({ ...item, formId, createdAt: normalizePortalDate(item.createdAt) });
     }
+    forms.sort((a, b) => {
+      if (a.createdAt === null && b.createdAt !== null) return 1;
+      if (a.createdAt !== null && b.createdAt === null) return -1;
+      return (b.createdAt ?? 0) - (a.createdAt ?? 0) || a.formId.localeCompare(b.formId);
+    });
     return { status: errors.length ? (forms.length ? 'partial' : 'unavailable') : forms.length ? 'ready' : 'empty', forms, errors };
   } catch { return { status: 'unavailable', forms: [], errors: ['フォーム履歴にアクセスできません'] }; }
 }
