@@ -87,35 +87,6 @@ async function waitForAnimations(page) {
     await page.locator('#form-maker-frame').waitFor({ state: 'visible', timeout: 10000 });
   });
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'g100');
-  const host = await page.evaluate(() => {
-    const frame = document.getElementById('form-maker-frame');
-    const rect = frame?.getBoundingClientRect();
-    return {
-      theme: document.documentElement.dataset.theme,
-      preference: localStorage.getItem('sanpokai-theme-preference-v1'),
-      background: getComputedStyle(document.body).backgroundColor,
-      themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '',
-      viewportWidth: document.documentElement.clientWidth,
-      viewportHeight: window.innerHeight,
-      documentWidth: document.documentElement.scrollWidth,
-      documentHeight: document.documentElement.scrollHeight,
-      frameWidth: rect?.width || 0,
-      frameHeight: rect?.height || 0,
-      statusHidden: document.getElementById('form-maker-status')?.hidden ?? true,
-      statusHeight: document.getElementById('form-maker-status')?.getBoundingClientRect().height || 0,
-      frameSrc: frame?.src || '',
-    };
-  });
-  if (host.theme !== 'g100' || host.preference !== 'dark') throw new Error(`embedded host theme did not persist: ${JSON.stringify(host)}`);
-  if (host.background === 'rgb(255, 255, 255)' || host.themeColor.toLowerCase() !== '#161616') throw new Error(`embedded host retained white chrome: ${JSON.stringify(host)}`);
-  const occupiedHostHeight = host.frameHeight + (host.statusHidden ? 0 : host.statusHeight);
-  if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || Math.abs(occupiedHostHeight - host.viewportHeight) > 2 || host.documentHeight > host.viewportHeight + 2) {
-    throw new Error(`embedded host layout regression: ${JSON.stringify({ ...host, occupiedHostHeight })}`);
-  }
-  if (!/[?&]theme=dark(?:&|$)/.test(host.frameSrc) || !/[?&]themeChannel=[^&]+/.test(host.frameSrc)) {
-    throw new Error(`embedded host did not pass theme/channel through iframe URL: ${host.frameSrc}`);
-  }
-
   let embedded = null;
   for (let attempt = 0; attempt < 20 && !embedded; attempt += 1) {
     for (const frame of page.frames()) {
@@ -147,6 +118,35 @@ async function waitForAnimations(page) {
     throw new Error(`embedded form UI did not apply its dark surfaces: ${JSON.stringify(embedded)}`);
   }
   if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded form UI overflow: ${JSON.stringify(embedded)}`);
+
+  const host = await page.evaluate(() => {
+    const frame = document.getElementById('form-maker-frame');
+    const rect = frame?.getBoundingClientRect();
+    return {
+      theme: document.documentElement.dataset.theme,
+      preference: localStorage.getItem('sanpokai-theme-preference-v1'),
+      background: getComputedStyle(document.body).backgroundColor,
+      themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '',
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: window.innerHeight,
+      documentWidth: document.documentElement.scrollWidth,
+      documentHeight: document.documentElement.scrollHeight,
+      frameWidth: rect?.width || 0,
+      frameHeight: rect?.height || 0,
+      statusHidden: document.getElementById('form-maker-status')?.hidden ?? true,
+      statusHeight: document.getElementById('form-maker-status')?.getBoundingClientRect().height || 0,
+      frameSrc: frame?.src || '',
+    };
+  });
+  if (host.theme !== 'g100' || host.preference !== 'dark') throw new Error(`embedded host theme did not persist: ${JSON.stringify(host)}`);
+  if (host.background === 'rgb(255, 255, 255)' || host.themeColor.toLowerCase() !== '#161616') throw new Error(`embedded host retained white chrome: ${JSON.stringify(host)}`);
+  const occupiedHostHeight = host.frameHeight + (host.statusHidden ? 0 : host.statusHeight);
+  if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || Math.abs(occupiedHostHeight - host.viewportHeight) > 2 || host.documentHeight > host.viewportHeight + 2) {
+    throw new Error(`embedded host layout regression: ${JSON.stringify({ ...host, occupiedHostHeight })}`);
+  }
+  if (!/[?&]theme=dark(?:&|$)/.test(host.frameSrc) || !/[?&]themeChannel=[^&]+/.test(host.frameSrc)) {
+    throw new Error(`embedded host did not pass theme/channel through iframe URL: ${host.frameSrc}`);
+  }
   await page.screenshot({ path: `${OUT}/form-maker-host-dark.png`, fullPage: true });
 
   if (pageErrors.length) throw new Error(`production page errors: ${pageErrors.join(' | ')}`);

@@ -9,12 +9,15 @@ const source = fs.readFileSync('index.html', 'utf8');
 const dist = fs.readFileSync('dist/index.html', 'utf8');
 const formHost = fs.readFileSync('public/form-maker/index.html', 'utf8');
 const deploy = fs.readFileSync('.github/workflows/deploy-pages.yml', 'utf8');
-const integratedFormDeployment = 'AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5';
+const integratedFormDeployment = 'AKfycbzbwo8SyyKNnNHzX2SjwlhipNFkiWus5j0pnuTcEEgFQm3FdLfsp0U8K_1OzMDAWf0';
 
 const formHostUrls = [...formHost.matchAll(/https:\/\/script\.google\.com\/macros\/s\/([^/]+)\/exec/g)]
   .map((match) => match[1]);
-if (formHostUrls.length !== 2 || formHostUrls.some((deploymentId) => deploymentId !== integratedFormDeployment)) {
-  fail('form maker iframe and direct link must use the verified integrated Apps Script deployment');
+if (formHostUrls.length !== 1 || formHostUrls.some((deploymentId) => deploymentId !== integratedFormDeployment)) {
+  fail('form maker iframe must use the verified integrated Apps Script deployment, without a non-synchronizing direct link');
+}
+if (formHost.includes('フォームメーカーを直接開く')) {
+  fail('form maker host must not offer the history-bypassing direct Apps Script route');
 }
 
 if (/\<div\s+id=["']root["']\s*\>\s*\<\/div\>/i.test(source)) {

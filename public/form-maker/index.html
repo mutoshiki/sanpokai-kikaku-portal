@@ -29,6 +29,7 @@
     body {
       display: grid;
       grid-template-rows: minmax(0, 1fr) auto;
+      position: relative;
       overflow: hidden;
       overscroll-behavior: none;
     }
@@ -42,22 +43,34 @@
       color-scheme: inherit;
     }
     .fallback {
-      position: relative;
+      position: absolute;
+      inset: 0;
       z-index: 1;
       display: flex;
-      min-height: 3.5rem;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: .5rem;
+      gap: 1rem;
       margin: 0;
-      padding: .5rem 1rem max(.5rem, env(safe-area-inset-bottom));
+      padding: 1.5rem 1.25rem max(1.5rem, env(safe-area-inset-bottom));
       font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
       color: var(--host-text);
       background: var(--host-bg);
-      border-top: 1px solid color-mix(in srgb, var(--host-text) 20%, transparent);
     }
-    .fallback a { color: #0f62fe; }
-    .loading-message { margin: 0; }
+    .fallback::before {
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid color-mix(in srgb, var(--host-text) 20%, transparent);
+      border-top-color: #0f62fe;
+      border-radius: 50%;
+      content: '';
+      animation: form-maker-spin .8s linear infinite;
+    }
+    .loading-message { max-width: 24rem; margin: 0; text-align: center; }
+    @keyframes form-maker-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .fallback::before { animation: none; }
+    }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -69,8 +82,7 @@
     referrerpolicy="strict-origin-when-cross-origin"
   ></iframe>
   <div class="fallback" id="form-maker-status" role="status" aria-live="polite">
-    <p class="loading-message" id="form-maker-message">フォームメーカーを読み込んでいます。</p>
-    <a href="https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec" target="_blank" rel="noopener noreferrer">フォームメーカーが開かない場合はこちら</a>
+    <p class="loading-message" id="form-maker-message">フォームメーカーを開いています。しばらくお待ちください。</p>
   </div>
 
   <script type="module">
@@ -83,7 +95,7 @@
       const HISTORY_KEY = 'sanpokai-form-builder-history-v1';
       const HISTORY_CHILD_SOURCE = 'sanpokai-form-history-child';
       const HISTORY_HOST_SOURCE = 'sanpokai-form-history-host';
-      const APP_URL = 'https://script.google.com/macros/s/AKfycbw0R5VgBdSLS8aRDJDw7GUIEfHlXRZ6rPrOgjXmO2N7LvhuoGyS_opUCFTCSiUiDZw5/exec';
+      const APP_URL = 'https://script.google.com/macros/s/AKfycbzbwo8SyyKNnNHzX2SjwlhipNFkiWus5j0pnuTcEEgFQm3FdLfsp0U8K_1OzMDAWf0/exec';
       const frame = document.getElementById('form-maker-frame');
       const status = document.getElementById('form-maker-status');
       const messageNode = document.getElementById('form-maker-message');
@@ -95,7 +107,7 @@
       let historyReady = false;
       const fallbackTimer = window.setTimeout(() => {
         if (historyReady) return;
-        messageNode.textContent = '読み込みに時間がかかっています。';
+        messageNode.textContent = '読み込みに時間がかかっています。フォーム履歴を連携しています。進まない場合はポータルに戻り、もう一度開いてください。';
       }, 10000);
 
       function createChannel(prefix) {
