@@ -486,6 +486,37 @@ async function run(browser, name, viewport) {
   await page.waitForFunction(() => document.body.innerText.includes('応募フォームのリンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-A/viewform') throw new Error(`${name}: second history response URL mix-up`);
 
+  await page.evaluate(() => {
+    const base = Math.ceil(Date.now() / 60_000) * 60_000 + 2 * 60_000;
+    localStorage.clear();
+    localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: [
+      { roomId: 'NEWER-A', name: '別の企画1', lastOpenedAt: base + 5 * 60_000 },
+      { roomId: 'NEWER-B', name: '別の企画2', lastOpenedAt: base + 4 * 60_000 },
+      { roomId: 'DUP-A', name: '同じ企画名', lastOpenedAt: base + 15_000 },
+      { roomId: 'DUP-B', name: '同じ企画名', lastOpenedAt: base + 45_000 },
+    ] }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+  });
+  await selectHistoryTab(page, '最近の企画');
+  await page.waitForFunction(() => document.querySelectorAll('#project-history-list .cds--contained-list-item').length === 4);
+  await page.getByRole('button', { name: '最近の企画を折りたたむ' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('#project-history-list .cds--contained-list-item').length === 3);
+  const duplicatePreview = page.locator('#project-history-list .cds--contained-list-item').nth(2);
+  const previewDisambiguator = await duplicatePreview.locator('.project-disambiguator').textContent().catch(() => 'missing');
+  if (previewDisambiguator !== '企画ID: DUP-B') throw new Error(`${name}: full-history duplicate was not disambiguated inside the three-item preview: ${previewDisambiguator}; rows=${await page.locator('#project-history-list .cds--contained-list-item').allTextContents()}`);
+  await page.getByRole('button', { name: '最近の企画をすべて見る' }).click();
+  const duplicateRows = page.locator('#project-history-list .cds--contained-list-item').filter({ hasText: '同じ企画名' });
+  if (await duplicateRows.count() !== 2 || await duplicateRows.nth(0).locator('.project-disambiguator').textContent() !== '企画ID: DUP-B' || await duplicateRows.nth(1).locator('.project-disambiguator').textContent() !== '企画ID: DUP-A') {
+    throw new Error(`${name}: duplicate room IDs were not both shown`);
+  }
+  for (const roomId of ['DUP-A', 'DUP-B']) {
+    const popupPromise = page.waitForEvent('popup');
+    await page.locator(`#project-history-list a[href$="room=${roomId}"]`).click();
+    const popup = await popupPromise;
+    if (new URL(popup.url()).searchParams.get('room') !== roomId) throw new Error(`${name}: duplicate project opened the wrong room: ${popup.url()}`);
+    await popup.close();
+  }
+
   await page.locator('.tool-tile').first().focus();
   const tilePopupPromise = page.waitForEvent('popup');
   await page.keyboard.press('Enter');

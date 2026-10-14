@@ -5,6 +5,7 @@ import * as portalHistory from '../src/portalHistory.js';
 const {
   FORM_HISTORY_KEY,
   PROJECT_REGISTRY_KEY,
+  getProjectDisambiguators,
   isRelevantPortalStorageKey,
   normalizePortalDate,
   persistProjectIndex,
@@ -123,6 +124,29 @@ test('keeps same-name projects separate and orders undated projects last', () =>
   const result = readProjectIndex(store);
   assert.deepEqual(result.projects.map(project => project.roomId), ['TIED-A', 'TIED-B', 'OLDER', 'UNDATED-A', 'UNDATED-B']);
   assert.equal(result.projects.filter(project => project.name === '同じ名前').length, 2);
+});
+
+test('disambiguates only same-name projects with the same displayed date and preserves inputs', () => {
+  const stamp = Date.UTC(2026, 8, 29, 1, 5, 10);
+  const projects = [
+    { roomId: 'SAME-A', name: '秋名山企画', lastOpenedAt: stamp },
+    { roomId: 'SAME-B', name: '秋名山企画', lastOpenedAt: stamp + 35_000 },
+    { roomId: 'DIFFERENT-MINUTE', name: '秋名山企画', lastOpenedAt: stamp + 60_000 },
+    { roomId: 'DIFFERENT-NAME', name: '別企画', lastOpenedAt: stamp },
+    { roomId: 'UNDATED-A', name: '', updatedAt: null, lastOpenedAt: null },
+    { roomId: 'UNDATED-B', name: '', updatedAt: null, lastOpenedAt: null },
+    { roomId: 'LABEL-DIFF', name: '秋名山企画', updatedAt: stamp },
+  ];
+  const before = structuredClone(projects);
+  const result = getProjectDisambiguators(projects);
+
+  assert.deepEqual([...result.entries()], [
+    ['SAME-A', '企画ID: SAME-A'],
+    ['SAME-B', '企画ID: SAME-B'],
+    ['UNDATED-A', '企画ID: UNDATED-A'],
+    ['UNDATED-B', '企画ID: UNDATED-B'],
+  ]);
+  assert.deepEqual(projects, before);
 });
 
 test('sorts form history by creation time without rewriting storage', () => {

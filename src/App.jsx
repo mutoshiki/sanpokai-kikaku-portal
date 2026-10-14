@@ -23,6 +23,7 @@ import { Group, Hiking, ListCheckbox, University } from '@carbon/pictograms-reac
 import { ThemeHeaderControl } from './ThemeToggle.jsx';
 import {
   getProjectDisplayDate,
+  getProjectDisambiguators,
   isRelevantPortalStorageKey,
   normalizePortalDate,
   readFormIndex,
@@ -170,6 +171,7 @@ function App() {
 
   const projectInfo = sectionStatus(portalState.projects.status, 'このブラウザで開いた企画はありません。');
   const formInfo = sectionStatus(portalState.forms.status, 'このブラウザで作成したフォームはありません。');
+  const projectDisambiguators = getProjectDisambiguators(portalState.projects.projects);
 
   const toolsSection = (
     <section key="tools" className="tools-section" aria-labelledby="tools-heading">
@@ -271,6 +273,7 @@ function App() {
             <div className="project-list__item">
               <a className="project-title history-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}をサークル企画ツールで新しいタブに開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>{label}<Launch className="history-link__icon" size={20} aria-hidden="true" /></a>
               <time dateTime={displayDate === null ? undefined : new Date(displayDate).toISOString()}>{displayDate === null ? dateLabel : `${dateLabel} ${formatDate(displayDate)}`}</time>
+              {projectDisambiguators.has(project.roomId) && <span className="project-disambiguator">{projectDisambiguators.get(project.roomId)}</span>}
             </div>
           </ContainedListItem>;
         }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading} 上の「サークル企画ツール」から企画を開くと、ここに表示されます。</ContainedListItem> : <ContainedListItem>企画履歴を表示できません。</ContainedListItem>}

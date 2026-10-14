@@ -143,6 +143,28 @@ export function getProjectDisplayDate(project) {
   return { timestamp: null, label: '日時不明' };
 }
 
+export function getProjectDisambiguators(projects) {
+  const groups = new Map();
+  for (const project of Array.isArray(projects) ? projects : []) {
+    const roomId = String(project?.roomId ?? '').trim();
+    if (!roomId) continue;
+    const name = String(project?.name ?? '').trim() || '名称未設定の企画';
+    const { timestamp, label } = getProjectDisplayDate(project);
+    const minute = timestamp === null ? 'unknown' : String(Math.floor(timestamp / 60_000));
+    const key = JSON.stringify([name, label, minute]);
+    const ids = groups.get(key) || new Set();
+    ids.add(roomId);
+    groups.set(key, ids);
+  }
+
+  const disambiguators = new Map();
+  for (const ids of groups.values()) {
+    if (ids.size < 2) continue;
+    for (const roomId of ids) disambiguators.set(roomId, `企画ID: ${roomId}`);
+  }
+  return disambiguators;
+}
+
 export function readFormIndex(storage) {
   try {
     const value = storage.getItem(FORM_HISTORY_KEY);

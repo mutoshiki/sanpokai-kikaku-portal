@@ -202,6 +202,13 @@ body {
   color: var(--cds-text-secondary);
   @include type-style('label-01');
 }
+.project-disambiguator {
+  display: block;
+  margin-block-start: var(--cds-spacing-02, .25rem);
+  color: var(--cds-text-secondary);
+  overflow-wrap: anywhere;
+  @include type-style('label-01');
+}
 .project-list__row--form-actions .cds--contained-list-item__content {
   padding-inline-end: calc(
     (var(--cds-layout-size-height-md, 2.5rem) * 2)
