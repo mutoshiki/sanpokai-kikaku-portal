@@ -33,7 +33,7 @@ import {
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
 const HISTORY_PREVIEW_LIMIT = 3;
-const RESPONSE_LINK_COPY_LABEL = '応募フォームのリンクをコピー';
+const RESPONSE_LINK_COPY_LABEL = '回答用リンクをコピー';
 const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
 
 const TOOLS = [
@@ -224,17 +224,19 @@ function App() {
           return (
             <ContainedListItem
               key={form.formId}
-              className={`project-list__row${responseUrl || editUrl ? ' project-list__row--form-actions' : ''}`}
-              action={(responseUrl || editUrl) ? <div className="project-list__actions"><OverflowMenu aria-label={`${label}のフォーム操作`} iconDescription={`${label}のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
-                {responseUrl && <OverflowMenuItem itemText={RESPONSE_LINK_COPY_LABEL} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)} />}
-                {editUrl && <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />}
+              className={`project-list__row${editUrl ? ' project-list__row--form-actions' : ''}`}
+              action={editUrl ? <div className="project-list__actions"><OverflowMenu size="lg" aria-label={`${label}のフォーム操作`} iconDescription={`${label}のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
+                <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />
               </OverflowMenu></div> : undefined}
             >
               <div className="project-list__item">
                 <span className="project-title">{label}</span>
                 <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成 ${formatDate(createdAt)}`}</time>
                 {(responseUrl || projectUrl) && <div className="project-list__form-links">
-                  {responseUrl && <a className="history-link history-response-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを開く`}>応募フォームを開く</a>}
+                  {responseUrl && <>
+                    <a className="history-link history-response-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを開く`}>応募フォームを開く</a>
+                    <Button className="form-copy-button" kind="ghost" size="sm" aria-label={`${label}の回答用リンクをコピー`} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)}>{RESPONSE_LINK_COPY_LABEL}</Button>
+                  </>}
                   {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
                 </div>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}

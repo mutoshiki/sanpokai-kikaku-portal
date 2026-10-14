@@ -168,10 +168,18 @@ body {
   outline-offset: 2px;
 }
 .history-project-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
   color: var(--cds-link-primary);
-  @include type-style('label-01');
+  @include type-style('body-compact-01');
 }
+.history-response-link {
+  min-block-size: 2.75rem;
+  align-items: center;
+  @include type-style('body-compact-01');
+}
+.form-copy-button { min-block-size: 2.75rem; }
 .project-list__form-links {
   display: flex;
   flex-wrap: wrap;
@@ -211,8 +219,7 @@ body {
 }
 .project-list__row--form-actions .cds--contained-list-item__content {
   padding-inline-end: calc(
-    (var(--cds-layout-size-height-md, 2.5rem) * 2)
-    + var(--cds-spacing-03, .5rem)
+    var(--cds-layout-size-height-lg, 3rem)
     + var(--cds-layout-density-padding-inline-local, 1rem)
   );
 }
