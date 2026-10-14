@@ -37,10 +37,10 @@ const RESPONSE_LINK_COPY_LABEL = '回答用リンクをコピー';
 const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
 
 const TOOLS = [
-  { title: '登山計画書メーカー', description: 'YAMAPの画像と基本情報から登山計画書を作成します。', href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/', pictogram: Hiking },
-  { title: '応募フォームメーカー', description: '参加者を募集するGoogleフォームを作成します。', href: FORM_MAKER_URL, pictogram: ListCheckbox },
-  { title: 'サークル企画ツール', description: '参加者の車割・班割と交通費の精算を管理します。', href: TOOL_URL, pictogram: Group },
-  { title: '学務提出書類作成ツール', description: '引き継ぎデータから書類を作成します。GitHubでアプリをダウンロードできます。', href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases', pictogram: University },
+  { title: '登山計画書メーカー', description: 'YAMAPの画像から登山計画書を作成', href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/', pictogram: Hiking },
+  { title: '応募フォームメーカー', description: '参加者を募集するGoogleフォームを作成', href: FORM_MAKER_URL, pictogram: ListCheckbox },
+  { title: 'サークル企画ツール', description: '参加者・車割・班割・交通費を管理', href: TOOL_URL, pictogram: Group },
+  { title: '学務提出書類作成ツール', description: '引き継ぎデータから提出書類を作成', downloadHint: 'PCアプリをダウンロード', href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases', pictogram: University },
 ];
 
 function loadPortalState() {
@@ -181,6 +181,7 @@ function App() {
           {TOOLS.map((tool, index) => {
             const Pictogram = tool.pictogram;
             const descriptionId = `tool-description-${index}`;
+            const hintId = tool.downloadHint ? `tool-hint-${index}` : undefined;
             return (
               <Column key={tool.title} sm={4} md={4} lg={4}>
                 <ClickableTile
@@ -190,12 +191,13 @@ function App() {
                   rel="noopener noreferrer"
                   renderIcon={Launch}
                   aria-label={`${tool.title}を新しいタブで開く`}
-                  aria-describedby={descriptionId}
+                  aria-describedby={[descriptionId, hintId].filter(Boolean).join(' ')}
                 >
                   <div className="tool-tile__pictogram" aria-hidden="true"><Pictogram width={48} height={48} aria-hidden="true" /></div>
                   <div className="tool-tile__content">
                     <h3>{tool.title}</h3>
                     <p id={descriptionId}>{tool.description}</p>
+                    {tool.downloadHint && <span id={hintId} className="tool-tile__hint">{tool.downloadHint}</span>}
                   </div>
                 </ClickableTile>
               </Column>
@@ -208,7 +210,7 @@ function App() {
 
   const formsSection = (
     <section key="forms" className="history-section projects form-history" aria-labelledby="forms-heading">
-      <Grid className="history-grid">
+      <Grid narrow className="history-grid">
         <Column sm={4} md={8} lg={16}>
           <h3 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h3>
           {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
@@ -261,7 +263,7 @@ function App() {
 
   const projectsSection = (
     <section key="projects" className="history-section projects" aria-labelledby="projects-heading">
-      <Grid className="history-grid">
+      <Grid narrow className="history-grid">
         <Column sm={4} md={8} lg={16}>
           <h3 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近の企画</h3>
           {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}

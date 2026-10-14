@@ -120,7 +120,7 @@ export function ThemeHeaderControl() {
       <HeaderGlobalBar>
         <HeaderGlobalAction
           ref={triggerRef}
-          aria-label={`テーマ設定：${currentLabel}`}
+          aria-label={`表示テーマ：${currentLabel}`}
           aria-expanded={expanded}
           aria-controls="theme-preference-panel"
           isActive={expanded}
@@ -130,7 +130,7 @@ export function ThemeHeaderControl() {
           <Settings size={20} />
         </HeaderGlobalAction>
       </HeaderGlobalBar>
-      <HeaderPanel id="theme-preference-panel" aria-label="テーマ設定" aria-hidden={!expanded} inert={!expanded} expanded={expanded}>
+      <HeaderPanel id="theme-preference-panel" aria-label="表示テーマ" aria-hidden={!expanded} inert={!expanded} expanded={expanded}>
         <div className="theme-preference-panel__content">
           <RadioButtonGroup
             legendText="表示テーマ"

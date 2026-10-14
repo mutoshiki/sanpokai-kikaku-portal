@@ -87,7 +87,7 @@ async function installIsolatedEnvironment(page) {
 }
 
 async function selectTheme(page, currentLabel, id) {
-  const trigger = page.getByRole('button', { name: `テーマ設定：${currentLabel}` });
+  const trigger = page.getByRole('button', { name: `表示テーマ：${currentLabel}` });
   if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
   await page.locator(`label[for="${id}"]`).click();
 }
@@ -155,7 +155,7 @@ async function run(browser, name, viewport) {
   if (await page.getByRole('tab', { name: '最近の企画', exact: true }).getAttribute('aria-selected') !== 'true') {
     throw new Error(`${name}: recent-project tab is not selected by default`);
   }
-  await page.getByRole('button', { name: 'テーマ設定：システム設定' }).waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: '表示テーマ：システム設定' }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
   await waitForSurfaceTokens(page);
 
@@ -198,7 +198,24 @@ async function run(browser, name, viewport) {
       gridWidth: column.parentElement.getBoundingClientRect().width,
       className: column.className,
     })),
+    leftEdges: [
+      document.querySelector('.portal-title'),
+      document.querySelector('#history-heading'),
+      document.querySelector('[role="tablist"]'),
+      document.querySelector('#project-history-list'),
+      document.querySelector('#tools-heading'),
+      document.querySelector('.tool-tile'),
+    ].map(node => Math.round(node.getBoundingClientRect().left)),
     toolGridCarbonClass: document.querySelector('.tools-grid')?.className || '',
+    toolCopies: [...document.querySelectorAll('.tool-tile')].map(node => {
+      const descriptionIds = (node.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      return {
+        title: node.querySelector('h3')?.textContent.trim() || '',
+        description: node.querySelector('p')?.textContent.trim() || '',
+        hint: node.querySelector('.tool-tile__hint')?.textContent.trim() || '',
+        describedText: descriptionIds.map(id => document.getElementById(id)?.textContent.trim() || ''),
+      };
+    }),
     titleFontSize: parseFloat(getComputedStyle(document.querySelector('.portal-title')).fontSize),
     formTileTitleFinalGlyphTop: (() => {
       const node = document.querySelectorAll('.tool-tile h3')[1]?.firstChild;
@@ -216,6 +233,17 @@ async function run(browser, name, viewport) {
       range.setEnd(node, node.textContent.length - 1);
       return range.getBoundingClientRect().top;
     })(),
+    toolTitleFinalGlyphRows: [...document.querySelectorAll('.tool-tile h3')].map(node => {
+      const text = node.firstChild;
+      if (!text || text.nodeType !== Node.TEXT_NODE || text.textContent.length < 2) return null;
+      const previous = document.createRange();
+      previous.setStart(text, text.textContent.length - 2);
+      previous.setEnd(text, text.textContent.length - 1);
+      const final = document.createRange();
+      final.setStart(text, text.textContent.length - 1);
+      final.setEnd(text, text.textContent.length);
+      return { title: text.textContent, previousTop: previous.getBoundingClientRect().top, finalTop: final.getBoundingClientRect().top };
+    }),
     sectionHeadingFontSize: parseFloat(getComputedStyle(document.querySelector('.section-heading')).fontSize),
     toolDescriptionFontSize: parseFloat(getComputedStyle(document.querySelector('.tool-tile__content p')).fontSize),
     historyDateFontSize: parseFloat(getComputedStyle(document.querySelector('.project-list__item time')).fontSize),
@@ -236,7 +264,10 @@ async function run(browser, name, viewport) {
     formRowCount: document.querySelectorAll('.form-history .cds--contained-list-item').length,
     historyToggles: [...document.querySelectorAll('.history-toggle')].map(node => ({ name: node.getAttribute('aria-label'), expanded: node.getAttribute('aria-expanded'), controls: node.getAttribute('aria-controls') })),
     sectionOrder: [...document.querySelectorAll('main > section')].map(node => node.querySelector('h2')?.textContent.trim()),
-    describedTiles: [...document.querySelectorAll('.tool-tile')].map(node => ({ describedBy: node.getAttribute('aria-describedby'), text: document.getElementById(node.getAttribute('aria-describedby'))?.textContent.trim() || '' })),
+    describedTiles: [...document.querySelectorAll('.tool-tile')].map(node => {
+      const ids = (node.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      return { ids, texts: ids.map(id => document.getElementById(id)?.textContent.trim() || '') };
+    }),
     openIconCount: document.querySelectorAll('.projects:not(.form-history) .history-link__icon').length,
     openIconsDecorative: [...document.querySelectorAll('.projects:not(.form-history) .history-link__icon')].every(node => node.getAttribute('aria-hidden') === 'true'),
     nestedInteractiveContent: [...document.querySelectorAll('.cds--contained-list-item__content')].some(node => node.tagName === 'BUTTON' && node.querySelector('a, button')),
@@ -250,11 +281,11 @@ async function run(browser, name, viewport) {
     clickableRows: document.querySelectorAll('.project-list .cds--contained-list-item--clickable').length,
     rowHeights: [...document.querySelectorAll('.project-list .cds--contained-list-item')].filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect().height),
   }));
-  const themeTrigger = page.getByRole('button', { name: 'テーマ設定：システム設定' });
+  const themeTrigger = page.getByRole('button', { name: '表示テーマ：システム設定' });
   if (await themeTrigger.getAttribute('aria-expanded') === 'true') {
     await themeTrigger.focus();
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => document.querySelector('[aria-label^="テーマ設定"]')?.getAttribute('aria-expanded') === 'false');
+    await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ"]')?.getAttribute('aria-expanded') === 'false');
   }
   await page.screenshot({ path: path.join(OUT, `${name}-initial.png`), fullPage: true });
   if (initial.tiles !== 4) throw new Error(`${name}: expected 4 Carbon tiles, got ${initial.tiles}`);
@@ -285,8 +316,19 @@ async function run(browser, name, viewport) {
     throw new Error(`${name}: contained list labels regression: ${JSON.stringify(initial.containedLists)}`);
   }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
+  if (initial.leftEdges.some(left => Math.abs(left - initial.leftEdges[0]) > 1)) throw new Error(`${name}: main headings, tabs, list, and tool card do not share the page gutter: ${JSON.stringify(initial.leftEdges)}`);
   for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近の企画', '作成', '最終閲覧']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
+  }
+  const expectedToolCopy = [
+    ['登山計画書メーカー', 'YAMAPの画像から登山計画書を作成', ''],
+    ['応募フォームメーカー', '参加者を募集するGoogleフォームを作成', ''],
+    ['サークル企画ツール', '参加者・車割・班割・交通費を管理', ''],
+    ['学務提出書類作成ツール', '引き継ぎデータから提出書類を作成', 'PCアプリをダウンロード'],
+  ];
+  if (JSON.stringify(initial.toolCopies.map(item => [item.title, item.description, item.hint])) !== JSON.stringify(expectedToolCopy)
+    || initial.toolCopies.some(item => JSON.stringify(item.describedText) !== JSON.stringify([item.description, ...(item.hint ? [item.hint] : [])]))) {
+    throw new Error(`${name}: tool copy or accessible descriptions regression: ${JSON.stringify(initial.toolCopies)}`);
   }
   if (initial.labels[0] !== 'React企画' || initial.labels[1] !== '春山企画' || initial.labels[2] !== '夏山企画') throw new Error(`${name}: project history ordering or current React storage regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
@@ -301,8 +343,26 @@ async function run(browser, name, viewport) {
   if (initial.historyColumns.length !== 2 || initial.historyColumns.some(column => column.width / column.gridWidth < 0.85 || !hasSpan(column.className, 'sm', 4) || !hasSpan(column.className, 'md', 8) || !hasSpan(column.className, 'lg', 16))) throw new Error(`${name}: full-width history grid regression: ${JSON.stringify(initial.historyColumns)}`);
   if (Math.abs(initial.titleFontSize - 20) > 1) throw new Error(`${name}: portal title is not Carbon heading-03: ${initial.titleFontSize}px`);
   if (initial.formTileTitleFinalGlyphTop !== null && initial.formTileTitlePreviousGlyphTop !== null && Math.abs(initial.formTileTitleFinalGlyphTop - initial.formTileTitlePreviousGlyphTop) > 1) throw new Error(`${name}: Japanese prolonged sound mark wrapped alone in tool title`);
+  if (initial.toolTitleFinalGlyphRows.some(item => item && Math.abs(item.previousTop - item.finalTop) > 1)) throw new Error(`${name}: final Japanese title character wrapped onto an isolated line: ${JSON.stringify(initial.toolTitleFinalGlyphRows)}`);
   if (Math.abs(initial.sectionHeadingFontSize - 14) > 1 || Math.abs(initial.toolDescriptionFontSize - 14) > 1 || Math.abs(initial.historyDateFontSize - 12) > 1) throw new Error(`${name}: Carbon type hierarchy regression: ${JSON.stringify({ sectionHeadingFontSize: initial.sectionHeadingFontSize, toolDescriptionFontSize: initial.toolDescriptionFontSize, historyDateFontSize: initial.historyDateFontSize })}`);
-  if (initial.describedTiles.some(tile => !tile.describedBy || !tile.text)) throw new Error(`${name}: a tool tile does not reference its description: ${JSON.stringify(initial.describedTiles)}`);
+  if (viewport.width <= 390) {
+    const stress = await page.locator('.tool-tile').nth(3).evaluate(tile => {
+      const title = tile.querySelector('h3');
+      const description = tile.querySelector('p');
+      const hint = tile.querySelector('.tool-tile__hint');
+      title.textContent = '学務提出書類作成ツール'.repeat(6);
+      description.textContent = '引き継ぎデータから提出書類を作成'.repeat(6) + 'DownloadWithoutAnySpaces'.repeat(5);
+      if (hint) hint.textContent = 'PCアプリをダウンロード'.repeat(5);
+      const measurements = [title, description, hint].filter(Boolean).map(node => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
+      const launch = tile.querySelector('.cds--tile--icon').getBoundingClientRect();
+      const text = description.getBoundingClientRect();
+      return { measurements, launchLeft: launch.left, descriptionRight: text.right, overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    if (stress.measurements.some(item => item.scrollWidth > item.clientWidth + 1) || stress.descriptionRight > stress.launchLeft + 1 || stress.overflowX > 1) {
+      throw new Error(`${name}: long tool copy overlaps or overflows: ${JSON.stringify(stress)}`);
+    }
+  }
+  if (initial.describedTiles.some(tile => !tile.ids.length || tile.texts.some(text => !text))) throw new Error(`${name}: a tool tile does not reference its description: ${JSON.stringify(initial.describedTiles)}`);
   const toolsTopBeforeBulk = await page.locator('#tools-heading').evaluate(node => node.getBoundingClientRect().top);
   await page.evaluate(() => {
     localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: Array.from({ length: 100 }, (_, index) => ({
@@ -371,6 +431,10 @@ async function run(browser, name, viewport) {
     copyText: row.querySelector('.form-copy-button')?.textContent.trim() || '',
     copyName: row.querySelector('.form-copy-button')?.getAttribute('aria-label') || '',
     copyHeight: row.querySelector('.form-copy-button')?.getBoundingClientRect().height || 0,
+    responseHeight: row.querySelector('.history-response-link')?.getBoundingClientRect().height || 0,
+    projectHeight: row.querySelector('.history-project-link')?.getBoundingClientRect().height || 0,
+    responseFontSize: row.querySelector('.history-response-link') ? getComputedStyle(row.querySelector('.history-response-link')).fontSize : '',
+    projectFontSize: row.querySelector('.history-project-link') ? getComputedStyle(row.querySelector('.history-project-link')).fontSize : '',
     projectText: row.querySelector('.history-project-link')?.textContent.trim() || '',
     projectHref: row.querySelector('.history-project-link')?.getAttribute('href') || '',
     projectName: row.querySelector('.history-project-link')?.getAttribute('aria-label') || '',
@@ -378,7 +442,7 @@ async function run(browser, name, viewport) {
     contentOrder: [...row.querySelector('.project-list__item')?.children || []].map(node => node.tagName),
   })));
   const [fullForm, responseOnlyForm, projectOnlyForm, editOnlyForm, noUrlForm, unsafeForm] = formActionAudit;
-  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.copyText !== '回答用リンクをコピー' || fullForm.copyName !== '夏山応募フォームの回答用リンクをコピー' || fullForm.copyHeight < 44 || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
+  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.copyText !== '回答用リンクをコピー' || fullForm.copyName !== '夏山応募フォームの回答用リンクをコピー' || fullForm.copyHeight < 44 || fullForm.responseHeight < 44 || fullForm.projectHeight < 44 || fullForm.responseFontSize !== fullForm.projectFontSize || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
   if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.copyText !== '回答用リンクをコピー' || responseOnlyForm.menuCount || responseOnlyForm.projectText || projectOnlyForm.responseText || projectOnlyForm.copyText || projectOnlyForm.menuCount || projectOnlyForm.projectText !== '企画を開く' || noUrlForm.responseText || noUrlForm.copyText || noUrlForm.menuCount || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.copyText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.copyText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
   if (editOnlyForm.menuCount !== 1 || editOnlyForm.name !== '雪山応募フォーム') throw new Error(`${name}: edit-only form lost its copy menu: ${JSON.stringify(editOnlyForm)}`);
   if (unsafeForm.createdText !== '作成日時不明' || unsafeForm.createdDateTime) throw new Error(`${name}: invalid form timestamp was not shown as unknown: ${JSON.stringify(unsafeForm)}`);

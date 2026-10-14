@@ -65,7 +65,7 @@ async function waitForAnimations(page) {
   if (!initial.formHref.includes('/form-maker/')) throw new Error(`form maker does not route through themed host: ${initial.formHref}`);
   await page.screenshot({ path: `${OUT}/portal-mobile-light.png`, fullPage: true });
 
-  await page.getByRole('button', { name: 'テーマ設定：システム設定' }).click();
+  await page.getByRole('button', { name: '表示テーマ：システム設定' }).click();
   await page.locator('label[for="theme-dark"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForAnimations(page);

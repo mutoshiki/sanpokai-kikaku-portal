@@ -68,7 +68,7 @@ async function waitForFocusedTile(page) {
 }
 
 async function run(browser, preference, expectedTheme) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light', hasTouch: true });
   const page = await context.newPage();
   await installEnvironment(page, preference);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -92,10 +92,11 @@ async function run(browser, preference, expectedTheme) {
   }
   if (await page.locator('.history-toggle').count() !== 0) throw new Error(`${preference}: empty history showed an expansion control`);
 
-  const themeButton = page.getByRole('button', { name: /テーマ設定/ });
+  const themeButton = page.getByRole('button', { name: /表示テーマ/ });
   await themeButton.click();
   if (await themeButton.getAttribute('aria-expanded') !== 'true') throw new Error(`${preference}: theme panel did not open`);
   if (await themeButton.getAttribute('aria-controls') !== 'theme-preference-panel') throw new Error(`${preference}: theme trigger does not control the panel`);
+  if (await page.locator('#theme-preference-panel').getAttribute('aria-label') !== '表示テーマ') throw new Error(`${preference}: theme panel label regression`);
   await page.locator('#theme-system').focus();
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => document.getElementById('theme-light')?.checked);
@@ -103,8 +104,8 @@ async function run(browser, preference, expectedTheme) {
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => document.getElementById('theme-dark')?.checked);
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('[aria-label^="テーマ設定"]')?.getAttribute('aria-expanded') === 'false');
-  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('テーマ設定：'));
+  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ"]')?.getAttribute('aria-expanded') === 'false');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：'));
   await page.keyboard.press('Tab');
   if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'tab') {
     throw new Error(`${preference}: Tab did not move from the closed theme panel to the history tabs`);
@@ -112,6 +113,20 @@ async function run(browser, preference, expectedTheme) {
   await page.locator('#theme-preference-panel input').evaluateAll(nodes => {
     if (nodes.some(node => node === document.activeElement)) throw new Error('closed panel retained focus');
   });
+
+  const touchThemeButton = page.getByRole('button', { name: '表示テーマ：ダーク' });
+  const touchBounds = await touchThemeButton.boundingBox();
+  if (!touchBounds) throw new Error(`${preference}: theme trigger has no touch target`);
+  await page.touchscreen.tap(touchBounds.x + touchBounds.width / 2, touchBounds.y + touchBounds.height / 2);
+  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'true');
+  const openBounds = await touchThemeButton.boundingBox();
+  await page.touchscreen.tap(openBounds.x + openBounds.width / 2, openBounds.y + openBounds.height / 2);
+  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'false');
+  const touchFocus = await page.evaluate(() => ({
+    onTrigger: document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：') === true,
+    visible: document.activeElement?.matches(':focus-visible') === true,
+  }));
+  if (touchFocus.onTrigger && touchFocus.visible) throw new Error(`${preference}: touch close forced a keyboard-style focus ring: ${JSON.stringify(touchFocus)}`);
 
   const toolLinks = await page.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
   if (!toolLinks.some(href => href && href.includes('/form-maker/'))) {

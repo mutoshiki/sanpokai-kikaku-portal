@@ -97,6 +97,7 @@ body {
 }
 .history-tabs { min-inline-size: 0; }
 .history-tabs-panel { padding-inline: 0; }
+.history-grid { margin-inline: 0; }
 .tools-section { margin-block-start: var(--cds-spacing-07, 2rem); }
 
 .tool-grid {
@@ -127,12 +128,22 @@ body {
   @include type-style('heading-compact-01');
   margin: 0 0 var(--cds-spacing-03, .5rem);
   line-break: strict;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .tool-tile__content p {
   max-width: 36rem;
   @include type-style('body-01');
   margin: 0;
   color: var(--cds-text-secondary);
+  overflow-wrap: anywhere;
+}
+.tool-tile__hint {
+  display: block;
+  margin-block-start: var(--cds-spacing-02, .25rem);
+  color: var(--cds-text-secondary);
+  overflow-wrap: anywhere;
+  @include type-style('body-compact-01');
 }
 .projects {
   width: 100%;
@@ -259,7 +270,9 @@ body {
 }
 
 @include breakpoint(md) {
-  .portal-page { padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-07, 2rem) var(--cds-spacing-10, 4rem); }
+  .portal-page { padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-06, 1.5rem)) var(--cds-spacing-07, 2rem) var(--cds-spacing-10, 4rem); }
+  .history-grid,
+  .tools-grid { margin-inline: calc(-1 * var(--cds-spacing-05, 1rem)); }
 }
 
 @include breakpoint-down(md) {
