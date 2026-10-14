@@ -72,7 +72,7 @@ async function run(browser, preference, expectedTheme) {
   const page = await context.newPage();
   await installEnvironment(page, preference);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '山歩会企画ポータル', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '企画を進める', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
 
   const emptyLists = await page.evaluate(() => [...document.querySelectorAll('.cds--contained-list')].map(node => ({
@@ -83,11 +83,11 @@ async function run(browser, preference, expectedTheme) {
   if (emptyLists.length !== 2 || emptyLists.some(list => list.itemCount !== 1 || list.itemButtons !== 0)) {
     throw new Error(`${preference}: empty contained list state is not non-interactive: ${JSON.stringify(emptyLists)}`);
   }
-  if (emptyLists[0]?.label !== '最近開いた企画' || emptyLists[1]?.label !== '作成したフォーム') {
+  if (emptyLists[0]?.label !== '最近の企画' || emptyLists[1]?.label !== '作成したフォーム') {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
-  const sectionOrder = await page.locator('main > section h2').allTextContents();
-  if (JSON.stringify(sectionOrder) !== JSON.stringify(['最近開いた企画', 'ツール', '作成したフォーム'])) {
+  const sectionOrder = await page.locator('main h2').allTextContents();
+  if (JSON.stringify(sectionOrder) !== JSON.stringify(['続きから開く', 'ツール'])) {
     throw new Error(`${preference}: empty portal section order regression: ${JSON.stringify(sectionOrder)}`);
   }
   if (await page.locator('.history-toggle').count() !== 0) throw new Error(`${preference}: empty history showed an expansion control`);
@@ -106,8 +106,8 @@ async function run(browser, preference, expectedTheme) {
   await page.waitForFunction(() => document.querySelector('[aria-label^="テーマ設定"]')?.getAttribute('aria-expanded') === 'false');
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('テーマ設定：'));
   await page.keyboard.press('Tab');
-  if (!await page.evaluate(() => document.activeElement?.classList?.contains('tool-tile'))) {
-    throw new Error(`${preference}: Tab moved into the closed theme panel instead of to page content`);
+  if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'tab') {
+    throw new Error(`${preference}: Tab did not move from the closed theme panel to the history tabs`);
   }
   await page.locator('#theme-preference-panel input').evaluateAll(nodes => {
     if (nodes.some(node => node === document.activeElement)) throw new Error('closed panel retained focus');

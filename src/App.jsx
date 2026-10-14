@@ -11,6 +11,11 @@ import {
   Layer,
   OverflowMenu,
   OverflowMenuItem,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   ToastNotification,
 } from '@carbon/react';
 import { Launch, Renew } from '@carbon/icons-react';
@@ -100,6 +105,7 @@ function App() {
   const [copyErrors, setCopyErrors] = useState({});
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllForms, setShowAllForms] = useState(false);
+  const [historyTabIndex, setHistoryTabIndex] = useState(0);
   const toastTimer = useRef(null);
   const projectHeadingRef = useRef(null);
   const formHeadingRef = useRef(null);
@@ -107,12 +113,7 @@ function App() {
 
   const refreshPortalState = useCallback(() => {
     const activeElement = document.activeElement;
-    const section = activeElement?.closest?.('.history-section');
-    if (section?.classList.contains('form-history')) {
-      pendingHistoryFocusRef.current = { element: activeElement, section: 'forms' };
-    } else if (section?.classList.contains('projects')) {
-      pendingHistoryFocusRef.current = { element: activeElement, section: 'projects' };
-    }
+    if (activeElement?.closest?.('.history-workspace')) pendingHistoryFocusRef.current = { element: activeElement };
     setPortalState(loadPortalState());
   }, []);
 
@@ -135,8 +136,8 @@ function App() {
     if (!pending) return;
     pendingHistoryFocusRef.current = null;
     if (pending.element?.isConnected) return;
-    (pending.section === 'forms' ? formHeadingRef : projectHeadingRef).current?.focus();
-  }, [portalState]);
+    (historyTabIndex === 1 ? formHeadingRef : projectHeadingRef).current?.focus();
+  }, [portalState, historyTabIndex]);
 
   const showToast = useCallback((message) => {
     clearTimeout(toastTimer.current);
@@ -207,7 +208,7 @@ function App() {
     <section key="forms" className="history-section projects form-history" aria-labelledby="forms-heading">
       <Grid className="history-grid">
         <Column sm={4} md={8} lg={16}>
-          <h2 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h2>
+          <h3 id="forms-heading" className="section-heading" tabIndex="-1" ref={formHeadingRef}>作成したフォーム</h3>
           {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
           {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
           <ContainedList id="form-history-list" className="project-list form-history-list" kind="on-page" size="lg" aria-labelledby="forms-heading">
@@ -258,7 +259,7 @@ function App() {
     <section key="projects" className="history-section projects" aria-labelledby="projects-heading">
       <Grid className="history-grid">
         <Column sm={4} md={8} lg={16}>
-          <h2 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近開いた企画</h2>
+          <h3 id="projects-heading" className="section-heading" tabIndex="-1" ref={projectHeadingRef}>最近の企画</h3>
           {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>再読み込み</Button></div>}
           {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
           <ContainedList id="project-history-list" className="project-list" kind="on-page" size="lg" aria-labelledby="projects-heading">
@@ -278,7 +279,7 @@ function App() {
             className="history-toggle"
             kind="ghost"
             size="sm"
-            aria-label={showAllProjects ? '最近開いた企画を折りたたむ' : '最近開いた企画をすべて見る'}
+            aria-label={showAllProjects ? '最近の企画を折りたたむ' : '最近の企画をすべて見る'}
             aria-expanded={showAllProjects}
             aria-controls="project-history-list"
             onClick={() => setShowAllProjects(value => !value)}
@@ -288,16 +289,26 @@ function App() {
     </section>
   );
 
-  const sections = { tools: toolsSection, forms: formsSection, projects: projectsSection };
-
   return <>
     <a className="skip-link" href="#main">本文へ移動</a>
     <Header aria-label="山歩会企画ポータル"><HeaderName href="./" prefix="">山歩会企画ポータル</HeaderName><ThemeHeaderControl /></Header>
     <main id="main" className="portal-page">
-      <h1 className="portal-title">山歩会企画ポータル</h1>
-      {sections.projects}
-      {sections.tools}
-      {sections.forms}
+      <h1 className="portal-title">企画を進める</h1>
+      <section className="history-workspace" aria-labelledby="history-heading">
+        <h2 id="history-heading" className="section-heading">続きから開く</h2>
+        <p className="history-description">このブラウザに保存された履歴</p>
+        <Tabs className="history-tabs" selectedIndex={historyTabIndex} onChange={({ selectedIndex }) => setHistoryTabIndex(selectedIndex)}>
+          <TabList aria-label="続きから開く" activation="automatic">
+            <Tab>最近の企画</Tab>
+            <Tab>作成したフォーム</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel id="project-history-panel" className="history-tabs-panel">{projectsSection}</TabPanel>
+            <TabPanel id="form-history-panel" className="history-tabs-panel">{formsSection}</TabPanel>
+          </TabPanels>
+        </Tabs>
+      </section>
+      {toolsSection}
     </main>
     {toast && <div className="toast-host"><ToastNotification kind="success" title={toast} timeout={5000} lowContrast onCloseButtonClick={() => setToast('')} /></div>}
   </>;

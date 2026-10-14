@@ -79,7 +79,7 @@ body {
   width: 100%;
   max-width: map.get(map.get(grid.$grid-breakpoints, max), width);
   margin: 0 auto;
-  padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-07, 2rem)) var(--cds-spacing-05, 1rem) var(--cds-spacing-09, 3rem);
+  padding: calc(var(--cds-layout-size-height-lg, 3rem) + var(--cds-spacing-06, 1.5rem)) var(--cds-spacing-05, 1rem) var(--cds-spacing-09, 3rem);
 }
 .portal-title {
   @include type-style('heading-03');
@@ -87,8 +87,17 @@ body {
 }
 .section-heading {
   @include type-style('heading-compact-01');
-  margin: 0 0 var(--cds-spacing-04, .75rem);
+  margin: 0 0 var(--cds-spacing-05, 1rem);
 }
+.history-workspace { min-inline-size: 0; }
+.history-description {
+  margin: calc(-1 * var(--cds-spacing-03, .5rem)) 0 var(--cds-spacing-05, 1rem);
+  color: var(--cds-text-secondary);
+  @include type-style('body-compact-01');
+}
+.history-tabs { min-inline-size: 0; }
+.history-tabs-panel { padding-inline: 0; }
+.tools-section { margin-block-start: var(--cds-spacing-07, 2rem); }
 
 .tool-grid {
   display: block;
@@ -127,9 +136,9 @@ body {
 }
 .projects {
   width: 100%;
-  margin-block-start: var(--cds-spacing-07, 2rem);
+  margin-block-start: 0;
 }
-.form-history { margin-block-start: var(--cds-spacing-06, 1.5rem); }
+.form-history { margin-block-start: 0; }
 .project-list { width: 100%; }
 .project-list .cds--contained-list-item__content {
   padding-block: var(--cds-spacing-04, .75rem);
@@ -240,8 +249,7 @@ body {
 }
 
 @include breakpoint-down(md) {
-  .projects,
-  .form-history { margin-block-start: var(--cds-spacing-06, 1.5rem); }
+  .tools-section { margin-block-start: var(--cds-spacing-07, 2rem); }
 }
 
 .toast-host {
