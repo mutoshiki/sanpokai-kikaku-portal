@@ -63,7 +63,8 @@ async function main() {
     const portalA = await context.newPage();
     const portalB = await context.newPage();
     await Promise.all([portalA.goto(`${origin}${BASE}`), portalB.goto(`${origin}${BASE}`)]);
-    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '山歩会企画ポータル' }).waitFor()));
+    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '企画の管理' }).waitFor()));
+    await Promise.all([portalA, portalB].map(page => page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor()));
     if (await portalA.getByRole('link', { name: /初期企画/ }).count() !== 1) throw new Error('React room record was not listed from the deployed origin');
     await Promise.all([portalA, portalB].map(page => page.evaluate(() => { window.__qaIndexWrites = 0; })));
 
