@@ -46,7 +46,7 @@ async function waitForAnimations(page) {
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
 
   const response = await openWithRetry(page, LIVE_URL, async () => {
-    await page.getByRole('heading', { name: '企画を進める', level: 1 }).waitFor({ timeout: 10000 });
+    await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 10000 });
     await page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor({ timeout: 10000 });
   });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');

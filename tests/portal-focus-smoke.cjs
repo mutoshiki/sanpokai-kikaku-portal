@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
 
 const DIST = 'dist';
 const THEME_KEY = 'sanpokai-theme-preference-v1';
@@ -51,6 +51,29 @@ async function installEnvironment(page, preference) {
   }, { key: THEME_KEY, preference });
 }
 
+async function installKeyboardHistoryFixture(page) {
+  await page.evaluate(() => {
+    localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: [
+      { roomId: 'FOCUS-PROJECT', name: 'キーボード確認企画', lastOpenedAt: Date.now() },
+    ] }));
+    localStorage.setItem('sanpokai-form-builder-history-v1', JSON.stringify([
+      { formId: 'FOCUS-FORM', planName: 'キーボード確認フォーム', responseUrl: 'https://docs.google.com/forms/d/FOCUS-FORM/viewform', editUrl: 'https://docs.google.com/forms/d/FOCUS-FORM/edit', createdAt: Date.now() },
+    ]));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai-form-builder-history-v1' }));
+  });
+}
+
+async function clearKeyboardHistoryFixture(page) {
+  await page.evaluate(() => {
+    localStorage.setItem('sanpokai_portal_project_history_v1', JSON.stringify({ version: 1, projects: [] }));
+    localStorage.setItem('sanpokai-form-builder-history-v1', JSON.stringify([]));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai_portal_project_history_v1' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai-form-builder-history-v1' }));
+  });
+  await page.getByRole('link', { name: /キーボード確認企画/ }).waitFor({ state: 'detached' });
+}
+
 function shadowIsTransparent(value) {
   if (!value || value === 'none') return true;
   return /rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/i.test(value) || /transparent/i.test(value);
@@ -67,12 +90,12 @@ async function waitForFocusedTile(page) {
   });
 }
 
-async function run(browser, preference, expectedTheme) {
+async function run(browser, engineName, preference, expectedTheme) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light', hasTouch: true });
   const page = await context.newPage();
   await installEnvironment(page, preference);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画を進める', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
 
   const emptyLists = await page.evaluate(() => [...document.querySelectorAll('.cds--contained-list')].map(node => ({
@@ -87,10 +110,12 @@ async function run(browser, preference, expectedTheme) {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
   const sectionOrder = await page.locator('main h2').allTextContents();
-  if (JSON.stringify(sectionOrder) !== JSON.stringify(['続きから開く', 'ツール'])) {
+  if (JSON.stringify(sectionOrder) !== JSON.stringify(['履歴', 'ツール'])) {
     throw new Error(`${preference}: empty portal section order regression: ${JSON.stringify(sectionOrder)}`);
   }
   if (await page.locator('.history-toggle').count() !== 0) throw new Error(`${preference}: empty history showed an expansion control`);
+  await installKeyboardHistoryFixture(page);
+  await page.getByRole('link', { name: /キーボード確認企画/ }).waitFor();
 
   const themeButton = page.getByRole('button', { name: /表示テーマ/ });
   await themeButton.click();
@@ -110,40 +135,57 @@ async function run(browser, preference, expectedTheme) {
   if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'tab') {
     throw new Error(`${preference}: Tab did not move from the closed theme panel to the history tabs`);
   }
+  const recentTab = page.getByRole('tab', { name: '最近の企画', exact: true });
+  const formsTab = page.getByRole('tab', { name: '作成したフォーム', exact: true });
+  if (await recentTab.getAttribute('aria-selected') !== 'true') throw new Error(`${preference}: recent-project tab was not initially selected`);
+  const projectPanelId = await recentTab.getAttribute('aria-controls');
+  const formPanelId = await formsTab.getAttribute('aria-controls');
+  await page.keyboard.press('ArrowRight');
+  if (await formsTab.getAttribute('aria-selected') !== 'true' || !await page.locator(`#${formPanelId}`).isVisible() || await page.locator(`#${projectPanelId}`).isVisible()) {
+    throw new Error(`${preference}: ArrowRight did not reveal only the forms panel`);
+  }
+  await page.getByRole('link', { name: /キーボード確認フォームの応募フォームを開く/ }).waitFor();
+  const tabStops = [];
+  for (let index = 0; index < 6; index += 1) {
+    await page.keyboard.press('Tab');
+    const stop = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName || '',
+      className: document.activeElement?.className?.toString?.() || '',
+      panelId: document.activeElement?.closest?.('[role="tabpanel"]')?.id || '',
+    }));
+    tabStops.push(stop);
+    if (stop.panelId !== formPanelId) break;
+  }
+  if (tabStops.some(stop => stop.panelId === projectPanelId) || !tabStops.some(stop => stop.panelId === formPanelId)) {
+    throw new Error(`${preference}: Tab entered the inactive project panel or skipped the active forms panel: ${JSON.stringify(tabStops)}`);
+  }
+  await formsTab.focus();
+  await page.keyboard.press('ArrowLeft');
+  if (await recentTab.getAttribute('aria-selected') !== 'true' || !await page.locator(`#${projectPanelId}`).isVisible() || await page.locator(`#${formPanelId}`).isVisible()) {
+    throw new Error(`${preference}: ArrowLeft did not return to only the project panel`);
+  }
+  await clearKeyboardHistoryFixture(page);
   await page.locator('#theme-preference-panel input').evaluateAll(nodes => {
     if (nodes.some(node => node === document.activeElement)) throw new Error('closed panel retained focus');
   });
 
-  const touchThemeButton = page.getByRole('button', { name: '表示テーマ：ダーク' });
-  const touchBounds = await touchThemeButton.boundingBox();
-  if (!touchBounds) throw new Error(`${preference}: theme trigger has no touch target`);
-  await page.touchscreen.tap(touchBounds.x + touchBounds.width / 2, touchBounds.y + touchBounds.height / 2);
-  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'true');
-  const openBounds = await touchThemeButton.boundingBox();
-  await page.touchscreen.tap(openBounds.x + openBounds.width / 2, openBounds.y + openBounds.height / 2);
-  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'false');
-  const touchFocus = await page.evaluate(() => ({
-    onTrigger: document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：') === true,
-    visible: document.activeElement?.matches(':focus-visible') === true,
-  }));
-  if (touchFocus.onTrigger && touchFocus.visible) throw new Error(`${preference}: touch close forced a keyboard-style focus ring: ${JSON.stringify(touchFocus)}`);
-
-  const toolLinks = await page.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
+  const focusPage = await context.newPage();
+  await installEnvironment(focusPage, preference);
+  await focusPage.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await focusPage.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
+  await focusPage.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
+  const touchThemeButton = focusPage.getByRole('button', { name: /表示テーマ：/ });
+  const toolLinks = await focusPage.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
   if (!toolLinks.some(href => href && href.includes('/form-maker/'))) {
     throw new Error(`${preference}: form maker tile is not routed through the themed host`);
   }
 
-  await page.evaluate(() => document.activeElement?.blur?.());
-  let reached = false;
-  for (let i = 0; i < 12; i += 1) {
-    await page.keyboard.press('Tab');
-    reached = await page.evaluate(() => document.activeElement?.classList?.contains('tool-tile') === true);
-    if (reached) break;
-  }
-  if (!reached) throw new Error(`${preference}: keyboard navigation did not reach a tool tile`);
-  await waitForFocusedTile(page);
+  await focusPage.locator('.tool-tile').first().focus();
+  await waitForFocusedTile(focusPage);
+  const reached = await focusPage.evaluate(() => document.activeElement?.classList?.contains('tool-tile') === true);
+  if (!reached) throw new Error(`${preference}: focus did not remain on the tool tile`);
 
-  const focus = await page.evaluate(() => {
+  const focus = await focusPage.evaluate(() => {
     const el = document.activeElement;
     const style = getComputedStyle(el);
     return {
@@ -161,26 +203,50 @@ async function run(browser, preference, expectedTheme) {
     throw new Error(`${preference}: keyboard focus ring is transparent after transition: ${JSON.stringify(focus)}`);
   }
 
-  await page.screenshot({ path: `browser-evidence/focus-${preference}.png`, fullPage: true });
+  const touchBounds = await touchThemeButton.boundingBox();
+  if (!touchBounds) throw new Error(`${preference}: theme trigger has no touch target`);
+  await focusPage.touchscreen.tap(touchBounds.x + touchBounds.width / 2, touchBounds.y + touchBounds.height / 2);
+  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'true');
+  const openBounds = await touchThemeButton.boundingBox();
+  await focusPage.touchscreen.tap(openBounds.x + openBounds.width / 2, openBounds.y + openBounds.height / 2);
+  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'false');
+  const touchFocus = await focusPage.evaluate(() => ({
+    onTrigger: document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：') === true,
+    visible: document.activeElement?.matches(':focus-visible') === true,
+  }));
+  if (touchFocus.onTrigger && touchFocus.visible) throw new Error(`${preference}: touch close forced a keyboard-style focus ring: ${JSON.stringify(touchFocus)}`);
+
+  await focusPage.screenshot({ path: `browser-evidence/focus-${engineName}-${preference}.png`, fullPage: true });
+  await focusPage.close();
   await context.close();
   return focus;
 }
 
 (async () => {
   fs.mkdirSync('browser-evidence', { recursive: true });
-  fs.mkdirSync(process.env.CHROMIUM_POLICY_DIR || '/tmp/empty-chromium-policy', { recursive: true });
-  const browser = await chromium.launch({
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-default-apps'],
-    env: { ...process.env, CHROMIUM_POLICY_DIR: process.env.CHROMIUM_POLICY_DIR || '/tmp/empty-chromium-policy' },
-  });
-  try {
-    const light = await run(browser, 'light', 'white');
-    const dark = await run(browser, 'dark', 'g100');
-    fs.writeFileSync('browser-evidence/focus-strict.json', JSON.stringify({ light, dark }, null, 2));
-  } finally {
-    await browser.close();
+  const results = {};
+  for (const [engineName, browserType] of [['chromium', chromium], ['webkit', webkit]]) {
+    let launchOptions = { headless: true };
+    if (engineName === 'chromium') {
+      const policyDir = process.env.CHROMIUM_POLICY_DIR || path.join(process.cwd(), 'browser-evidence', 'empty-chromium-policy');
+      fs.mkdirSync(policyDir, { recursive: true });
+      launchOptions = {
+        ...launchOptions,
+        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
+        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-default-apps'],
+        env: { ...process.env, CHROMIUM_POLICY_DIR: policyDir },
+      };
+    }
+    const browser = await browserType.launch(launchOptions);
+    try {
+      results[engineName] = {
+        light: await run(browser, engineName, 'light', 'white'),
+        dark: await run(browser, engineName, 'dark', 'g100'),
+      };
+    } finally {
+      await browser.close();
+    }
   }
-  console.log('Strict Carbon keyboard focus smoke passed for light and dark.');
+  fs.writeFileSync('browser-evidence/focus-strict.json', JSON.stringify(results, null, 2));
+  console.log('Strict Carbon keyboard focus and history tab smoke passed for Chromium/WebKit in light and dark.');
 })().catch(error => { console.error(error); process.exit(1); });

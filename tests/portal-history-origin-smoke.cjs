@@ -63,7 +63,7 @@ async function main() {
     const portalA = await context.newPage();
     const portalB = await context.newPage();
     await Promise.all([portalA.goto(`${origin}${BASE}`), portalB.goto(`${origin}${BASE}`)]);
-    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '企画を進める' }).waitFor()));
+    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '企画の管理' }).waitFor()));
     await Promise.all([portalA, portalB].map(page => page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor()));
     if (await portalA.getByRole('link', { name: /初期企画/ }).count() !== 1) throw new Error('React room record was not listed from the deployed origin');
     await Promise.all([portalA, portalB].map(page => page.evaluate(() => { window.__qaIndexWrites = 0; })));
@@ -88,7 +88,7 @@ async function main() {
     const formPage = await context.newPage();
     responseMode = 'delayed';
     await formPage.goto(`${origin}${BASE}form-maker/`);
-    const directLink = formPage.getByRole('link', { name: 'フォームメーカーを直接開く' });
+    const directLink = formPage.getByRole('link', { name: 'フォームメーカーが開かない場合はこちら' });
     await directLink.waitFor();
     const loadingLayout = await formPage.evaluate(() => ({
       viewportHeight: window.innerHeight,
@@ -133,7 +133,7 @@ async function main() {
     await failedPage.goto(`${origin}${BASE}form-maker/`);
     await failedPage.getByText('読み込みに時間がかかっています。').waitFor();
     const popupPromise = failedPage.waitForEvent('popup');
-    await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).click();
+    await failedPage.getByRole('link', { name: 'フォームメーカーが開かない場合はこちら' }).click();
     const popup = await popupPromise;
     await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
     if (!popup.url().startsWith('https://script.google.com/macros/s/')) throw new Error(`Recovery link navigated to an unexpected destination: ${popup.url()}`);

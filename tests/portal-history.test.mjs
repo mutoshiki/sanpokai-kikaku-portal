@@ -96,8 +96,8 @@ test('keeps missing lastOpenedAt null and displays updatedAt', () => {
   const missing = result.projects.find(project => project.roomId === 'MISSING');
   assert.equal(updated.lastOpenedAt, null);
   assert.equal(updated.updatedAt, 2000);
-  assert.deepEqual(portalHistory.getProjectDisplayDate(updated), { timestamp: 2000, label: '最終更新' });
-  assert.deepEqual(portalHistory.getProjectDisplayDate(missing), { timestamp: null, label: '日時不明' });
+  assert.deepEqual(portalHistory.getProjectDisplayDate(updated), { timestamp: 2000, label: '更新日時' });
+  assert.deepEqual(portalHistory.getProjectDisplayDate(missing), { timestamp: null, label: '日付不明' });
 });
 
 test('normalizes absent and non-positive portal timestamps', () => {

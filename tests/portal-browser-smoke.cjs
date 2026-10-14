@@ -150,7 +150,7 @@ async function run(browser, name, viewport) {
 
   await installIsolatedEnvironment(page);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画を進める', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
   await page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor({ timeout: 60000 });
   if (await page.getByRole('tab', { name: '最近の企画', exact: true }).getAttribute('aria-selected') !== 'true') {
     throw new Error(`${name}: recent-project tab is not selected by default`);
@@ -317,14 +317,14 @@ async function run(browser, name, viewport) {
   }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
   if (initial.leftEdges.some(left => Math.abs(left - initial.leftEdges[0]) > 1)) throw new Error(`${name}: main headings, tabs, list, and tool card do not share the page gutter: ${JSON.stringify(initial.leftEdges)}`);
-  for (const text of ['登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近の企画', '作成', '最終閲覧']) {
+  for (const text of ['企画の管理', '履歴', '登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近の企画', '作成', '開いた日時']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
   const expectedToolCopy = [
-    ['登山計画書メーカー', 'YAMAPの画像から登山計画書を作成', ''],
-    ['応募フォームメーカー', '参加者を募集するGoogleフォームを作成', ''],
-    ['サークル企画ツール', '参加者・車割・班割・交通費を管理', ''],
-    ['学務提出書類作成ツール', '引き継ぎデータから提出書類を作成', 'PCアプリをダウンロード'],
+    ['登山計画書メーカー', 'YAMAPの画像を使って、登山計画書を作ります。', ''],
+    ['応募フォームメーカー', '参加者を募集するGoogleフォームを作ります。', ''],
+    ['サークル企画ツール', '参加者の車や班を割り当て、交通費を計算します。', ''],
+    ['学務提出書類作成ツール', '学務に出す書類を作ります。引き継ぎデータも使えます。', 'PC用アプリをダウンロード'],
   ];
   if (JSON.stringify(initial.toolCopies.map(item => [item.title, item.description, item.hint])) !== JSON.stringify(expectedToolCopy)
     || initial.toolCopies.some(item => JSON.stringify(item.describedText) !== JSON.stringify([item.description, ...(item.hint ? [item.hint] : [])]))) {
@@ -332,7 +332,7 @@ async function run(browser, name, viewport) {
   }
   if (initial.labels[0] !== 'React企画' || initial.labels[1] !== '春山企画' || initial.labels[2] !== '夏山企画') throw new Error(`${name}: project history ordering or current React storage regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
-  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['続きから開く', 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
+  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['履歴', 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
   if (initial.projectRowCount !== 3 || initial.formRowCount !== 3 || initial.historyToggles.length !== 2) throw new Error(`${name}: history preview does not start at three rows: ${JSON.stringify(initial)}`);
   if (initial.historyToggles.some(toggle => toggle.expanded !== 'false' || !toggle.controls)) throw new Error(`${name}: preview toggle semantics regression: ${JSON.stringify(initial.historyToggles)}`);
   const toolColumnCount = viewport.width < 672 ? 1 : viewport.width < 1056 ? 2 : 4;
@@ -351,8 +351,8 @@ async function run(browser, name, viewport) {
       const description = tile.querySelector('p');
       const hint = tile.querySelector('.tool-tile__hint');
       title.textContent = '学務提出書類作成ツール'.repeat(6);
-      description.textContent = '引き継ぎデータから提出書類を作成'.repeat(6) + 'DownloadWithoutAnySpaces'.repeat(5);
-      if (hint) hint.textContent = 'PCアプリをダウンロード'.repeat(5);
+      description.textContent = '学務に出す書類を作ります。引き継ぎデータも使えます。'.repeat(6) + 'DownloadWithoutAnySpaces'.repeat(5);
+      if (hint) hint.textContent = 'PC用アプリをダウンロード'.repeat(5);
       const measurements = [title, description, hint].filter(Boolean).map(node => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
       const launch = tile.querySelector('.cds--tile--icon').getBoundingClientRect();
       const text = description.getBoundingClientRect();
@@ -442,10 +442,10 @@ async function run(browser, name, viewport) {
     contentOrder: [...row.querySelector('.project-list__item')?.children || []].map(node => node.tagName),
   })));
   const [fullForm, responseOnlyForm, projectOnlyForm, editOnlyForm, noUrlForm, unsafeForm] = formActionAudit;
-  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.copyText !== '回答用リンクをコピー' || fullForm.copyName !== '夏山応募フォームの回答用リンクをコピー' || fullForm.copyHeight < 44 || fullForm.responseHeight < 44 || fullForm.projectHeight < 44 || fullForm.responseFontSize !== fullForm.projectFontSize || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
-  if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.copyText !== '回答用リンクをコピー' || responseOnlyForm.menuCount || responseOnlyForm.projectText || projectOnlyForm.responseText || projectOnlyForm.copyText || projectOnlyForm.menuCount || projectOnlyForm.projectText !== '企画を開く' || noUrlForm.responseText || noUrlForm.copyText || noUrlForm.menuCount || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.copyText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.copyText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
+  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '夏山応募フォームの応募フォームを開く' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '夏山応募フォームの企画を開く' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.copyText !== '応募用リンクをコピー' || fullForm.copyName !== '夏山応募フォームの応募用リンクをコピー' || fullForm.copyHeight < 44 || fullForm.responseHeight < 44 || fullForm.projectHeight < 44 || fullForm.responseFontSize !== fullForm.projectFontSize || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
+  if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.copyText !== '応募用リンクをコピー' || responseOnlyForm.menuCount || responseOnlyForm.projectText || projectOnlyForm.responseText || projectOnlyForm.copyText || projectOnlyForm.menuCount || projectOnlyForm.projectText !== '企画を開く' || noUrlForm.responseText || noUrlForm.copyText || noUrlForm.menuCount || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.copyText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.copyText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
   if (editOnlyForm.menuCount !== 1 || editOnlyForm.name !== '雪山応募フォーム') throw new Error(`${name}: edit-only form lost its copy menu: ${JSON.stringify(editOnlyForm)}`);
-  if (unsafeForm.createdText !== '作成日時不明' || unsafeForm.createdDateTime) throw new Error(`${name}: invalid form timestamp was not shown as unknown: ${JSON.stringify(unsafeForm)}`);
+  if (unsafeForm.createdText !== '作成日不明' || unsafeForm.createdDateTime) throw new Error(`${name}: invalid form timestamp was not shown as unknown: ${JSON.stringify(unsafeForm)}`);
   if (JSON.stringify(fullForm.contentOrder.slice(0, 3)) !== JSON.stringify(['SPAN', 'TIME', 'DIV']) || !fullForm.contentOrder.includes('SPAN')) throw new Error(`${name}: form name/date/action order regression: ${JSON.stringify(fullForm.contentOrder)}`);
   const editOnlyRow = page.locator('#form-history-list .cds--contained-list-item').filter({ has: page.getByText('雪山応募フォーム', { exact: true }) });
   await editOnlyRow.locator('.cds--overflow-menu').focus();
@@ -529,7 +529,7 @@ async function run(browser, name, viewport) {
   await directCopy.focus();
   await page.keyboard.press('Enter');
   if (!(await responseCopyPopup)) throw new Error(`${name}: response copy opened a new tab`);
-  await page.waitForFunction(() => document.body.innerText.includes('回答用リンクをコピーしました'));
+  await page.waitForFunction(() => document.body.innerText.includes('応募用リンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/viewform') throw new Error(`${name}: response URL copy regression`);
   if (await directCopy.evaluate(node => node !== document.activeElement)) throw new Error(`${name}: response copy moved focus away from its button`);
 
@@ -539,7 +539,7 @@ async function run(browser, name, viewport) {
   await directCopy.click();
   if (!(await failedCopyPopup)) throw new Error(`${name}: failed response copy opened a new tab`);
   await page.getByRole('alert').filter({ hasText: 'コピーできませんでした' }).waitFor();
-  if (await page.getByText('回答用リンクをコピーしました').count()) throw new Error(`${name}: clipboard failure showed a success message`);
+  if (await page.getByText('応募用リンクをコピーしました').count()) throw new Error(`${name}: clipboard failure showed a success message`);
   await page.evaluate(() => { window.__QA_CLIPBOARD_FAIL__ = false; });
 
   await formRow.locator('.cds--overflow-menu').focus();
@@ -553,7 +553,7 @@ async function run(browser, name, viewport) {
   const olderCopyPopup = page.waitForEvent('popup', { timeout: 500 }).then(() => false).catch(() => true);
   await olderFormRow.locator('.form-copy-button').click();
   if (!(await olderCopyPopup)) throw new Error(`${name}: second response copy opened a new tab`);
-  await page.waitForFunction(() => document.body.innerText.includes('回答用リンクをコピーしました'));
+  await page.waitForFunction(() => document.body.innerText.includes('応募用リンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-A/viewform') throw new Error(`${name}: second history response URL mix-up`);
 
   await page.evaluate(() => {
@@ -657,7 +657,7 @@ async function run(browser, name, viewport) {
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
 
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画を進める', level: 1 }).waitFor({ timeout: 60000 });
+  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'dark') throw new Error(`${name}: theme lost on reload-equivalent render`);
@@ -684,6 +684,7 @@ async function run(browser, name, viewport) {
         formId: `BOUNDARY-FORM-${index + 1}`,
         planName: `境界確認フォーム${index + 1}`,
         createdAt: `2026-10-${String(14 - index).padStart(2, '0')}T10:00:00.000Z`,
+        editUrl: `https://docs.google.com/forms/d/BOUNDARY-FORM-${index + 1}/edit`,
       }))));
       window.dispatchEvent(new StorageEvent('storage', { key: 'sanpokai-form-builder-history-v1' }));
     }, { count });
@@ -732,6 +733,14 @@ async function run(browser, name, viewport) {
   if (await page.locator('.tool-tile').first().evaluate(node => node === document.activeElement) !== true) throw new Error(`${name}: form refresh stole focus from a still-visible tool`);
   await setFormCount(4);
   if (await page.locator('#form-history-list .cds--contained-list-item').count() !== 4 || await page.getByRole('button', { name: '作成したフォームを折りたたむ' }).getAttribute('aria-expanded') !== 'true') throw new Error(`${name}: expanded form history did not recover after a short refresh`);
+
+  const removedFormMenu = page.locator('#form-history-list .cds--contained-list-item').nth(3).locator('.cds--overflow-menu');
+  await removedFormMenu.focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '編集用リンクをコピー' }).focus();
+  await setFormCount(2);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'forms-heading') throw new Error(`${name}: removing the focused overflow-menu row did not move focus to the form history heading`);
+  if (await page.getByRole('menu').count()) throw new Error(`${name}: removed form left its overflow menu open`);
 
   const focus = await focusFirstTileWithKeyboard(page);
   const focusInvisible = focus.outlineStyle === 'none' || focus.outlineWidth === '0px' || focus.outlineColor === 'rgba(0, 0, 0, 0)' || focus.outlineColor === 'transparent';
