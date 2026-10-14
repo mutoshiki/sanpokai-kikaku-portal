@@ -150,7 +150,7 @@ async function run(browser, name, viewport) {
 
   await installIsolatedEnvironment(page);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
+  await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor({ timeout: 60000 });
   if (await page.getByRole('tab', { name: '最近の企画', exact: true }).getAttribute('aria-selected') !== 'true') {
     throw new Error(`${name}: recent-project tab is not selected by default`);
@@ -160,6 +160,20 @@ async function run(browser, name, viewport) {
   await waitForSurfaceTokens(page);
 
   const initial = await page.evaluate(() => ({
+    documentTitle: document.title,
+    pageHeading: document.querySelector('.portal-title')?.textContent.trim() || '',
+    headerName: document.querySelector('.cds--header__name')?.textContent.trim() || '',
+    headerBackground: getComputedStyle(document.querySelector('.cds--header')).backgroundColor,
+    headerToTitleGap: document.querySelector('.portal-title').getBoundingClientRect().top - document.querySelector('.cds--header').getBoundingClientRect().bottom,
+    headerBottom: document.querySelector('.cds--header').getBoundingClientRect().bottom,
+    titleTop: document.querySelector('.portal-title').getBoundingClientRect().top,
+    contentMarginTop: getComputedStyle(document.querySelector('#main')).marginBlockStart,
+    contentPaddingTop: getComputedStyle(document.querySelector('#main')).paddingBlockStart,
+    contentClass: document.querySelector('#main')?.className || '',
+    skipToContentHref: document.querySelector('.cds--skip-to-content')?.getAttribute('href') || '',
+    historyHeadings: [...document.querySelectorAll('.history-section .section-heading')].map(node => node.textContent.trim()),
+    visibleText: document.querySelector('main')?.innerText || '',
+    tabLabels: [...document.querySelectorAll('[role="tab"]')].map(node => node.textContent.trim()),
     tiles: document.querySelectorAll('.cds--tile--clickable').length,
     tileLaunchIcons: document.querySelectorAll('.tool-tile .cds--tile--icon').length,
     pictograms: [...document.querySelectorAll('.tool-tile__pictogram svg')].map(node => {
@@ -200,7 +214,6 @@ async function run(browser, name, viewport) {
     })),
     leftEdges: [
       document.querySelector('.portal-title'),
-      document.querySelector('#history-heading'),
       document.querySelector('[role="tablist"]'),
       document.querySelector('#project-history-list'),
       document.querySelector('#tools-heading'),
@@ -250,7 +263,7 @@ async function run(browser, name, viewport) {
     tileNestedInteractive: [...document.querySelectorAll('.tool-tile')].some(node => node.querySelector('a, button')),
     containedLists: [...document.querySelectorAll('.cds--contained-list')].map(node => ({
       className: node.className,
-      label: document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
+      label: node.getAttribute('aria-label') || document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
       itemCount: node.querySelectorAll('.cds--contained-list-item').length,
     })),
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -281,6 +294,29 @@ async function run(browser, name, viewport) {
     clickableRows: document.querySelectorAll('.project-list .cds--contained-list-item--clickable').length,
     rowHeights: [...document.querySelectorAll('.project-list .cds--contained-list-item')].filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect().height),
   }));
+  if (initial.documentTitle !== '山歩会企画ツール一覧' || initial.pageHeading !== '山歩会企画ツール一覧' || initial.headerName !== '山歩会企画ツール一覧') {
+    throw new Error(`${name}: site title is inconsistent: ${JSON.stringify({ title: initial.documentTitle, heading: initial.pageHeading, header: initial.headerName })}`);
+  }
+  if (['企画の管理', '履歴', '開いた企画や、作ったフォームを確認できます。'].some(copy => initial.visibleText.includes(copy))) {
+    throw new Error(`${name}: removed history copy is still visible: ${initial.visibleText}`);
+  }
+  if (initial.historyHeadings.length || initial.tabLabels.join('|') !== '最近の企画|作成したフォーム') {
+    throw new Error(`${name}: history tab labels are duplicated: ${JSON.stringify({ headings: initial.historyHeadings, tabs: initial.tabLabels })}`);
+  }
+  if (initial.headerBackground !== 'rgb(22, 22, 22)') {
+    throw new Error(`${name}: Carbon header is not fixed to black in light theme: ${initial.headerBackground}`);
+  }
+  if (!initial.contentClass.includes('cds--content') || initial.skipToContentHref !== '#main') {
+    throw new Error(`${name}: Carbon page shell is missing Content or SkipToContent: ${JSON.stringify({ content: initial.contentClass, skipHref: initial.skipToContentHref })}`);
+  }
+  if (initial.headerToTitleGap < 60 || initial.headerToTitleGap > 80) {
+    throw new Error(`${name}: Carbon content spacing does not clear the header consistently: ${JSON.stringify({ gap: initial.headerToTitleGap, headerBottom: initial.headerBottom, titleTop: initial.titleTop, margin: initial.contentMarginTop, padding: initial.contentPaddingTop })}`);
+  }
+  await selectHistoryTab(page, '作成したフォーム');
+  const formOpenTargetHeights = await page.locator('.form-history .history-response-link').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+  if (formOpenTargetHeights.some(height => height < 44)) throw new Error(`${name}: form open actions are too small for touch input: ${JSON.stringify(formOpenTargetHeights)}`);
+  if (!await page.locator('.form-history').innerText().then(text => text.includes('作成日'))) throw new Error(`${name}: form date label is missing`);
+  await selectHistoryTab(page, '最近の企画');
   const themeTrigger = page.getByRole('button', { name: '表示テーマ：システム設定' });
   if (await themeTrigger.getAttribute('aria-expanded') === 'true') {
     await themeTrigger.focus();
@@ -317,14 +353,14 @@ async function run(browser, name, viewport) {
   }
   if (initial.overflowX > 1) throw new Error(`${name}: initial overflow ${initial.overflowX}px`);
   if (initial.leftEdges.some(left => Math.abs(left - initial.leftEdges[0]) > 1)) throw new Error(`${name}: main headings, tabs, list, and tool card do not share the page gutter: ${JSON.stringify(initial.leftEdges)}`);
-  for (const text of ['企画の管理', '履歴', '登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近の企画', '作成', '開いた日時']) {
+  for (const text of ['山歩会企画ツール一覧', '登山計画書メーカー', '応募フォームメーカー', 'サークル企画ツール', '学務提出書類作成ツール', '最近の企画', '作成したフォーム', '開いた日時']) {
     if (!initial.text.includes(text)) throw new Error(`${name}: missing ${text}`);
   }
   const expectedToolCopy = [
-    ['登山計画書メーカー', 'YAMAPの画像を使って、登山計画書を作ります。', ''],
-    ['応募フォームメーカー', '参加者を募集するGoogleフォームを作ります。', ''],
-    ['サークル企画ツール', '参加者の車や班を割り当て、交通費を計算します。', ''],
-    ['学務提出書類作成ツール', '学務に出す書類を作ります。引き継ぎデータも使えます。', 'PC用アプリをダウンロード'],
+    ['登山計画書メーカー', 'YAMAPの画像から、登山計画書を作れます。', ''],
+    ['応募フォームメーカー', '参加者募集用のGoogleフォームを作れます。', ''],
+    ['サークル企画ツール', '車割り・班割りと交通費の精算に使います。', ''],
+    ['学務提出書類作成ツール', '学務に出す書類を作れます。引き継ぎデータも使えます。', 'PC用アプリをダウンロード'],
   ];
   if (JSON.stringify(initial.toolCopies.map(item => [item.title, item.description, item.hint])) !== JSON.stringify(expectedToolCopy)
     || initial.toolCopies.some(item => JSON.stringify(item.describedText) !== JSON.stringify([item.description, ...(item.hint ? [item.hint] : [])]))) {
@@ -332,7 +368,7 @@ async function run(browser, name, viewport) {
   }
   if (initial.labels[0] !== 'React企画' || initial.labels[1] !== '春山企画' || initial.labels[2] !== '夏山企画') throw new Error(`${name}: project history ordering or current React storage regression`);
   if (initial.formHistoryLabels[0] !== '夏山応募フォーム' || initial.formHistoryLabels[1] !== '春山応募フォーム') throw new Error(`${name}: form history ordering regression`);
-  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify(['履歴', 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
+  if (JSON.stringify(initial.sectionOrder) !== JSON.stringify([null, 'ツール'])) throw new Error(`${name}: populated history section order regression: ${JSON.stringify(initial.sectionOrder)}`);
   if (initial.projectRowCount !== 3 || initial.formRowCount !== 3 || initial.historyToggles.length !== 2) throw new Error(`${name}: history preview does not start at three rows: ${JSON.stringify(initial)}`);
   if (initial.historyToggles.some(toggle => toggle.expanded !== 'false' || !toggle.controls)) throw new Error(`${name}: preview toggle semantics regression: ${JSON.stringify(initial.historyToggles)}`);
   const toolColumnCount = viewport.width < 672 ? 1 : viewport.width < 1056 ? 2 : 4;
@@ -460,7 +496,7 @@ async function run(browser, name, viewport) {
   });
   await page.getByRole('link', { name: /更新中に追加された企画/ }).waitFor();
   const updatedOrder = await page.locator('main h2').allTextContents();
-  if (JSON.stringify(updatedOrder) !== JSON.stringify(initial.sectionOrder)) throw new Error(`${name}: history update moved the focused section order`);
+  if (JSON.stringify(updatedOrder) !== JSON.stringify(initial.sectionOrder.filter(Boolean))) throw new Error(`${name}: history update moved the focused section order`);
   if (await page.locator('#project-history-list .cds--contained-list-item').count() !== 7 || await page.locator('#form-history-list .cds--contained-list-item').count() !== 6) throw new Error(`${name}: storage refresh reset expanded history`);
 
   await selectHistoryTab(page, '最近の企画');
@@ -492,7 +528,7 @@ async function run(browser, name, viewport) {
 
   await selectHistoryTab(page, '作成したフォーム');
   const responsePopupPromise = page.waitForEvent('popup');
-  await page.locator('.form-history .history-link').first().focus();
+  await page.locator('.form-history .history-response-link').first().focus();
   await page.keyboard.press('Enter');
   const responsePopup = await responsePopupPromise;
   if (!responsePopup.url().includes('/forms/d/FORM-B/viewform')) throw new Error(`${name}: response link destination regression: ${responsePopup.url()}`);
@@ -623,6 +659,7 @@ async function run(browser, name, viewport) {
       tileBg: css(tile)?.backgroundColor || '',
       tileColor: css(tile)?.color || '',
       panelBg: css(panel)?.backgroundColor || '',
+      headerBg: css(document.querySelector('.cds--header'))?.backgroundColor || '',
       overflowX: root.scrollWidth - root.clientWidth,
     };
   }, THEME_KEY);
@@ -630,6 +667,7 @@ async function run(browser, name, viewport) {
   if (dark.preference !== 'dark' || dark.rootTheme !== 'g100') throw new Error(`${name}: dark preference failed: ${JSON.stringify(dark)}`);
   if ([dark.bodyBg, dark.appBg, dark.tileBg, dark.panelBg].includes('rgb(255, 255, 255)')) throw new Error(`${name}: white surface leaked: ${JSON.stringify(dark)}`);
   if (dark.tileColor === 'rgb(22, 22, 22)' || dark.tileColor === 'rgb(0, 0, 0)') throw new Error(`${name}: dark tile text stayed dark: ${JSON.stringify(dark)}`);
+  if (dark.headerBg !== 'rgb(22, 22, 22)') throw new Error(`${name}: Carbon header changed with dark page theme: ${dark.headerBg}`);
   if (dark.overflowX > 1) throw new Error(`${name}: dark overflow ${dark.overflowX}px`);
   await page.screenshot({ path: path.join(OUT, `${name}-dark.png`), fullPage: true });
 
@@ -657,7 +695,7 @@ async function run(browser, name, viewport) {
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
 
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
+  await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
   if (await page.evaluate(key => localStorage.getItem(key), THEME_KEY) !== 'dark') throw new Error(`${name}: theme lost on reload-equivalent render`);
@@ -703,7 +741,7 @@ async function run(browser, name, viewport) {
   const collapseButton = page.getByRole('button', { name: '最近の企画を折りたたむ' });
   await collapseButton.focus();
   await setProjectCount(2);
-  await page.waitForFunction(() => document.activeElement?.id === 'projects-heading');
+  await page.waitForFunction(() => document.activeElement?.id === 'project-history-section');
   if (await page.locator('.projects:not(.form-history) .history-toggle').count() !== 0) throw new Error(`${name}: updated short history retained a toggle`);
 
   await setProjectCount(4);
@@ -712,7 +750,7 @@ async function run(browser, name, viewport) {
   const projectExpandButton = page.getByRole('button', { name: '最近の企画をすべて見る' });
   await projectExpandButton.focus();
   await setProjectCount(2);
-  if (await page.evaluate(() => document.activeElement?.id) !== 'projects-heading') throw new Error(`${name}: collapsed project toggle removal did not move focus to its heading`);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'project-history-section') throw new Error(`${name}: collapsed project toggle removal did not move focus to its section`);
   await setProjectCount(4);
   await page.getByRole('button', { name: '最近の企画をすべて見る' }).click();
   await page.locator('.tool-tile').first().focus();
@@ -725,7 +763,7 @@ async function run(browser, name, viewport) {
   await setFormCount(4);
   await page.getByRole('button', { name: '作成したフォームをすべて見る' }).focus();
   await setFormCount(2);
-  if (await page.evaluate(() => document.activeElement?.id) !== 'forms-heading') throw new Error(`${name}: collapsed form toggle removal did not move focus to its heading`);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'form-history-section') throw new Error(`${name}: collapsed form toggle removal did not move focus to its section`);
   await setFormCount(4);
   await page.getByRole('button', { name: '作成したフォームをすべて見る' }).click();
   await page.locator('.tool-tile').first().focus();
@@ -739,7 +777,7 @@ async function run(browser, name, viewport) {
   await page.keyboard.press('Enter');
   await page.getByRole('menuitem', { name: '編集用リンクをコピー' }).focus();
   await setFormCount(2);
-  if (await page.evaluate(() => document.activeElement?.id) !== 'forms-heading') throw new Error(`${name}: removing the focused overflow-menu row did not move focus to the form history heading`);
+  if (await page.evaluate(() => document.activeElement?.id) !== 'form-history-section') throw new Error(`${name}: removing the focused overflow-menu row did not move focus to the form section`);
   if (await page.getByRole('menu').count()) throw new Error(`${name}: removed form left its overflow menu open`);
 
   const focus = await focusFirstTileWithKeyboard(page);

@@ -95,11 +95,22 @@ async function run(browser, engineName, preference, expectedTheme) {
   const page = await context.newPage();
   await installEnvironment(page, preference);
   await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
+  await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
+  await page.keyboard.press('Tab');
+  const skipTarget = await page.evaluate(() => ({
+    className: document.activeElement?.className?.toString?.() || '',
+    href: document.activeElement?.getAttribute('href') || '',
+    text: document.activeElement?.textContent.trim() || '',
+  }));
+  if (!skipTarget.className.includes('cds--skip-to-content') || skipTarget.href !== '#main' || skipTarget.text !== '本文へ移動') {
+    throw new Error(`${preference}: Carbon SkipToContent keyboard entry regression: ${JSON.stringify(skipTarget)}`);
+  }
+  await page.keyboard.press('Enter');
+  if (await page.evaluate(() => window.location.hash) !== '#main') throw new Error(`${preference}: SkipToContent did not reach main`);
 
   const emptyLists = await page.evaluate(() => [...document.querySelectorAll('.cds--contained-list')].map(node => ({
-    label: document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
+    label: node.getAttribute('aria-label') || document.getElementById(node.getAttribute('aria-labelledby'))?.textContent.trim() || '',
     itemCount: node.querySelectorAll('.cds--contained-list-item').length,
     itemButtons: node.querySelectorAll('.cds--contained-list-item button').length,
   })));
@@ -109,8 +120,22 @@ async function run(browser, engineName, preference, expectedTheme) {
   if (emptyLists[0]?.label !== '最近の企画' || emptyLists[1]?.label !== '作成したフォーム') {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
+  const unavailablePage = await context.newPage();
+  await installEnvironment(unavailablePage, preference);
+  await unavailablePage.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await unavailablePage.locator('.portal-title').waitFor({ timeout: 60000 });
+  await unavailablePage.evaluate(() => {
+    Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new Error('storage disabled'); } });
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+  });
+  await unavailablePage.getByRole('status').filter({ hasText: '読み込めませんでした' }).waitFor({ timeout: 10000 });
+  const unavailableCopy = await unavailablePage.locator('.history-workspace').textContent();
+  if (unavailableCopy.includes('履歴') || !unavailableCopy.includes('企画を表示できません') || !unavailableCopy.includes('フォームを表示できません')) {
+    throw new Error(`${preference}: unavailable state still uses duplicate history copy: ${unavailableCopy}`);
+  }
+  await unavailablePage.close();
   const sectionOrder = await page.locator('main h2').allTextContents();
-  if (JSON.stringify(sectionOrder) !== JSON.stringify(['履歴', 'ツール'])) {
+  if (JSON.stringify(sectionOrder) !== JSON.stringify(['ツール'])) {
     throw new Error(`${preference}: empty portal section order regression: ${JSON.stringify(sectionOrder)}`);
   }
   if (await page.locator('.history-toggle').count() !== 0) throw new Error(`${preference}: empty history showed an expansion control`);
@@ -172,7 +197,7 @@ async function run(browser, engineName, preference, expectedTheme) {
   const focusPage = await context.newPage();
   await installEnvironment(focusPage, preference);
   await focusPage.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await focusPage.getByRole('heading', { name: '企画の管理', level: 1 }).waitFor({ timeout: 60000 });
+  await focusPage.locator('.portal-title').waitFor({ timeout: 60000 });
   await focusPage.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
   const touchThemeButton = focusPage.getByRole('button', { name: /表示テーマ：/ });
   const toolLinks = await focusPage.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));

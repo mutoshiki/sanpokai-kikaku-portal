@@ -63,7 +63,7 @@ async function main() {
     const portalA = await context.newPage();
     const portalB = await context.newPage();
     await Promise.all([portalA.goto(`${origin}${BASE}`), portalB.goto(`${origin}${BASE}`)]);
-    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '企画の管理' }).waitFor()));
+    await Promise.all([portalA, portalB].map(page => page.getByRole('heading', { name: '山歩会企画ツール一覧' }).waitFor()));
     await Promise.all([portalA, portalB].map(page => page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor()));
     if (await portalA.getByRole('link', { name: /初期企画/ }).count() !== 1) throw new Error('React room record was not listed from the deployed origin');
     await Promise.all([portalA, portalB].map(page => page.evaluate(() => { window.__qaIndexWrites = 0; })));
@@ -80,7 +80,7 @@ async function main() {
       if (await page.evaluate(() => window.__qaIndexWrites) !== 0) throw new Error('A portal tab wrote back to the index after a storage event');
     }
     await producer.evaluate(() => localStorage.setItem('sanpo-react:v1:BROKEN:room', '{'));
-    await Promise.all([portalA, portalB].map(page => page.getByRole('status').filter({ hasText: '一部の履歴' }).waitFor()));
+    await Promise.all([portalA, portalB].map(page => page.getByRole('status').filter({ hasText: '一部を読み込めませんでした' }).waitFor()));
     if (await portalA.getByRole('link', { name: /更新された企画名/ }).count() !== 1) throw new Error('One corrupt record hid healthy project history');
 
     const oldForms = Array.from({ length: 10 }, (_, index) => ({ formId: `OLD-${index}`, planName: `旧フォーム${index}`, createdAt: `2026-01-${String(index + 1).padStart(2, '0')}` }));

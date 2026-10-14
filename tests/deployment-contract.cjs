@@ -26,6 +26,18 @@ if (/\<div\s+id=["']root["']\s*\>\s*\<\/div\>/i.test(source)) {
 if (!source.includes('static-fallback')) {
   fail('source index is missing the emergency static fallback');
 }
+if (!source.includes('<title>山歩会企画ツール一覧</title>')) {
+  fail('source index title does not match the portal name');
+}
+for (const copy of [
+  '山歩会の企画に使うツールをまとめています。',
+  'YAMAPの画像から、登山計画書を作れます。',
+  '参加者募集用のGoogleフォームを作れます。',
+  '車割り・班割りと交通費の精算に使います。',
+  '学務に出す書類を作れます。引き継ぎデータも使えます。',
+]) {
+  if (!source.includes(copy)) fail(`static fallback copy is missing: ${copy}`);
+}
 if (!dist.includes('/sanpokai-kikaku-portal/assets/')) {
   fail('Vite dist does not use the GitHub Pages base path');
 }
