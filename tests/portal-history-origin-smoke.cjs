@@ -88,19 +88,16 @@ async function main() {
     responseMode = 'delayed';
     await formPage.goto(`${origin}${BASE}form-maker/`);
     const directLink = formPage.getByRole('link', { name: 'フォームメーカーを直接開く' });
-    await directLink.waitFor();
+    if (await directLink.count() !== 0) throw new Error('The non-synchronizing direct link is visible while the embedded app is loading');
     const loadingLayout = await formPage.evaluate(() => ({
       viewportHeight: window.innerHeight,
-      frameHeight: document.getElementById('form-maker-frame').getBoundingClientRect().height,
+      statusTop: document.getElementById('form-maker-status').getBoundingClientRect().top,
       statusHeight: document.getElementById('form-maker-status').getBoundingClientRect().height,
+      spinnerWidth: Number.parseFloat(getComputedStyle(document.getElementById('form-maker-status'), '::before').width),
     }));
-    if (Math.abs(loadingLayout.frameHeight + loadingLayout.statusHeight - loadingLayout.viewportHeight) > 2) {
-      throw new Error(`Recovery status does not fit beside the iframe: ${JSON.stringify(loadingLayout)}`);
+    if (Math.abs(loadingLayout.statusTop) > 2 || Math.abs(loadingLayout.statusHeight - loadingLayout.viewportHeight) > 2 || loadingLayout.spinnerWidth < 20) {
+      throw new Error(`Loading state does not fill the viewport with a visible indicator: ${JSON.stringify(loadingLayout)}`);
     }
-    await directLink.evaluate(node => {
-      const style = getComputedStyle(node);
-      if (style.visibility === 'hidden' || style.display === 'none') throw new Error('Recovery link is hidden before iframe readiness');
-    });
     await formPage.evaluate(() => {
       const channel = new URL(document.getElementById('form-maker-frame').src).searchParams.get('historyChannel');
       window.postMessage({ source: 'sanpokai-form-history-child', channel, type: 'history-ready', history: [{ formId: 'SPOOF', createdAt: '2027-01-02' }] }, '*');
@@ -125,20 +122,18 @@ async function main() {
     const delayedPage = await context.newPage();
     await delayedPage.goto(`${origin}${BASE}form-maker/`);
     await delayedPage.getByText('読み込みに時間がかかっています。').waitFor();
+    if (await delayedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The non-synchronizing direct link is visible after a slow load');
+    await delayedPage.getByText(/ポータルへ戻って再度開いてください/).waitFor();
     await delayedPage.waitForFunction(() => document.getElementById('form-maker-status')?.hidden === true, { timeout: 3000 });
 
     responseMode = 'fail';
     const failedPage = await context.newPage();
     await failedPage.goto(`${origin}${BASE}form-maker/`);
     await failedPage.getByText('読み込みに時間がかかっています。').waitFor();
-    const popupPromise = failedPage.waitForEvent('popup');
-    await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).click();
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
-    if (!popup.url().startsWith('https://script.google.com/macros/s/')) throw new Error(`Recovery link navigated to an unexpected destination: ${popup.url()}`);
-    await popup.close();
+    if (await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The non-synchronizing direct link is offered when embedded loading fails');
+    await failedPage.getByText(/ポータルへ戻って再度開いてください/).waitFor();
     await context.close();
-    console.log('Same-origin history convergence and form-host recovery smoke passed.');
+    console.log('Same-origin history convergence and form-host loading guidance smoke passed.');
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
