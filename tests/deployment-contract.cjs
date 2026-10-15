@@ -14,10 +14,16 @@ const integratedFormDeployment = 'AKfycbzbwo8SyyKNnNHzX2SjwlhipNFkiWus5j0pnuTcEE
 const formHostUrls = [...formHost.matchAll(/https:\/\/script\.google\.com\/macros\/s\/([^/]+)\/exec/g)]
   .map((match) => match[1]);
 if (formHostUrls.length !== 1 || formHostUrls.some((deploymentId) => deploymentId !== integratedFormDeployment)) {
-  fail('form maker iframe must use the verified integrated Apps Script deployment, without a non-synchronizing direct link');
+  fail('form maker iframe must use the verified integrated Apps Script deployment');
 }
-if (formHost.includes('フォームメーカーを直接開く')) {
-  fail('form maker host must not offer the history-bypassing direct Apps Script route');
+const directLinkBuilder = formHost.match(/function buildDirectUrl\(pref\)\s*\{([\s\S]*?)\n\s*\}/)?.[1] || '';
+if (!formHost.includes('id="form-maker-direct-link"')
+  || !formHost.includes('directLink.hidden = false')
+  || !formHost.includes('directLink.href = buildDirectUrl(preference)')
+  || !formHost.includes('target="_blank"')
+  || !directLinkBuilder.includes('url.searchParams.set(\'theme\'' )
+  || /historyChannel|themeChannel|historyOrigin/.test(directLinkBuilder)) {
+  fail('form maker host must offer a separate-tab Apps Script recovery link without depending on the history bridge');
 }
 
 if (/\<div\s+id=["']root["']\s*\>\s*\<\/div\>/i.test(source)) {

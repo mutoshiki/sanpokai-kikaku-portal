@@ -50,9 +50,9 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 1rem;
+      gap: var(--cds-spacing-05, 1rem);
       margin: 0;
-      padding: 1.5rem 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+      padding: var(--cds-spacing-06, 1.5rem) 1.25rem max(var(--cds-spacing-06, 1.5rem), env(safe-area-inset-bottom));
       font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
       color: var(--host-text);
       background: var(--host-bg);
@@ -66,7 +66,22 @@
       content: '';
       animation: form-maker-spin .8s linear infinite;
     }
+    .fallback.is-delayed::before { display: none; }
     .loading-message { max-width: 24rem; margin: 0; text-align: center; }
+    .fallback-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--cds-spacing-09, 3rem);
+      padding: 0 var(--cds-spacing-05, 1rem);
+      background: var(--cds-interactive, rgb(15 98 254));
+      color: var(--cds-text-on-color, rgb(255 255 255));
+      font: 600 1rem/1.25 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      text-decoration: none;
+    }
+    .fallback-link:hover { background: var(--cds-interactive-hover, rgb(3 83 233)); }
+    .fallback-link:focus-visible { outline: 2px solid var(--cds-focus, rgb(15 98 254)); outline-offset: 3px; }
+    .fallback-note { max-width: 24rem; margin: 0; text-align: center; }
     @keyframes form-maker-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) {
       .fallback::before { animation: none; }
@@ -83,6 +98,8 @@
   ></iframe>
   <div class="fallback" id="form-maker-status" role="status" aria-live="polite">
     <p class="loading-message" id="form-maker-message">フォームメーカーを開いています。しばらくお待ちください。</p>
+    <a class="fallback-link" id="form-maker-direct-link" hidden target="_blank" rel="noopener noreferrer">フォームメーカーを直接開く</a>
+    <p class="fallback-note" id="form-maker-note" hidden>直接開いた画面では、作成履歴がポータルに表示されないことがあります。</p>
   </div>
 
   <script type="module">
@@ -99,6 +116,8 @@
       const frame = document.getElementById('form-maker-frame');
       const status = document.getElementById('form-maker-status');
       const messageNode = document.getElementById('form-maker-message');
+      const directLink = document.getElementById('form-maker-direct-link');
+      const fallbackNote = document.getElementById('form-maker-note');
       const meta = document.querySelector('meta[name="theme-color"]');
       const media = window.matchMedia('(prefers-color-scheme: dark)');
       const themeChannel = createChannel('theme');
@@ -107,7 +126,11 @@
       let historyReady = false;
       const fallbackTimer = window.setTimeout(() => {
         if (historyReady) return;
-        messageNode.textContent = '読み込みに時間がかかっています。フォーム履歴を連携しています。進まない場合はポータルに戻り、もう一度開いてください。';
+        status.classList.add('is-delayed');
+        messageNode.textContent = 'フォーム履歴の連携に時間がかかっています。直接開いてフォームを作成できます。';
+        directLink.href = buildDirectUrl(preference);
+        directLink.hidden = false;
+        fallbackNote.hidden = false;
       }, 10000);
 
       function createChannel(prefix) {
@@ -166,6 +189,12 @@
         url.searchParams.set('themeChannel', themeChannel);
         url.searchParams.set('historyChannel', historyChannel);
         url.searchParams.set('historyOrigin', window.location.origin);
+        return url.href;
+      }
+
+      function buildDirectUrl(pref) {
+        const url = new URL(APP_URL);
+        url.searchParams.set('theme', VALID.has(pref) ? pref : 'system');
         return url.href;
       }
 
