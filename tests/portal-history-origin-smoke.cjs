@@ -43,7 +43,13 @@ async function main() {
         return nativeSetItem.call(this, key, value);
       };
       const nativeTimeout = window.setTimeout.bind(window);
-      window.setTimeout = (callback, delay, ...args) => nativeTimeout(callback, delay === 10000 ? 25 : delay, ...args);
+      window.setTimeout = (callback, delay, ...args) => {
+        if (delay === 10000) {
+          window.__qaRunFormMakerFallback = callback;
+          return nativeTimeout(() => {}, 60000);
+        }
+        return nativeTimeout(callback, delay, ...args);
+      };
     }, origin);
     await context.route('https://script.google.com/macros/s/**', async route => {
       const url = new URL(route.request().url());
@@ -124,6 +130,7 @@ async function main() {
     await delayedPage.goto(`${origin}${BASE}form-maker/`);
     const delayedDirectLink = delayedPage.getByRole('link', { name: 'フォームメーカーを直接開く' });
     if (await delayedDirectLink.count() !== 0) throw new Error('The recovery link is visible before the embedded app has had time to load');
+    await delayedPage.evaluate(() => window.__qaRunFormMakerFallback?.());
     await delayedPage.getByText('フォーム履歴の連携に時間がかかっています。').waitFor();
     await delayedDirectLink.waitFor();
     await delayedPage.getByText('直接開いた画面では、作成履歴がポータルに表示されないことがあります。').waitFor();
@@ -131,6 +138,15 @@ async function main() {
     if (await delayedPage.locator('#form-maker-status').evaluate(element => getComputedStyle(element, '::before').display) !== 'none') throw new Error('The spinner should stop after recovery guidance appears');
     const delayedDirectUrl = new URL(await delayedDirectLink.getAttribute('href'));
     if (delayedDirectUrl.origin !== 'https://script.google.com' || delayedDirectUrl.searchParams.has('historyChannel')) throw new Error('The direct recovery link must open Apps Script without a history handshake');
+    for (let attempt = 0; attempt < 3 && await delayedDirectLink.evaluate(element => document.activeElement !== element); attempt += 1) {
+      await delayedPage.keyboard.press('Tab');
+    }
+    const focusStyle = await delayedDirectLink.evaluate(element => ({
+      focused: document.activeElement === element,
+      outlineStyle: getComputedStyle(element).outlineStyle,
+      outlineWidth: getComputedStyle(element).outlineWidth,
+    }));
+    if (!focusStyle.focused || focusStyle.outlineStyle !== 'solid' || Number.parseFloat(focusStyle.outlineWidth) < 2) throw new Error(`The recovery link is not keyboard reachable with a visible focus indicator: ${JSON.stringify(focusStyle)}`);
     const delayedPopupPromise = delayedPage.waitForEvent('popup');
     await delayedDirectLink.click();
     const delayedPopup = await delayedPopupPromise;
@@ -142,6 +158,8 @@ async function main() {
     responseMode = 'fail';
     const failedPage = await context.newPage();
     await failedPage.goto(`${origin}${BASE}form-maker/`);
+    if (await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The recovery link is visible before the failure timeout');
+    await failedPage.evaluate(() => window.__qaRunFormMakerFallback?.());
     await failedPage.getByText('フォーム履歴の連携に時間がかかっています。').waitFor();
     await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).waitFor();
     await context.close();
