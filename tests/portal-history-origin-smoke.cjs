@@ -43,12 +43,18 @@ async function main() {
         return nativeSetItem.call(this, key, value);
       };
       const nativeTimeout = window.setTimeout.bind(window);
-      window.setTimeout = (callback, delay, ...args) => nativeTimeout(callback, delay === 10000 ? 25 : delay, ...args);
+      window.setTimeout = (callback, delay, ...args) => {
+        if (delay === 10000) {
+          window.__qaRunFormMakerFallback = callback;
+          return nativeTimeout(() => {}, 60000);
+        }
+        return nativeTimeout(callback, delay, ...args);
+      };
     }, origin);
     await context.route('https://script.google.com/macros/s/**', async route => {
       const url = new URL(route.request().url());
       if (!url.searchParams.has('embedded')) {
-        await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>直接フォーム</title><h1>直接フォームを開きました</h1>' });
+        await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><meta charset="utf-8"><title>直接フォーム</title><h1>直接フォームを開きました</h1>' });
         return;
       }
       if (responseMode === 'fail') { await route.abort(); return; }
@@ -122,17 +128,40 @@ async function main() {
     responseMode = 'delayed';
     const delayedPage = await context.newPage();
     await delayedPage.goto(`${origin}${BASE}form-maker/`);
-    await delayedPage.getByText('読み込みに時間がかかっています。').waitFor();
-    if (await delayedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The non-synchronizing direct link is visible after a slow load');
-    await delayedPage.getByText(/ポータルに戻り、もう一度開いてください/).waitFor();
+    const delayedDirectLink = delayedPage.getByRole('link', { name: 'フォームメーカーを直接開く' });
+    if (await delayedDirectLink.count() !== 0) throw new Error('The recovery link is visible before the embedded app has had time to load');
+    await delayedPage.evaluate(() => window.__qaRunFormMakerFallback?.());
+    await delayedPage.getByText('フォーム履歴の連携に時間がかかっています。').waitFor();
+    await delayedDirectLink.waitFor();
+    await delayedPage.getByText('直接開いた画面では、作成履歴がポータルに表示されないことがあります。').waitFor();
+    if (await delayedDirectLink.getAttribute('target') !== '_blank') throw new Error('The direct recovery link must preserve the portal page in its current tab');
+    if (await delayedPage.locator('#form-maker-status').evaluate(element => getComputedStyle(element, '::before').display) !== 'none') throw new Error('The spinner should stop after recovery guidance appears');
+    const delayedDirectUrl = new URL(await delayedDirectLink.getAttribute('href'));
+    if (delayedDirectUrl.origin !== 'https://script.google.com' || delayedDirectUrl.searchParams.has('historyChannel')) throw new Error('The direct recovery link must open Apps Script without a history handshake');
+    for (let attempt = 0; attempt < 3 && await delayedDirectLink.evaluate(element => document.activeElement !== element); attempt += 1) {
+      await delayedPage.keyboard.press('Tab');
+    }
+    const focusStyle = await delayedDirectLink.evaluate(element => ({
+      focused: document.activeElement === element,
+      outlineStyle: getComputedStyle(element).outlineStyle,
+      outlineWidth: getComputedStyle(element).outlineWidth,
+    }));
+    if (!focusStyle.focused || focusStyle.outlineStyle !== 'solid' || Number.parseFloat(focusStyle.outlineWidth) < 2) throw new Error(`The recovery link is not keyboard reachable with a visible focus indicator: ${JSON.stringify(focusStyle)}`);
+    const delayedPopupPromise = delayedPage.waitForEvent('popup');
+    await delayedDirectLink.click();
+    const delayedPopup = await delayedPopupPromise;
+    await delayedPopup.waitForLoadState('domcontentloaded');
+    const directPageText = await delayedPopup.locator('body').innerText().catch(() => '');
+    if (!directPageText.includes('直接フォームを開きました')) throw new Error(`Direct recovery target did not load: url=${delayedPopup.url()} text=${directPageText.slice(0, 200)}`);
     await delayedPage.waitForFunction(() => document.getElementById('form-maker-status')?.hidden === true, { timeout: 3000 });
 
     responseMode = 'fail';
     const failedPage = await context.newPage();
     await failedPage.goto(`${origin}${BASE}form-maker/`);
-    await failedPage.getByText('読み込みに時間がかかっています。').waitFor();
-    if (await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The non-synchronizing direct link is offered when embedded loading fails');
-    await failedPage.getByText(/ポータルに戻り、もう一度開いてください/).waitFor();
+    if (await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).count() !== 0) throw new Error('The recovery link is visible before the failure timeout');
+    await failedPage.evaluate(() => window.__qaRunFormMakerFallback?.());
+    await failedPage.getByText('フォーム履歴の連携に時間がかかっています。').waitFor();
+    await failedPage.getByRole('link', { name: 'フォームメーカーを直接開く' }).waitFor();
     await context.close();
     console.log('Same-origin history convergence and form-host loading guidance smoke passed.');
   } finally {
