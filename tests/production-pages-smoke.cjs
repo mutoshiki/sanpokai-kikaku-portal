@@ -42,8 +42,17 @@ async function waitForAnimations(page) {
   const page = await context.newPage();
   const pageErrors = [];
   const consoleErrors = [];
+  const firebaseWrites = [];
   page.on('pageerror', error => pageErrors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+  await page.route(/https:\/\/(?:identitytoolkit|securetoken)\.googleapis\.com|https:\/\/[^/]*firebaseio\.com/, async route => {
+    // Anonymous Auth may use POST to establish the browser identity. The smoke
+    // blocks all Firebase traffic, but only RTDB mutations count as app writes.
+    if (/firebaseio\.com/.test(route.request().url()) && route.request().method() !== 'GET') {
+      firebaseWrites.push({ method: route.request().method() });
+    }
+    await route.abort('blockedbyclient');
+  });
 
   const response = await openWithRetry(page, LIVE_URL, async () => {
     await page.getByRole('heading', { name: '山歩会企画ツール一覧', level: 1 }).waitFor({ timeout: 10000 });
@@ -52,7 +61,7 @@ async function waitForAnimations(page) {
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
   await waitForAnimations(page);
 
-  const initial = await page.evaluate(() => ({
+  const portal = await page.evaluate(() => ({
     theme: document.documentElement.dataset.carbonTheme,
     tiles: document.querySelectorAll('.tool-tile').length,
     bodyTextLength: document.body.innerText.trim().length,
@@ -60,97 +69,65 @@ async function waitForAnimations(page) {
     documentWidth: document.documentElement.scrollWidth,
     formHref: [...document.querySelectorAll('.tool-tile')].find(node => node.textContent.includes('応募フォームメーカー'))?.getAttribute('href') || '',
   }));
-  if (initial.tiles !== 4 || initial.bodyTextLength < 100) throw new Error(`portal production app did not render: ${JSON.stringify(initial)}`);
-  if (initial.documentWidth > initial.viewportWidth + 1) throw new Error(`portal mobile overflow: ${initial.documentWidth} > ${initial.viewportWidth}`);
-  if (!initial.formHref.includes('/form-maker/')) throw new Error(`form maker does not route through themed host: ${initial.formHref}`);
+  if (portal.tiles !== 4 || portal.bodyTextLength < 100) throw new Error(`portal production app did not render: ${JSON.stringify(portal)}`);
+  if (portal.documentWidth > portal.viewportWidth + 1) throw new Error(`portal mobile overflow: ${portal.documentWidth} > ${portal.viewportWidth}`);
+  if (!portal.formHref.includes('/form-maker/')) throw new Error(`form maker does not route through the same-origin route: ${portal.formHref}`);
   await page.screenshot({ path: `${OUT}/portal-mobile-light.png`, fullPage: true });
 
   await page.getByRole('button', { name: '表示テーマ：システム設定' }).click();
   await page.locator('label[for="theme-dark"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForAnimations(page);
-  const dark = await page.evaluate(() => ({
+  const portalDark = await page.evaluate(() => ({
     preference: localStorage.getItem('sanpokai-theme-preference-v1'),
     theme: document.documentElement.dataset.carbonTheme,
     bodyBackground: getComputedStyle(document.body).backgroundColor,
     tileBackground: getComputedStyle(document.querySelector('.tool-tile')).backgroundColor,
-    tileColor: getComputedStyle(document.querySelector('.tool-tile')).color,
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   }));
-  if (dark.preference !== 'dark' || dark.theme !== 'g100') throw new Error(`portal dark theme failed: ${JSON.stringify(dark)}`);
-  if ([dark.bodyBackground, dark.tileBackground].includes('rgb(255, 255, 255)')) throw new Error(`portal white leak in dark mode: ${JSON.stringify(dark)}`);
-  if (dark.overflow > 1) throw new Error(`portal dark overflow: ${dark.overflow}`);
+  if (portalDark.preference !== 'dark' || portalDark.theme !== 'g100') throw new Error(`portal dark theme failed: ${JSON.stringify(portalDark)}`);
+  if ([portalDark.bodyBackground, portalDark.tileBackground].includes('rgb(255, 255, 255)')) throw new Error(`portal white leak in dark mode: ${JSON.stringify(portalDark)}`);
+  if (portalDark.overflow > 1) throw new Error(`portal dark overflow: ${portalDark.overflow}`);
   await page.screenshot({ path: `${OUT}/portal-mobile-dark.png`, fullPage: true });
 
   const hostUrl = new URL('form-maker/', LIVE_URL).href;
   await openWithRetry(page, hostUrl, async () => {
-    await page.locator('#form-maker-frame').waitFor({ state: 'visible', timeout: 10000 });
+    await page.getByRole('heading', { name: '応募フォームを作る', level: 1 }).waitFor({ timeout: 15000 });
+    await page.getByLabel('企画名', { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
+    await page.getByRole('button', { name: /Googleフォームを作成/ }).waitFor({ state: 'visible', timeout: 10000 });
   });
-  await page.waitForFunction(() => document.documentElement.dataset.theme === 'g100');
-  let embedded = null;
-  for (let attempt = 0; attempt < 20 && !embedded; attempt += 1) {
-    for (const frame of page.frames()) {
-      try {
-        const text = await frame.locator('body').innerText({ timeout: 1500 });
-        if (!text.includes('編集者メールアドレス') || !text.includes('Googleフォームを作成')) continue;
-        embedded = await frame.evaluate(() => ({
-          theme: document.documentElement.dataset.carbonTheme || '',
-          darkSelected: document.querySelector('#theme-dark')?.checked === true,
-          resolvedThemeLabel: document.body.innerText.includes('現在の表示：ダーク'),
-          bodyBackground: getComputedStyle(document.body).backgroundColor,
-          headerBackground: document.querySelector('header, [role="banner"]')
-            ? getComputedStyle(document.querySelector('header, [role="banner"]')).backgroundColor
-            : '',
-          viewportWidth: document.documentElement.clientWidth,
-          documentWidth: document.documentElement.scrollWidth,
-        }));
-        if (embedded.theme !== 'g100'
-          || !embedded.darkSelected
-          || !embedded.resolvedThemeLabel
-          || embedded.bodyBackground !== 'rgb(22, 22, 22)') embedded = null;
-        if (embedded) break;
-      } catch {}
-    }
-    if (!embedded) await page.waitForTimeout(1500);
-  }
-  if (!embedded) throw new Error('embedded Apps Script form UI did not reach the g100 theme inside the Google wrapper');
-  if (embedded.bodyBackground !== 'rgb(22, 22, 22)' || embedded.headerBackground !== 'rgb(22, 22, 22)') {
-    throw new Error(`embedded form UI did not apply its dark surfaces: ${JSON.stringify(embedded)}`);
-  }
-  if (embedded.documentWidth > embedded.viewportWidth + 1) throw new Error(`embedded form UI overflow: ${JSON.stringify(embedded)}`);
+  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
+  await waitForAnimations(page);
 
-  const host = await page.evaluate(() => {
-    const frame = document.getElementById('form-maker-frame');
-    const rect = frame?.getBoundingClientRect();
-    return {
-      theme: document.documentElement.dataset.theme,
-      preference: localStorage.getItem('sanpokai-theme-preference-v1'),
-      background: getComputedStyle(document.body).backgroundColor,
-      themeColor: document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '',
-      viewportWidth: document.documentElement.clientWidth,
-      viewportHeight: window.innerHeight,
-      documentWidth: document.documentElement.scrollWidth,
-      documentHeight: document.documentElement.scrollHeight,
-      frameWidth: rect?.width || 0,
-      frameHeight: rect?.height || 0,
-      statusHidden: document.getElementById('form-maker-status')?.hidden ?? true,
-      statusHeight: document.getElementById('form-maker-status')?.getBoundingClientRect().height || 0,
-      frameSrc: frame?.src || '',
-    };
-  });
-  if (host.theme !== 'g100' || host.preference !== 'dark') throw new Error(`embedded host theme did not persist: ${JSON.stringify(host)}`);
-  if (host.background === 'rgb(255, 255, 255)' || host.themeColor.toLowerCase() !== '#161616') throw new Error(`embedded host retained white chrome: ${JSON.stringify(host)}`);
-  const occupiedHostHeight = host.frameHeight + (host.statusHidden ? 0 : host.statusHeight);
-  if (host.documentWidth > host.viewportWidth + 1 || host.frameWidth < 380 || Math.abs(occupiedHostHeight - host.viewportHeight) > 2 || host.documentHeight > host.viewportHeight + 2) {
-    throw new Error(`embedded host layout regression: ${JSON.stringify({ ...host, occupiedHostHeight })}`);
-  }
-  if (!/[?&]theme=dark(?:&|$)/.test(host.frameSrc) || !/[?&]themeChannel=[^&]+/.test(host.frameSrc)) {
-    throw new Error(`embedded host did not pass theme/channel through iframe URL: ${host.frameSrc}`);
-  }
-  await page.screenshot({ path: `${OUT}/form-maker-host-dark.png`, fullPage: true });
+  const mobile = await page.evaluate(() => ({
+    title: document.title,
+    theme: document.documentElement.dataset.carbonTheme,
+    iframes: document.querySelectorAll('iframe').length,
+    viewportWidth: document.documentElement.clientWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    headerBackground: getComputedStyle(document.querySelector('.cds--header')).backgroundColor,
+    inputCount: document.querySelectorAll('input').length,
+    submitDisabled: [...document.querySelectorAll('button')].find(button => button.innerText.includes('Googleフォームを作成'))?.disabled ?? null,
+  }));
+  if (mobile.iframes !== 0) throw new Error(`same-origin form-maker route rendered an iframe: ${mobile.iframes}`);
+  if (mobile.theme !== 'g100' || mobile.headerBackground !== 'rgb(22, 22, 22)') throw new Error(`form-maker dark theme or black Carbon header failed: ${JSON.stringify(mobile)}`);
+  if (mobile.documentWidth > mobile.viewportWidth + 1) throw new Error(`form-maker mobile overflow: ${JSON.stringify(mobile)}`);
+  if (mobile.inputCount < 4 || mobile.submitDisabled !== true) throw new Error(`form-maker did not remain usable without an available backend: ${JSON.stringify(mobile)}`);
+  await page.screenshot({ path: `${OUT}/form-maker-mobile-dark.png`, fullPage: true });
 
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await waitForAnimations(page);
+  const desktop = await page.evaluate(() => ({
+    viewportWidth: document.documentElement.clientWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    headerBackground: getComputedStyle(document.querySelector('.cds--header')).backgroundColor,
+  }));
+  if (desktop.documentWidth > desktop.viewportWidth + 1) throw new Error(`form-maker desktop overflow: ${JSON.stringify(desktop)}`);
+  if (desktop.headerBackground !== 'rgb(22, 22, 22)') throw new Error(`form-maker desktop header is not black: ${JSON.stringify(desktop)}`);
+  if (firebaseWrites.length) throw new Error(`production smoke attempted an external write: ${JSON.stringify(firebaseWrites)}`);
   if (pageErrors.length) throw new Error(`production page errors: ${pageErrors.join(' | ')}`);
-  const report = { status: response?.status() || null, liveUrl: LIVE_URL, initial, dark, host, embedded, pageErrors, consoleErrors };
+
+  const report = { status: response?.status() || null, liveUrl: LIVE_URL, portal, portalDark, mobile, desktop, firebaseWrites, pageErrors, consoleErrors };
   fs.writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   await browser.close();

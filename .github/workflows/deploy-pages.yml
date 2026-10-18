@@ -55,7 +55,7 @@ jobs:
       - run: npm install --package-lock-only
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Verify production portal and embedded form host
+      - name: Verify production portal and same-origin form maker
         run: node tests/production-pages-smoke.cjs
         env:
           LIVE_URL: ${{ needs.deploy.outputs.page_url }}
@@ -74,7 +74,7 @@ jobs:
         run: |
           if [ "$JOB_STATUS" = "success" ]; then
             STATE="success"
-            DESCRIPTION="Portal + embedded form production smoke passed"
+            DESCRIPTION="Portal + same-origin form maker smoke passed"
           else
             STATE="failure"
             DESCRIPTION="Portal production smoke failed"
