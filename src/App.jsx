@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   ClickableTile,
@@ -32,6 +32,9 @@ import {
   readFormIndex,
   readProjectIndex,
 } from './portalHistory.js';
+import { FORM_MAKER_FIREBASE_CONFIG } from './services/firebase-public-config.js';
+import { createFormMakerSession } from './services/form-maker-session.js';
+import { mergeFormMakerJobs, writeCachedFormMakerHistory } from './services/form-maker-history.js';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
@@ -105,6 +108,7 @@ function sectionStatus(status, emptyMessage) {
 
 function App() {
   const [portalState, setPortalState] = useState(loadPortalState);
+  const formMakerSession = useMemo(() => createFormMakerSession({ config: FORM_MAKER_FIREBASE_CONFIG }), []);
   const [toast, setToast] = useState('');
   const [copyErrors, setCopyErrors] = useState({});
   const [showAllProjects, setShowAllProjects] = useState(false);
@@ -139,6 +143,25 @@ function App() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [refreshPortalState]);
+
+  useEffect(() => {
+    let active = true;
+    formMakerSession.listJobs(50).then((jobs) => {
+      if (!active) return;
+      setPortalState((current) => {
+        const forms = mergeFormMakerJobs(current.forms.forms, jobs);
+        writeCachedFormMakerHistory(forms);
+        const status = forms.length ? 'ready' : current.forms.status === 'unavailable' ? 'unavailable' : 'empty';
+        return { ...current, forms: { status, forms, errors: current.forms.errors || [] } };
+      });
+    }).catch(() => {
+      if (!active) return;
+      setPortalState((current) => current.forms.forms.length
+        ? { ...current, forms: { ...current.forms, status: 'partial' } }
+        : { ...current, forms: { ...current.forms, status: 'unavailable' } });
+    });
+    return () => { active = false; };
+  }, [formMakerSession]);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 

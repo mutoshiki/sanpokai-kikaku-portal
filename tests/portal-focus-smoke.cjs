@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, webkit } = require('playwright');
+const { serveDist } = require('./helpers/serve-dist.cjs');
 
 const DIST = 'dist';
 const THEME_KEY = 'sanpokai-theme-preference-v1';
@@ -20,22 +21,13 @@ function inlineDistHtml(source) {
 
 const INLINED = inlineDistHtml(fs.readFileSync(path.join(DIST, 'index.html'), 'utf8'));
 
-async function installEnvironment(page, preference) {
-  await page.goto('about:blank?qa=portal-focus');
-  await page.evaluate(({ key, preference }) => {
-    const store = { [key]: preference };
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: name => Object.prototype.hasOwnProperty.call(store, name) ? store[name] : null,
-        setItem: (name, value) => { store[name] = String(value); },
-        removeItem: name => { delete store[name]; },
-        clear: () => Object.keys(store).forEach(name => delete store[name]),
-        key: index => Object.keys(store)[index] ?? null,
-        get length() { return Object.keys(store).length; },
-      },
-    });
-    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist: async () => true } });
+async function installEnvironment(page, preference, baseUrl) {
+  await page.route('https://identitytoolkit.googleapis.com/**', route => route.fulfill({ status: 200, json: { localId: 'portal-focus-uid', idToken: 'portal-focus-token', refreshToken: 'portal-focus-refresh', expiresIn: '3600' } }));
+  await page.route('https://securetoken.googleapis.com/**', route => route.fulfill({ status: 200, json: { user_id: 'portal-focus-uid', id_token: 'portal-focus-token', refresh_token: 'portal-focus-refresh', expires_in: '3600' } }));
+  await page.route('https://sanpokai-tool-default-rtdb.firebaseio.com/**', route => route.fulfill({ json: null }));
+  await page.goto(`${baseUrl}qa-empty.html`);
+  await page.evaluate(({ key, preference }) => localStorage.setItem(key, preference), { key: THEME_KEY, preference });
+  await page.addInitScript(() => {
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: query => ({
@@ -48,7 +40,7 @@ async function installEnvironment(page, preference) {
         dispatchEvent() { return true; },
       }),
     });
-  }, { key: THEME_KEY, preference });
+  });
 }
 
 async function installKeyboardHistoryFixture(page) {
@@ -90,11 +82,11 @@ async function waitForFocusedTile(page) {
   });
 }
 
-async function run(browser, engineName, preference, expectedTheme) {
+async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light', hasTouch: true });
   const page = await context.newPage();
-  await installEnvironment(page, preference);
-  await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await installEnvironment(page, preference, baseUrl);
+  await page.goto(baseUrl);
   await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
   await page.keyboard.press('Tab');
@@ -121,14 +113,15 @@ async function run(browser, engineName, preference, expectedTheme) {
     throw new Error(`${preference}: empty contained list labels regression: ${JSON.stringify(emptyLists)}`);
   }
   const unavailablePage = await context.newPage();
-  await installEnvironment(unavailablePage, preference);
-  await unavailablePage.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await installEnvironment(unavailablePage, preference, baseUrl);
+  await unavailablePage.goto(baseUrl);
   await unavailablePage.locator('.portal-title').waitFor({ timeout: 60000 });
   await unavailablePage.evaluate(() => {
     Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new Error('storage disabled'); } });
     window.dispatchEvent(new StorageEvent('storage', { key: null }));
   });
-  await unavailablePage.getByRole('status').filter({ hasText: '読み込めませんでした' }).waitFor({ timeout: 10000 });
+  try { await unavailablePage.getByText('企画を表示できません。').waitFor({ timeout: 10000 }); }
+  catch { throw new Error(`storage unavailable state did not render: ${(await unavailablePage.locator('body').innerText()).slice(0, 1200)}`); }
   const unavailableCopy = await unavailablePage.locator('.history-workspace').textContent();
   if (unavailableCopy.includes('履歴') || !unavailableCopy.includes('企画を表示できません') || !unavailableCopy.includes('フォームを表示できません')) {
     throw new Error(`${preference}: unavailable state still uses duplicate history copy: ${unavailableCopy}`);
@@ -195,8 +188,8 @@ async function run(browser, engineName, preference, expectedTheme) {
   });
 
   const focusPage = await context.newPage();
-  await installEnvironment(focusPage, preference);
-  await focusPage.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await installEnvironment(focusPage, preference, baseUrl);
+  await focusPage.goto(baseUrl);
   await focusPage.locator('.portal-title').waitFor({ timeout: 60000 });
   await focusPage.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
   const touchThemeButton = focusPage.getByRole('button', { name: /表示テーマ：/ });
@@ -249,6 +242,7 @@ async function run(browser, engineName, preference, expectedTheme) {
 
 (async () => {
   fs.mkdirSync('browser-evidence', { recursive: true });
+  const { server, baseUrl } = await serveDist();
   const results = {};
   for (const [engineName, browserType] of [['chromium', chromium], ['webkit', webkit]]) {
     let launchOptions = { headless: true };
@@ -265,13 +259,14 @@ async function run(browser, engineName, preference, expectedTheme) {
     const browser = await browserType.launch(launchOptions);
     try {
       results[engineName] = {
-        light: await run(browser, engineName, 'light', 'white'),
-        dark: await run(browser, engineName, 'dark', 'g100'),
+        light: await run(browser, engineName, 'light', 'white', baseUrl),
+        dark: await run(browser, engineName, 'dark', 'g100', baseUrl),
       };
     } finally {
       await browser.close();
     }
   }
+  await new Promise(resolve => server.close(resolve));
   fs.writeFileSync('browser-evidence/focus-strict.json', JSON.stringify(results, null, 2));
   console.log('Strict Carbon keyboard focus and history tab smoke passed for Chromium/WebKit in light and dark.');
 })().catch(error => { console.error(error); process.exit(1); });

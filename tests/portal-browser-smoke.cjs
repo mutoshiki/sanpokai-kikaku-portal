@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { serveDist } = require('./helpers/serve-dist.cjs');
 
 const DIST = 'dist';
 const OUT = path.join(process.cwd(), 'browser-evidence');
@@ -22,8 +23,11 @@ function inlineDistHtml(source) {
 
 const INLINED = inlineDistHtml(fs.readFileSync(path.join(DIST, 'index.html'), 'utf8'));
 
-async function installIsolatedEnvironment(page) {
-  await page.goto('about:blank?qa=portal');
+async function installIsolatedEnvironment(page, baseUrl) {
+  await page.route('https://identitytoolkit.googleapis.com/**', route => route.fulfill({ status: 200, json: { localId: 'portal-smoke-uid', idToken: 'portal-smoke-token', refreshToken: 'portal-smoke-refresh', expiresIn: '3600' } }));
+  await page.route('https://securetoken.googleapis.com/**', route => route.fulfill({ status: 200, json: { user_id: 'portal-smoke-uid', id_token: 'portal-smoke-token', refresh_token: 'portal-smoke-refresh', expires_in: '3600' } }));
+  await page.route('https://sanpokai-tool-default-rtdb.firebaseio.com/**', route => route.fulfill({ json: null }));
+  await page.goto(`${baseUrl}qa-empty.html`);
   await page.evaluate(() => {
     const store = {
       syawari_last_room_id: 'ROOM-B',
@@ -46,19 +50,10 @@ async function installIsolatedEnvironment(page) {
         { formId: 'FORM-F', planName: 'URLなし応募フォーム', createdAt: '2026-07-29T10:00:00.000Z' },
       ]),
     };
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: key => Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
-        setItem: (key, value) => { store[key] = String(value); },
-        removeItem: key => { delete store[key]; },
-        clear: () => Object.keys(store).forEach(key => delete store[key]),
-        key: index => Object.keys(store)[index] ?? null,
-        get length() { return Object.keys(store).length; },
-      },
-    });
-    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persist: async () => true } });
+    Object.entries(store).forEach(([key, value]) => localStorage.setItem(key, value));
+  });
 
+  await page.addInitScript(() => {
     const listeners = new Set();
     const media = {
       matches: false,
@@ -140,16 +135,18 @@ async function focusFirstTileWithKeyboard(page) {
   });
 }
 
-async function run(browser, name, viewport) {
+async function run(browser, name, viewport, baseUrl) {
   const context = await browser.newContext({ viewport, colorScheme: 'light', isMobile: viewport.width <= 430, hasTouch: viewport.width <= 430 });
   const page = await context.newPage();
   const pageErrors = [];
   const consoleErrors = [];
+  const missingResources = [];
   page.on('pageerror', error => pageErrors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+  page.on('response', response => { if (response.status() === 404) missingResources.push(response.url()); });
 
-  await installIsolatedEnvironment(page);
-  await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await installIsolatedEnvironment(page, baseUrl);
+  await page.goto(baseUrl);
   await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor({ timeout: 60000 });
   if (await page.getByRole('tab', { name: '最近の企画', exact: true }).getAttribute('aria-selected') !== 'true') {
@@ -694,7 +691,7 @@ async function run(browser, name, viewport) {
   await page.waitForSurfaceTokens?.catch?.(() => undefined);
   if (await page.evaluate(() => document.documentElement.dataset.carbonTheme) !== 'g100') throw new Error(`${name}: explicit dark did not override OS`);
 
-  await page.setContent(INLINED, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.reload();
   await page.locator('.portal-title').waitFor({ timeout: 60000 });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForSurfaceTokens(page);
@@ -784,7 +781,7 @@ async function run(browser, name, viewport) {
   const focusInvisible = focus.outlineStyle === 'none' || focus.outlineWidth === '0px' || focus.outlineColor === 'rgba(0, 0, 0, 0)' || focus.outlineColor === 'transparent';
   if (focusInvisible && focus.boxShadow === 'none') throw new Error(`${name}: keyboard focus indicator missing: ${JSON.stringify(focus)}`);
   if (pageErrors.length) throw new Error(`${name}: page errors: ${pageErrors.join(' | ')}`);
-  if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}`);
+  if (consoleErrors.length) throw new Error(`${name}: console errors: ${consoleErrors.join(' | ')}; resources: ${missingResources.join(' | ')}`);
 
   fs.writeFileSync(path.join(OUT, `${name}.json`), JSON.stringify({ viewport, initial, dark, focus, pageErrors, consoleErrors }, null, 2));
   await context.close();
@@ -792,6 +789,7 @@ async function run(browser, name, viewport) {
 
 (async () => {
   fs.mkdirSync(process.env.CHROMIUM_POLICY_DIR || '/tmp/empty-chromium-policy', { recursive: true });
+  const { server, baseUrl } = await serveDist();
   const browser = await chromium.launch({
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
     headless: true,
@@ -801,10 +799,11 @@ async function run(browser, name, viewport) {
   try {
     for (const width of [320, 390, 640, 672, 1056, 1280]) {
       const name = width === 640 ? 'zoom-200-effective-640' : `viewport-${width}`;
-      await run(browser, name, { width, height: 900 });
+      await run(browser, name, { width, height: 900 }, baseUrl);
     }
   } finally {
     await browser.close();
+    await new Promise(resolve => server.close(resolve));
   }
   console.log('Portal three-state Carbon theme browser smoke passed.');
 })().catch(error => { console.error(error); process.exit(1); });
