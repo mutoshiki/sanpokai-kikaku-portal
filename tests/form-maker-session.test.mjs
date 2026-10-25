@@ -57,7 +57,7 @@ test('prepares an anonymous session and submits one immutable queued request', a
   assert.match(job.handoffToken, /^h_[A-Za-z0-9_-]{48,160}$/);
   const reservationWrite = calls.find((call) => call.options.method === 'PUT' && call.url.includes('/admission/slots/'));
   assert.ok(reservationWrite, 'the client reserves one global admission slot before creating a job');
-  assert.equal(reservationWrite.options.headers['if-match'], 'null_etag');
+  assert.equal(reservationWrite.options.headers['if-match'], undefined, 'a first-write-only Rules grant must not require read access to an empty slot');
   const reservation = JSON.parse(reservationWrite.options.body);
   assert.equal(reservation.uid, 'owner-uid');
   assert.equal(reservation.jobId, '0123456789abcdef0123456789abcdef');
