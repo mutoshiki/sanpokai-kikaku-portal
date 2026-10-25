@@ -242,7 +242,7 @@ export function createFormMakerSession({
       try {
         await fetchJson(slotUrl, {
           method: 'PUT',
-          headers: { ...authHeaders(auth.idToken), 'if-match': 'null_etag' },
+          headers: authHeaders(auth.idToken),
           body: JSON.stringify(reservation),
         });
         return { slotId, requestedAt };
