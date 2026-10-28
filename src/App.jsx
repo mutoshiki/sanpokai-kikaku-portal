@@ -287,7 +287,7 @@ function App() {
                 {(responseUrl || editUrl || projectUrl || responseSheetUrl) && <div className="project-list__form-links">
                   {responseUrl && <a className="history-response-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</a>}
                   {editUrl && <a className="history-edit-link" href={editUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」のフォームを編集する（新しいタブ）`}>フォームを編集する</a>}
-                  {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の企画を開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                  {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の企画ツールを開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画ツールを開く</a>}
                   {responseSheetUrl && <a className="history-sheet-link" href={responseSheetUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の回答シートを開く（新しいタブ）`}>回答シートを開く</a>}
                   {!responseSheetUrl && (responseUrl || editUrl || projectUrl) && <span className="history-link-unavailable">回答シートのリンクはありません</span>}
                 </div>}

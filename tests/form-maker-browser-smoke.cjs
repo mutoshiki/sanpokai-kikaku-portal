@@ -112,7 +112,7 @@ async function run(browser, width) {
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('応募フォームを作る'));
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
-  if (await page.getByRole('link', { name: /企画を開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
+  if (await page.getByRole('link', { name: /企画ツールを開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

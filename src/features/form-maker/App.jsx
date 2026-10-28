@@ -303,7 +303,7 @@ function App() {
             <a href={job.result.formUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く <Launch size={16} aria-hidden="true" /></a>
             <Button kind="ghost" size="sm" renderIcon={Copy} onClick={() => copyLink(job.result.formUrl)}>応募用リンクをコピー</Button>
             {copyError && <p className="form-maker-error" role="alert">コピーできませんでした。「応募フォームを開く」から開き、アドレス欄のURLをコピーしてください。</p>}
-            {job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画を開く（新しいタブ）">企画を開く <Launch size={16} aria-hidden="true" /></a>}
+            {job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画ツールを開く（新しいタブ）">企画ツールを開く <Launch size={16} aria-hidden="true" /></a>}
           </div>}
           {job.state === 'unknown' && <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}
           {['completed', 'partial', 'failed'].includes(job.state) && <Button kind="tertiary" size="sm" onClick={startAnotherForm}>新しいフォームを作る</Button>}
