@@ -35,12 +35,12 @@ function canonicalInput(input) {
     deadline: String(input?.deadline || ''),
     description: String(input?.description || ''),
   };
-  if (!value.planName || value.planName.length > 100) throw new Error('企画名を100文字以内で入力してください。');
-  if (!EMAIL_PATTERN.test(value.editorEmail) || value.editorEmail.length > 254) throw new Error('編集者のメールアドレスを確認してください。');
-  if (value.eventDate.length > 40 || value.deadline.length > 40) throw new Error('日付の入力が長すぎます。');
-  if (value.description.length > 3000) throw new Error('企画内容は3000文字以内で入力してください。');
+  if (!value.planName || value.planName.length > 100) throw new Error('企画名を入力してください（100文字以内）。');
+  if (!EMAIL_PATTERN.test(value.editorEmail) || value.editorEmail.length > 254) throw new Error('編集者のメールアドレスを正しく入力してください。');
+  if (value.eventDate.length > 40 || value.deadline.length > 40) throw new Error('日付を正しく入力してください。');
+  if (value.description.length > 3000) throw new Error('企画の説明は3,000文字以内で入力してください。');
   if (Object.values(value).some((item) => /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(item))) {
-    throw new Error('入力に使用できない制御文字が含まれています。');
+    throw new Error('入力内容に使えない文字が含まれています。入力した内容を確認してください。');
   }
   return value;
 }
@@ -72,7 +72,7 @@ async function hashHandoffToken(token, cryptoApi) {
 }
 
 function newHandoffToken(cryptoApi) {
-  if (typeof cryptoApi?.randomUUID !== 'function') throw new Error('このブラウザーでは安全な引き継ぎ権限を作成できません。');
+  if (typeof cryptoApi?.randomUUID !== 'function') throw new Error('このブラウザーでは企画の編集に必要な情報を作成できません。ブラウザーを最新版にして、もう一度お試しください。');
   return `h_${cryptoApi.randomUUID().replaceAll('-', '')}${cryptoApi.randomUUID().replaceAll('-', '')}`;
 }
 
@@ -88,8 +88,8 @@ export function createFormMakerSession({
   cryptoApi = globalThis.crypto,
   now = Date.now,
 } = {}) {
-  if (!config?.apiKey || !config?.databaseURL) throw new Error('Firebaseの接続設定を読み込めません。');
-  if (typeof fetchImpl !== 'function') throw new Error('このブラウザーでは通信機能を使えません。');
+  if (!config?.apiKey || !config?.databaseURL) throw new Error('フォーム作成サービスを起動できません。');
+  if (typeof fetchImpl !== 'function') throw new Error('このブラウザーではフォームを作成できません。ブラウザーを最新版にして、もう一度お試しください。');
 
   const authBase = 'https://identitytoolkit.googleapis.com/v1';
   const tokenBase = 'https://securetoken.googleapis.com/v1';
@@ -101,12 +101,12 @@ export function createFormMakerSession({
     try {
       response = await fetchImpl(url, options);
     } catch {
-      throw new Error('Firebaseに接続できません。通信状態を確認して、もう一度お試しください。');
+      throw new Error('フォーム作成サービスに接続できません。通信を確認して、「接続を再確認」を押してください。');
     }
     let payload = null;
     try { payload = await response.json(); } catch { payload = null; }
     if (!response.ok) {
-      const error = new Error(`Firebase request failed (${response.status}).`);
+      const error = new Error('フォーム作成サービスでエラーが起きました。作成結果が分からない場合は、新しく作らず「作成結果を確認」を押してください。');
       error.status = response.status;
       error.providerCode = safeProviderError(payload);
       throw error;
@@ -135,7 +135,7 @@ export function createFormMakerSession({
       body: JSON.stringify({ returnSecureToken: true }),
     });
     if (!payload?.localId || !payload?.idToken || !payload?.refreshToken) {
-      throw new Error('Firebaseの利用者情報を受け取れませんでした。');
+      throw new Error('フォーム作成に必要な情報を確認できませんでした。時間をおいて、もう一度お試しください。');
     }
     const auth = {
       uid: String(payload.localId),
@@ -154,7 +154,7 @@ export function createFormMakerSession({
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: cached.refreshToken }).toString(),
     });
     if (!payload?.user_id || !payload?.id_token || !payload?.refresh_token || String(payload.user_id) !== cached.uid) {
-      throw new Error('Firebaseの利用者情報を確認できませんでした。履歴の安全のため、新しいIDは自動で作成しません。');
+      throw new Error('このブラウザーの作成履歴を読み込めませんでした。時間をおいて、もう一度お試しください。ブラウザーのデータは削除しないでください。');
     }
     const auth = {
       uid: String(payload.user_id),
@@ -184,18 +184,18 @@ export function createFormMakerSession({
   async function readStatusWithAuth(auth) {
     const status = await fetchJson(databaseUrl('formMakerV1/status', auth.idToken));
     if (!status || typeof status !== 'object' || typeof status.accepting !== 'boolean') {
-      throw new Error('受付状況を確認できません。しばらくしてからもう一度お試しください。');
+      throw new Error('フォームを作成できるか確認できません。「接続を再確認」を押してください。');
     }
     const acceptanceMode = status.acceptanceMode === undefined ? 'open' : status.acceptanceMode;
     if (!['open', 'test'].includes(acceptanceMode)) {
-      throw new Error('受付状況を確認できません。しばらくしてからもう一度お試しください。');
+      throw new Error('フォームを作成できるか確認できません。「接続を再確認」を押してください。');
     }
     let testOwner = false;
     if (acceptanceMode === 'test') {
       try {
         testOwner = (await fetchJson(databaseUrl(`formMakerV1/testOwners/${encodeURIComponent(auth.uid)}`, auth.idToken))) === true;
       } catch {
-        throw new Error('受付状況を確認できません。しばらくしてからもう一度お試しください。');
+        throw new Error('フォームを作成できるか確認できません。「接続を再確認」を押してください。');
       }
     }
     return {
@@ -215,7 +215,7 @@ export function createFormMakerSession({
   }
 
   async function getJob(jobId) {
-    if (!JOB_ID_PATTERN.test(String(jobId || ''))) throw new Error('作成要求を確認できません。');
+    if (!JOB_ID_PATTERN.test(String(jobId || ''))) throw new Error('作成結果を確認できません。「作成結果を確認」を押してください。');
     const auth = await getAuth();
     const job = await fetchJson(databaseUrl(`formMakerV1/users/${encodeURIComponent(auth.uid)}/jobs/${encodeURIComponent(jobId)}`, auth.idToken));
     return job && typeof job === 'object' ? job : null;
@@ -267,10 +267,10 @@ export function createFormMakerSession({
             return { slotId, requestedAt: Number(existing.requestedAt) };
           }
         } catch { /* outcome remains unknown */ }
-        throw new Error('受付枠を確保できたか確認できません。履歴を更新して状態を確認してください。');
+        throw new Error('作成を依頼できたか確認できません。重複を避けるため、新しく作らず「作成結果を確認」を押してください。');
       }
     }
-    throw new Error('受付枠を確保できません。申込みが混み合っているため、時間をおいてもう一度お試しください。');
+    throw new Error('フォームを作成できませんでした。時間をおいて、もう一度お試しください。');
   }
 
   async function enqueue(input, options = {}) {
@@ -278,17 +278,17 @@ export function createFormMakerSession({
     const auth = await getAuth();
     const status = await readStatusWithAuth(auth);
     if (!status.accepting) {
-      if (status.acceptanceMode === 'test' && !status.testOwner) throw new Error('現在はテスト端末だけで確認しています。一般のフォーム作成はメンテナンス中です。');
-      throw new Error('受付を一時停止中です。入力内容は残っています。時間をおいてもう一度お試しください。');
+      if (status.acceptanceMode === 'test' && !status.testOwner) throw new Error('現在、メンテナンス中のためフォームを作成できません。時間をおいて、もう一度お試しください。');
+      throw new Error('現在、新しいフォームを作成できません。入力内容はこの画面を開いている間だけ保持されます。');
     }
 
     const jobId = String(options.jobId || makeJobId(cryptoApi));
-    if (!JOB_ID_PATTERN.test(jobId)) throw new Error('作成要求IDが正しくありません。');
+    if (!JOB_ID_PATTERN.test(jobId)) throw new Error('作成結果を確認できません。新しく作る前に「作成結果を確認」を押してください。');
     let handoffToken = readHandoffToken(jobId, storage);
     if (!handoffToken) {
       handoffToken = newHandoffToken(cryptoApi);
       if (!safeWrite(storage, handoffTokenKey(jobId), { token: handoffToken })) {
-        throw new Error('この端末に引き継ぎ権限を保存できません。ブラウザーの保存設定を確認してください。');
+        throw new Error('企画を編集するための情報を保存できません。ブラウザーのサイトデータ保存を許可してください。');
       }
     }
     const jobInput = { ...cleanInput, handoffTokenHash: await hashHandoffToken(handoffToken, cryptoApi) };
@@ -300,7 +300,7 @@ export function createFormMakerSession({
     const existing = await fetchJson(url);
     if (existing) {
       if (existing.jobId !== jobId || existing.inputHash !== inputHash) {
-        throw new Error('この作成要求IDは別の入力に使われています。入力を変えず、履歴から状態を確認してください。');
+        throw new Error('前回の作成依頼と入力内容が一致しません。新しく作らず「作成結果を確認」を押してください。');
       }
       return { ...existing, jobId, handoffToken };
     }
@@ -326,7 +326,7 @@ export function createFormMakerSession({
       if (error.status !== 412) throw error;
       const raced = await getJob(jobId);
       if (raced?.jobId === jobId && raced.inputHash === inputHash) return { ...raced, handoffToken };
-      throw new Error('同じ要求が別のタブで受付済みです。履歴から状態を確認してください。');
+      throw new Error('この作成はすでに受け付けています。新しく作らず「作成結果を確認」を押してください。');
     }
   }
 

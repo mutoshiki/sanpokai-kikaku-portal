@@ -22,7 +22,7 @@ function workerJobToHistory(job) {
   return {
     formId,
     jobId: String(job.jobId || ''),
-    planName: String(result.planName || job.input?.planName || '応募フォーム'),
+    planName: String(result.planName || job.input?.planName || '企画名未設定の応募フォーム'),
     createdAt: Number(result.createdAt || job.finishedAt || job.requestedAt || 0) || '',
     projectId: String(result.projectId || ''),
     projectUrl: String(result.projectUrl || ''),

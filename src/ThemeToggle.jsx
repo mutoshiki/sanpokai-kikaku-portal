@@ -97,7 +97,7 @@ export function ThemeHeaderControl() {
     setExpanded(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
-  const currentLabel = preference === SYSTEM ? 'システム設定' : preference === LIGHT ? 'ライト' : 'ダーク';
+  const currentLabel = preference === SYSTEM ? '端末の設定に合わせる' : preference === LIGHT ? 'ライト' : 'ダーク';
 
   const selectPreference = (value) => {
     setPreference(value);
@@ -120,7 +120,7 @@ export function ThemeHeaderControl() {
       <HeaderGlobalBar>
         <HeaderGlobalAction
           ref={triggerRef}
-          aria-label={`表示テーマ：${currentLabel}`}
+          aria-label={`表示設定を${expanded ? '閉じる' : '開く'}（現在：${currentLabel}）`}
           aria-expanded={expanded}
           aria-controls="theme-preference-panel"
           isActive={expanded}
@@ -130,22 +130,20 @@ export function ThemeHeaderControl() {
           <Settings size={20} />
         </HeaderGlobalAction>
       </HeaderGlobalBar>
-      <HeaderPanel id="theme-preference-panel" aria-label="表示テーマ" aria-hidden={!expanded} inert={!expanded} expanded={expanded}>
+      <HeaderPanel id="theme-preference-panel" aria-label="表示設定" aria-hidden={!expanded} inert={!expanded} expanded={expanded}>
         <div className="theme-preference-panel__content">
           <RadioButtonGroup
-            legendText="表示テーマ"
+            legendText="表示モード"
             name="theme-preference"
             orientation="vertical"
             valueSelected={preference}
             onChange={selectPreference}
           >
-            <RadioButton id="theme-system" labelText="システム設定" value={SYSTEM} />
+            <RadioButton id="theme-system" labelText="端末の設定に合わせる" value={SYSTEM} />
             <RadioButton id="theme-light" labelText="ライト" value={LIGHT} />
             <RadioButton id="theme-dark" labelText="ダーク" value={DARK} />
           </RadioButtonGroup>
-          <p className="theme-preference-panel__status">
-            現在の表示：{resolvedTheme === 'g100' ? 'ダーク' : 'ライト'}
-          </p>
+          {preference === SYSTEM && <p className="theme-preference-panel__status">現在は{resolvedTheme === 'g100' ? 'ダーク' : 'ライト'}モードです。</p>}
         </div>
       </HeaderPanel>
     </>

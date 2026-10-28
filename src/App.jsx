@@ -40,13 +40,13 @@ const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
 const HISTORY_PREVIEW_LIMIT = 3;
 const RESPONSE_LINK_COPY_LABEL = '応募用リンクをコピー';
-const EDIT_LINK_COPY_LABEL = '編集用リンクをコピー';
+const EDIT_LINK_COPY_LABEL = 'フォームの編集リンクをコピー';
 
 const TOOLS = [
-  { title: '登山計画書メーカー', description: 'YAMAPの画像から、登山計画書を作れます。', href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/', pictogram: Hiking },
-  { title: '応募フォームメーカー', description: '参加者募集用のGoogleフォームを作れます。', href: FORM_MAKER_URL, pictogram: ListCheckbox },
-  { title: 'サークル企画ツール', description: '車割り・班割りと交通費の精算に使います。', href: TOOL_URL, pictogram: Group },
-  { title: '学務提出書類作成ツール', description: '学務に出す書類を作れます。引き継ぎデータも使えます。', downloadHint: 'PC用アプリをダウンロード', href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases', pictogram: University },
+  { title: '登山計画書メーカー', description: 'YAMAPの画像から登山計画書を作成します。', href: 'https://mutoshiki.github.io/tozan-keikaku-syo-maker/', pictogram: Hiking },
+  { title: '応募フォームメーカー', description: '参加者募集用のGoogleフォームを作成します。', href: FORM_MAKER_URL, pictogram: ListCheckbox },
+  { title: 'サークル企画ツール', description: '車割り・班割りと交通費の精算を行います。', href: TOOL_URL, pictogram: Group },
+  { title: '学務提出書類作成ツール', description: '学務に提出する書類を作成します。', downloadHint: 'PC用アプリのダウンロードページ', href: 'https://github.com/mutoshiki/sampokai-submission-builder/releases', pictogram: University },
 ];
 
 function loadPortalState() {
@@ -100,9 +100,9 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(timestamp);
 }
 
-function sectionStatus(status, emptyMessage) {
-  if (status === 'unavailable') return { heading: '読み込めませんでした', detail: 'もう一度読み込んでください。', empty: false };
-  if (status === 'partial') return { heading: emptyMessage, detail: '一部を読み込めませんでした。読み込めた分を表示しています。', empty: false };
+function sectionStatus(status, errorMessage, emptyMessage) {
+  if (status === 'unavailable') return { heading: errorMessage, detail: '', empty: false };
+  if (status === 'partial') return { heading: emptyMessage, detail: '履歴の一部を読み込めませんでした。表示できる分だけを載せています。', empty: false };
   return { heading: emptyMessage, detail: '', empty: true };
 }
 
@@ -132,36 +132,37 @@ function App() {
     setPortalState(loadPortalState());
   }, []);
 
+  const refreshFormHistory = useCallback(async () => {
+    const localState = loadPortalState();
+    setPortalState((current) => ({ ...current, ...localState }));
+    try {
+      const jobs = await formMakerSession.listJobs(50);
+      setPortalState((current) => {
+        const forms = mergeFormMakerJobs(current.forms.forms, jobs);
+        writeCachedFormMakerHistory(forms);
+        return { ...current, forms: { status: forms.length ? 'ready' : 'empty', forms, errors: [] } };
+      });
+    } catch {
+      setPortalState((current) => ({
+        ...current,
+        forms: { ...current.forms, status: current.forms.forms.length ? 'partial' : 'unavailable' },
+      }));
+    }
+  }, [formMakerSession]);
+
   useEffect(() => {
     navigator.storage?.persist?.().catch(() => false);
     const onStorage = (event) => { if (event.key === null || isRelevantPortalStorageKey(event.key)) refreshPortalState(); };
-    const onVisibility = () => { if (!document.hidden) refreshPortalState(); };
+    const onVisibility = () => { if (!document.hidden) { refreshPortalState(); void refreshFormHistory(); } };
     window.addEventListener('storage', onStorage);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('storage', onStorage);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [refreshPortalState]);
+  }, [refreshFormHistory, refreshPortalState]);
 
-  useEffect(() => {
-    let active = true;
-    formMakerSession.listJobs(50).then((jobs) => {
-      if (!active) return;
-      setPortalState((current) => {
-        const forms = mergeFormMakerJobs(current.forms.forms, jobs);
-        writeCachedFormMakerHistory(forms);
-        const status = forms.length ? 'ready' : current.forms.status === 'unavailable' ? 'unavailable' : 'empty';
-        return { ...current, forms: { status, forms, errors: current.forms.errors || [] } };
-      });
-    }).catch(() => {
-      if (!active) return;
-      setPortalState((current) => current.forms.forms.length
-        ? { ...current, forms: { ...current.forms, status: 'partial' } }
-        : { ...current, forms: { ...current.forms, status: 'unavailable' } });
-    });
-    return () => { active = false; };
-  }, [formMakerSession]);
+  useEffect(() => { void refreshFormHistory(); }, [refreshFormHistory]);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -202,12 +203,12 @@ function App() {
       setCopyErrors(errors => ({ ...errors, [errorId]: '' }));
       showToast(message);
     } catch {
-      setCopyErrors(errors => ({ ...errors, [errorId]: 'リンクをコピーできませんでした。もう一度お試しください。' }));
+      setCopyErrors(errors => ({ ...errors, [errorId]: 'リンクをコピーできませんでした。リンク先を開き、アドレス欄からコピーしてください。' }));
     }
   }, [showToast]);
 
-  const projectInfo = sectionStatus(portalState.projects.status, '企画はまだありません。サークル企画ツールで開くと、ここに表示されます。');
-  const formInfo = sectionStatus(portalState.forms.status, 'フォームはまだありません。応募フォームメーカーで作成すると、ここに表示されます。');
+  const projectInfo = sectionStatus(portalState.projects.status, '企画の履歴を読み込めませんでした。', 'このブラウザーに企画の履歴はありません。');
+  const formInfo = sectionStatus(portalState.forms.status, 'フォームの履歴を読み込めませんでした。', 'このブラウザーにフォームの作成履歴はありません。');
   const projectDisambiguators = getProjectDisambiguators(portalState.projects.projects);
 
   const toolsSection = (
@@ -227,7 +228,7 @@ function App() {
                   target="_blank"
                   rel="noopener noreferrer"
                   renderIcon={Launch}
-                  aria-label={`${tool.title}を新しいタブで開く`}
+                  aria-label={`${tool.title}を開く（新しいタブ）`}
                   aria-describedby={[descriptionId, hintId].filter(Boolean).join(' ')}
                 >
                   <div className="tool-tile__pictogram" aria-hidden="true"><Pictogram width={48} height={48} aria-hidden="true" /></div>
@@ -249,11 +250,12 @@ function App() {
     <section key="forms" id="form-history-section" ref={formSectionRef} tabIndex="-1" className="history-section projects form-history" aria-label="フォーム一覧">
       <Grid narrow className="history-grid">
         <Column sm={4} md={8} lg={16}>
-          {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}。{formInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>もう一度読み込む</Button></div>}
+          {portalState.forms.status === 'unavailable' && <div className="history-message" role="status"><p>{formInfo.heading}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshFormHistory()}>履歴を読み込み直す</Button></div>}
           {portalState.forms.status === 'partial' && <p className="history-message" role="status">{formInfo.detail}</p>}
           <ContainedList id="form-history-list" className="project-list form-history-list" kind="on-page" size="lg" aria-label="作成したフォーム">
         {portalState.forms.forms.length ? portalState.forms.forms.slice(0, showAllForms ? undefined : HISTORY_PREVIEW_LIMIT).map((form) => {
-          const label = String(form.planName ?? form.title ?? '').trim() || '応募フォーム';
+          const planName = String(form.planName ?? form.title ?? '').trim();
+          const label = planName || '企画名未設定の応募フォーム';
           const responseUrl = safeExternalUrl(form.responseUrl);
           const editUrl = safeExternalUrl(form.editUrl);
           const projectUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
@@ -263,35 +265,36 @@ function App() {
             <ContainedListItem
               key={form.formId}
               className={`project-list__row${editUrl ? ' project-list__row--form-actions' : ''}`}
-              action={editUrl ? <div className="project-list__actions"><OverflowMenu size="lg" aria-label={`${label}のフォーム操作`} iconDescription={`${label}のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
+              action={editUrl ? <div className="project-list__actions"><OverflowMenu size="lg" aria-label={`「${label}」のフォーム操作`} iconDescription={`「${label}」のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
+                <OverflowMenuItem itemText="フォームを編集する" onClick={() => window.open(editUrl, '_blank', 'noopener,noreferrer')} />
                 <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />
               </OverflowMenu></div> : undefined}
             >
               <div className="project-list__item">
                 <span className="project-title">{label}</span>
-                <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日不明' : `作成日 ${formatDate(createdAt)}`}</time>
+                <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成日時 ${formatDate(createdAt)}`}</time>
                 {(responseUrl || projectUrl) && <div className="project-list__form-links">
                   {responseUrl && <>
-                    <Button className="history-response-link" kind="primary" size="sm" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の応募フォームを開く`}>応募フォームを開く</Button>
-                    <Button className="form-copy-button" kind="ghost" size="sm" aria-label={`${label}の応募用リンクをコピー`} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)}>{RESPONSE_LINK_COPY_LABEL}</Button>
+                    <Button className="history-response-link" kind="primary" size="sm" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</Button>
+                    <Button className="form-copy-button" kind="ghost" size="sm" aria-label={`「${label}」の応募用リンクをコピー`} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)}>{RESPONSE_LINK_COPY_LABEL}</Button>
                   </>}
-                  {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}の企画を開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                  {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の企画を開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
                 </div>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
               </div>
             </ContainedListItem>
           );
-        }) : portalState.forms.status !== 'unavailable' ? <ContainedListItem>{formInfo.heading}</ContainedListItem> : <ContainedListItem>フォームを表示できません。</ContainedListItem>}
+        }) : portalState.forms.status !== 'unavailable' ? <ContainedListItem>{formInfo.heading}</ContainedListItem> : null}
           </ContainedList>
           {portalState.forms.forms.length > HISTORY_PREVIEW_LIMIT && <Button
             className="history-toggle"
             kind="ghost"
             size="sm"
-            aria-label={showAllForms ? '作成したフォームを折りたたむ' : '作成したフォームをすべて見る'}
+            aria-label={showAllForms ? `作成したフォームを${HISTORY_PREVIEW_LIMIT}件だけ表示` : '作成したフォームをすべて表示'}
             aria-expanded={showAllForms}
             aria-controls="form-history-list"
             onClick={() => setShowAllForms(value => !value)}
-          >{showAllForms ? '表示を減らす' : 'すべて見る'}</Button>}
+          >{showAllForms ? `${HISTORY_PREVIEW_LIMIT}件だけ表示` : 'すべて表示'}</Button>}
         </Column>
       </Grid>
     </section>
@@ -301,31 +304,31 @@ function App() {
     <section key="projects" id="project-history-section" ref={projectSectionRef} tabIndex="-1" className="history-section projects" aria-label="企画一覧">
       <Grid narrow className="history-grid">
         <Column sm={4} md={8} lg={16}>
-          {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}。{projectInfo.detail}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>もう一度読み込む</Button></div>}
+          {portalState.projects.status === 'unavailable' && <div className="history-message" role="status"><p>{projectInfo.heading}</p><Button kind="ghost" size="sm" renderIcon={Renew} onClick={refreshPortalState}>履歴を読み込み直す</Button></div>}
           {portalState.projects.status === 'partial' && <p className="history-message" role="status">{projectInfo.detail}</p>}
           <ContainedList id="project-history-list" className="project-list" kind="on-page" size="lg" aria-label="最近の企画">
         {portalState.projects.projects.length ? portalState.projects.projects.slice(0, showAllProjects ? undefined : HISTORY_PREVIEW_LIMIT).map((project) => {
-          const label = project.name || '名前のない企画';
+          const label = project.name || '企画名未設定';
           const projectUrl = `${TOOL_URL}?room=${encodeURIComponent(project.roomId)}`;
           const { timestamp: displayDate, label: dateLabel } = getProjectDisplayDate(project);
           return <ContainedListItem key={project.roomId} className="project-list__row">
             <div className="project-list__item">
-              <a className="project-title history-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`${label}をサークル企画ツールで新しいタブに開く`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>{label}<Launch className="history-link__icon" size={20} aria-hidden="true" /></a>
+              <a className="project-title history-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」をサークル企画ツールで開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>{label}<Launch className="history-link__icon" size={20} aria-hidden="true" /></a>
               <time dateTime={displayDate === null ? undefined : new Date(displayDate).toISOString()}>{displayDate === null ? dateLabel : `${dateLabel} ${formatDate(displayDate)}`}</time>
               {projectDisambiguators.has(project.roomId) && <span className="project-disambiguator">{projectDisambiguators.get(project.roomId)}</span>}
             </div>
           </ContainedListItem>;
-        }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading}</ContainedListItem> : <ContainedListItem>企画を表示できません。</ContainedListItem>}
+        }) : portalState.projects.status !== 'unavailable' ? <ContainedListItem>{projectInfo.heading}</ContainedListItem> : null}
           </ContainedList>
           {portalState.projects.projects.length > HISTORY_PREVIEW_LIMIT && <Button
             className="history-toggle"
             kind="ghost"
             size="sm"
-            aria-label={showAllProjects ? '最近の企画を折りたたむ' : '最近の企画をすべて見る'}
+            aria-label={showAllProjects ? `最近の企画を${HISTORY_PREVIEW_LIMIT}件だけ表示` : '最近の企画をすべて表示'}
             aria-expanded={showAllProjects}
             aria-controls="project-history-list"
             onClick={() => setShowAllProjects(value => !value)}
-          >{showAllProjects ? '表示を減らす' : 'すべて見る'}</Button>}
+          >{showAllProjects ? `${HISTORY_PREVIEW_LIMIT}件だけ表示` : 'すべて表示'}</Button>}
         </Column>
       </Grid>
     </section>

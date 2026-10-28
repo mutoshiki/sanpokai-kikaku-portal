@@ -97,7 +97,7 @@ test('keeps missing lastOpenedAt null and displays updatedAt', () => {
   assert.equal(updated.lastOpenedAt, null);
   assert.equal(updated.updatedAt, 2000);
   assert.deepEqual(portalHistory.getProjectDisplayDate(updated), { timestamp: 2000, label: '更新日時' });
-  assert.deepEqual(portalHistory.getProjectDisplayDate(missing), { timestamp: null, label: '日付不明' });
+  assert.deepEqual(portalHistory.getProjectDisplayDate(missing), { timestamp: null, label: '日時不明' });
 });
 
 test('normalizes absent and non-positive portal timestamps', () => {
@@ -141,10 +141,10 @@ test('disambiguates only same-name projects with the same displayed date and pre
   const result = getProjectDisambiguators(projects);
 
   assert.deepEqual([...result.entries()], [
-    ['SAME-A', '企画ID: SAME-A'],
-    ['SAME-B', '企画ID: SAME-B'],
-    ['UNDATED-A', '企画ID: UNDATED-A'],
-    ['UNDATED-B', '企画ID: UNDATED-B'],
+    ['SAME-A', '企画ID：SAME-A'],
+    ['SAME-B', '企画ID：SAME-B'],
+    ['UNDATED-A', '企画ID：UNDATED-A'],
+    ['UNDATED-B', '企画ID：UNDATED-B'],
   ]);
   assert.deepEqual(projects, before);
 });

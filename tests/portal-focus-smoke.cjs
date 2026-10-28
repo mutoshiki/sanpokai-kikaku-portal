@@ -120,10 +120,10 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
     Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new Error('storage disabled'); } });
     window.dispatchEvent(new StorageEvent('storage', { key: null }));
   });
-  try { await unavailablePage.getByText('企画を表示できません。').waitFor({ timeout: 10000 }); }
+  try { await unavailablePage.getByText('企画の履歴を読み込めませんでした。').waitFor({ timeout: 10000 }); }
   catch { throw new Error(`storage unavailable state did not render: ${(await unavailablePage.locator('body').innerText()).slice(0, 1200)}`); }
   const unavailableCopy = await unavailablePage.locator('.history-workspace').textContent();
-  if (unavailableCopy.includes('履歴') || !unavailableCopy.includes('企画を表示できません') || !unavailableCopy.includes('フォームを表示できません')) {
+  if (!unavailableCopy.includes('企画の履歴を読み込めませんでした。') || (!unavailableCopy.includes('フォームの履歴を読み込めませんでした。') && !unavailableCopy.includes('フォームの作成履歴はありません。')) || unavailableCopy.includes('企画を表示できません') || unavailableCopy.includes('フォームを表示できません')) {
     throw new Error(`${preference}: unavailable state still uses duplicate history copy: ${unavailableCopy}`);
   }
   await unavailablePage.close();
@@ -135,11 +135,11 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   await installKeyboardHistoryFixture(page);
   await page.getByRole('link', { name: /キーボード確認企画/ }).waitFor();
 
-  const themeButton = page.getByRole('button', { name: /表示テーマ/ });
+  const themeButton = page.getByRole('button', { name: /表示設定を/ });
   await themeButton.click();
   if (await themeButton.getAttribute('aria-expanded') !== 'true') throw new Error(`${preference}: theme panel did not open`);
   if (await themeButton.getAttribute('aria-controls') !== 'theme-preference-panel') throw new Error(`${preference}: theme trigger does not control the panel`);
-  if (await page.locator('#theme-preference-panel').getAttribute('aria-label') !== '表示テーマ') throw new Error(`${preference}: theme panel label regression`);
+  if (await page.locator('#theme-preference-panel').getAttribute('aria-label') !== '表示設定') throw new Error(`${preference}: theme panel label regression`);
   await page.locator('#theme-system').focus();
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => document.getElementById('theme-light')?.checked);
@@ -147,8 +147,8 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => document.getElementById('theme-dark')?.checked);
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ"]')?.getAttribute('aria-expanded') === 'false');
-  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：'));
+  await page.waitForFunction(() => document.querySelector('[aria-label^="表示設定を"]')?.getAttribute('aria-expanded') === 'false');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('表示設定を'));
   await page.keyboard.press('Tab');
   if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'tab') {
     throw new Error(`${preference}: Tab did not move from the closed theme panel to the history tabs`);
@@ -162,7 +162,7 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   if (await formsTab.getAttribute('aria-selected') !== 'true' || !await page.locator(`#${formPanelId}`).isVisible() || await page.locator(`#${projectPanelId}`).isVisible()) {
     throw new Error(`${preference}: ArrowRight did not reveal only the forms panel`);
   }
-  await page.getByRole('link', { name: /キーボード確認フォームの応募フォームを開く/ }).waitFor();
+  await page.getByRole('link', { name: /「キーボード確認フォーム」の応募フォームを開く（新しいタブ）/ }).waitFor();
   const tabStops = [];
   for (let index = 0; index < 6; index += 1) {
     await page.keyboard.press('Tab');
@@ -192,7 +192,7 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   await focusPage.goto(baseUrl);
   await focusPage.locator('.portal-title').waitFor({ timeout: 60000 });
   await focusPage.waitForFunction(theme => document.documentElement.dataset.carbonTheme === theme, expectedTheme);
-  const touchThemeButton = focusPage.getByRole('button', { name: /表示テーマ：/ });
+  const touchThemeButton = focusPage.getByRole('button', { name: /表示設定を/ });
   const toolLinks = await focusPage.locator('.tool-tile').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
   if (!toolLinks.some(href => href && href.includes('/form-maker/'))) {
     throw new Error(`${preference}: form maker tile is not routed through the themed host`);
@@ -224,12 +224,12 @@ async function run(browser, engineName, preference, expectedTheme, baseUrl) {
   const touchBounds = await touchThemeButton.boundingBox();
   if (!touchBounds) throw new Error(`${preference}: theme trigger has no touch target`);
   await focusPage.touchscreen.tap(touchBounds.x + touchBounds.width / 2, touchBounds.y + touchBounds.height / 2);
-  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'true');
+  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示設定を"]')?.getAttribute('aria-expanded') === 'true');
   const openBounds = await touchThemeButton.boundingBox();
   await focusPage.touchscreen.tap(openBounds.x + openBounds.width / 2, openBounds.y + openBounds.height / 2);
-  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示テーマ："]')?.getAttribute('aria-expanded') === 'false');
+  await focusPage.waitForFunction(() => document.querySelector('[aria-label^="表示設定を"]')?.getAttribute('aria-expanded') === 'false');
   const touchFocus = await focusPage.evaluate(() => ({
-    onTrigger: document.activeElement?.getAttribute('aria-label')?.startsWith('表示テーマ：') === true,
+    onTrigger: document.activeElement?.getAttribute('aria-label')?.startsWith('表示設定を') === true,
     visible: document.activeElement?.matches(':focus-visible') === true,
   }));
   if (touchFocus.onTrigger && touchFocus.visible) throw new Error(`${preference}: touch close forced a keyboard-style focus ring: ${JSON.stringify(touchFocus)}`);

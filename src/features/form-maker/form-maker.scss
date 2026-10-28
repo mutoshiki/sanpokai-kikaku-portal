@@ -17,6 +17,10 @@
 .form-maker-heading p { @include type-style('body-01'); color: var(--cds-text-secondary); margin: 0; }
 .form-maker-eyebrow { @include type-style('label-01'); margin-block-end: var(--cds-spacing-03, .5rem) !important; }
 .form-maker-status { margin-block-end: var(--cds-spacing-05, 1rem); }
+.form-maker-readiness-error,
+.form-maker-submit-error { display: grid; justify-items: start; gap: var(--cds-spacing-03, .5rem); }
+.form-maker-readiness-error > :first-child,
+.form-maker-submit-error > :first-child { max-inline-size: none; inline-size: 100%; }
 .form-maker-panel { padding: var(--cds-spacing-06, 1.5rem); }
 .form-maker-panel form { display: flex; flex-direction: column; gap: var(--cds-spacing-06, 1.5rem); }
 .form-maker-panel .cds--inline-notification { max-inline-size: none; }
@@ -24,6 +28,7 @@
 .form-maker-date-grid .cds--date-picker { inline-size: 100%; }
 .form-maker-character-count { @include type-style('label-01'); color: var(--cds-text-secondary); margin: calc(-1 * var(--cds-spacing-05, 1rem)) 0 0; text-align: end; }
 .form-maker-submit { inline-size: 100%; max-inline-size: none; }
+.form-maker-submit-note { @include type-style('helper-text-01'); color: var(--cds-text-secondary); margin: 0; }
 .form-maker-job,
 .form-maker-history { margin-block-start: var(--cds-spacing-08, 2.5rem); }
 .form-maker-job h2,
@@ -33,13 +38,14 @@
 .form-maker-history-actions { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-04, .75rem) var(--cds-spacing-05, 1rem); align-items: center; }
 .form-maker-result-links a,
 .form-maker-history-actions a { min-block-size: 2.75rem; display: inline-flex; gap: var(--cds-spacing-02, .25rem); align-items: center; color: var(--cds-link-primary); }
-.form-maker-section-heading { display: flex; justify-content: space-between; align-items: center; border-block-end: 1px solid var(--cds-border-subtle); padding-block-end: var(--cds-spacing-04, .75rem); }
+.form-maker-section-heading { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-03, .5rem); justify-content: space-between; align-items: center; border-block-end: 1px solid var(--cds-border-subtle); padding-block-end: var(--cds-spacing-04, .75rem); }
 .form-maker-history > p { color: var(--cds-text-secondary); }
 .form-maker-history-list { list-style: none; margin: 0; padding: 0; }
 .form-maker-history-list li { display: flex; flex-direction: column; gap: var(--cds-spacing-04, .75rem); padding: var(--cds-spacing-05, 1rem) 0; border-block-end: 1px solid var(--cds-border-subtle); }
 .form-maker-history-list li > div:first-child { display: flex; flex-direction: column; gap: var(--cds-spacing-02, .25rem); }
 .form-maker-history-list time { @include type-style('label-01'); color: var(--cds-text-secondary); }
 .form-maker-error { color: var(--cds-support-error); }
+.form-maker-incomplete-steps { margin: 0 0 var(--cds-spacing-05, 1rem); padding-inline-start: var(--cds-spacing-06, 1.5rem); }
 
 @include breakpoint-down(md) {
   .form-maker-page { padding-block-start: var(--cds-spacing-07, 2rem); }

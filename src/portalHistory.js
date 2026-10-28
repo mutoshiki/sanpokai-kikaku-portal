@@ -140,7 +140,7 @@ export function getProjectDisplayDate(project) {
   if (lastOpenedAt !== null) return { timestamp: lastOpenedAt, label: '開いた日時' };
   const updatedAt = normalizePortalDate(project?.updatedAt);
   if (updatedAt !== null) return { timestamp: updatedAt, label: '更新日時' };
-  return { timestamp: null, label: '日付不明' };
+  return { timestamp: null, label: '日時不明' };
 }
 
 export function getProjectDisambiguators(projects) {
@@ -148,7 +148,7 @@ export function getProjectDisambiguators(projects) {
   for (const project of Array.isArray(projects) ? projects : []) {
     const roomId = String(project?.roomId ?? '').trim();
     if (!roomId) continue;
-    const name = String(project?.name ?? '').trim() || '名前のない企画';
+    const name = String(project?.name ?? '').trim() || '企画名未設定';
     const { timestamp, label } = getProjectDisplayDate(project);
     const minute = timestamp === null ? 'unknown' : String(Math.floor(timestamp / 60_000));
     const key = JSON.stringify([name, label, minute]);
@@ -160,7 +160,7 @@ export function getProjectDisambiguators(projects) {
   const disambiguators = new Map();
   for (const ids of groups.values()) {
     if (ids.size < 2) continue;
-    for (const roomId of ids) disambiguators.set(roomId, `企画ID: ${roomId}`);
+    for (const roomId of ids) disambiguators.set(roomId, `企画ID：${roomId}`);
   }
   return disambiguators;
 }

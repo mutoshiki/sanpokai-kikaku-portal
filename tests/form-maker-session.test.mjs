@@ -57,7 +57,7 @@ test('prepares an anonymous session and submits one immutable queued request', a
   assert.match(job.handoffToken, /^h_[A-Za-z0-9_-]{48,160}$/);
   const reservationWrite = calls.find((call) => call.options.method === 'PUT' && call.url.includes('/admission/slots/'));
   assert.ok(reservationWrite, 'the client reserves one global admission slot before creating a job');
-  assert.equal(reservationWrite.options.headers['if-match'], undefined, 'a first-write-only Rules grant must not require read access to an empty slot');
+  assert.equal(reservationWrite.options.headers['if-match'], undefined, 'a first-write Rules grant must not require an empty-slot conditional header');
   const reservation = JSON.parse(reservationWrite.options.body);
   assert.equal(reservation.uid, 'owner-uid');
   assert.equal(reservation.jobId, '0123456789abcdef0123456789abcdef');
@@ -97,7 +97,7 @@ test('does not submit a request while the worker has paused intake', async () =>
 
   await assert.rejects(session.enqueue({ planName: 'テスト', editorEmail: 'tester@example.com' }, {
     jobId: '0123456789abcdef0123456789abcdef',
-  }), /受付を一時停止中/);
+  }), /新しいフォームを作成できません/);
   assert.equal(calls.some((call) => call.options.method === 'PUT'), false);
 });
 
@@ -117,7 +117,7 @@ test('does not create a job when all global admission slots are occupied', async
 
   await assert.rejects(session.enqueue({ planName: 'テスト', editorEmail: 'tester@example.com' }, {
     jobId: '0123456789abcdef0123456789abcdef',
-  }), /受付枠を確保できません/);
+  }), /フォームを作成できませんでした/);
   assert.equal(calls.filter((call) => call.options.method === 'PUT' && call.url.includes('/jobs/')).length, 0);
 });
 
@@ -159,7 +159,7 @@ test('recovers the same reservation after an uncertain job write without changin
   const input = { planName: 'テスト企画', editorEmail: 'tester@example.com' };
   const options = { jobId: '0123456789abcdef0123456789abcdef' };
 
-  await assert.rejects(session.enqueue(input, options), /Firebase request failed/);
+  await assert.rejects(session.enqueue(input, options), /作成結果が分からない場合は、新しく作らず/);
   clock += 1000;
   const recovered = await session.enqueue(input, options);
 
@@ -226,7 +226,7 @@ test('invalid acceptance modes and test-owner read failures fail closed', async 
       throw new Error(`Unexpected request: ${url}`);
     };
     const session = createFormMakerSession({ config, fetchImpl, storage: memoryStorage() });
-    await assert.rejects(session.prepare(), /受付状況を確認できません/);
+    await assert.rejects(session.prepare(), /フォームを作成できるか確認できません/);
   });
 
   await t.test('test owner read denied', async () => {
@@ -237,6 +237,6 @@ test('invalid acceptance modes and test-owner read failures fail closed', async 
       throw new Error(`Unexpected request: ${url}`);
     };
     const session = createFormMakerSession({ config, fetchImpl, storage: memoryStorage() });
-    await assert.rejects(session.prepare(), /受付状況を確認できません/);
+    await assert.rejects(session.prepare(), /フォームを作成できるか確認できません/);
   });
 });

@@ -93,7 +93,7 @@ async function run(browser, width) {
   if (await page.locator('iframe').count()) throw new Error(`${width}px: the form-maker page must not wait on an Apps Script iframe`);
   const lightHeader = await page.locator('.cds--header').evaluate(node => getComputedStyle(node).backgroundColor);
   if (lightHeader !== 'rgb(22, 22, 22)') throw new Error(`${width}px: Carbon header is not black in light mode (${lightHeader})`);
-  await page.getByRole('button', { name: '表示テーマ：システム設定' }).click();
+  await page.getByRole('button', { name: /表示設定を開く（現在：端末の設定に合わせる）/ }).click();
   await page.locator('label[for="theme-dark"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   const headerBackground = await page.locator('.cds--header').evaluate(node => getComputedStyle(node).backgroundColor);
@@ -102,22 +102,22 @@ async function run(browser, width) {
     throw new Error(`${width}px: dark theme did not keep the Carbon header black (${JSON.stringify(headerInfo)})`);
   }
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: '表示テーマ：ダーク' }).waitFor({ state: 'visible' });
+  await page.getByRole('button', { name: /表示設定を開く（現在：ダーク）/ }).waitFor({ state: 'visible' });
   await page.getByLabel('企画名').fill('ブラウザ検証企画');
-  await page.getByLabel('フォームを編集する人のメールアドレス').fill('tester@example.com');
+  await page.getByLabel('編集者のメールアドレス（必須）').fill('tester@example.com');
   await page.getByLabel('実施日').fill('2026-10-20');
-  await page.getByLabel('企画の内容・集合場所・注意事項').fill('合成データです');
-  await page.getByRole('button', { name: 'Googleフォームを作成' }).click();
-  await page.getByText('受付済み').waitFor();
-  await page.getByText('作成完了').waitFor({ timeout: 7000 });
+  await page.getByLabel('企画の説明（任意）').fill('合成データです');
+  await page.getByRole('button', { name: '応募フォームを作成' }).click();
+  await page.getByText('依頼を受け付けました。').waitFor();
+  await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('応募フォームを作る'));
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
-  if (await page.getByRole('link', { name: /サークル企画ツールで企画を開く/ }).getAttribute('target') !== '_blank') {
+  if (await page.getByRole('link', { name: /企画を開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   if (overflow) throw new Error(`${width}px: horizontal overflow detected`);
-  await page.getByRole('button', { name: '別のフォームを作る' }).waitFor();
+  await page.getByRole('button', { name: '新しいフォームを作る' }).waitFor();
   if (errors.length) throw new Error(`${width}px: ${errors.join(' | ')}`);
   await context.close();
 }
@@ -137,9 +137,9 @@ async function runStorageDenied(browser) {
   try {
     await page.goto(`${BASE}form-maker/`);
     await page.getByLabel('企画名').fill('保存拒否テスト');
-    await page.getByLabel('フォームを編集する人のメールアドレス').fill('tester@example.com');
-    await page.getByRole('button', { name: 'Googleフォームを作成' }).click();
-    await page.getByText('このタブで作成状況を保存できません').waitFor();
+    await page.getByLabel('編集者のメールアドレス（必須）').fill('tester@example.com');
+    await page.getByRole('button', { name: '応募フォームを作成' }).click();
+    await page.getByText('作成状況を保存できませんでした。').waitFor();
     if (writes !== 0) throw new Error('A form request was sent without a persisted idempotency key');
   } finally {
     await context.close();
@@ -164,7 +164,7 @@ async function runMaintenance(browser) {
     await page.getByText('メンテナンス中です').waitFor();
     await page.getByRole('heading', { name: '作成したフォーム' }).waitFor();
     if (await page.getByLabel('企画名').isVisible() !== true) throw new Error('form inputs should remain visible in maintenance mode');
-    if (await page.getByRole('button', { name: 'Googleフォームを作成' }).isEnabled()) throw new Error('non-test browser must not create a form during test intake');
+    if (await page.getByRole('button', { name: '応募フォームを作成' }).isEnabled()) throw new Error('non-test browser must not create a form during test intake');
     if (writes.length) throw new Error(`maintenance page attempted Firebase data writes: ${writes.join(',')}`);
   } finally {
     await context.close();
