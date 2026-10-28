@@ -39,8 +39,8 @@ function savePendingJobId(jobId) {
 
 function jobMessage(job) {
   switch (job?.state) {
-    case 'queued': return '依頼を受け付けました。作成が始まるまで数分かかることがあります。進み具合は自動で更新されます。';
-    case 'running': return 'フォームを作成しています。完了すると、この画面にリンクが表示されます。';
+    case 'queued': return '作成が始まるまで数分かかることがあります。完了したフォームは下に表示されます。';
+    case 'running': return 'フォームを作成しています。完了したら下に表示します。';
     case 'completed': return '応募用リンクを参加者に共有してください。';
     case 'partial': return unfinishedSteps(job).length
       ? 'フォームはできましたが、設定が一部残っています。下の項目と作成履歴を確認してください。'
@@ -117,7 +117,7 @@ function App() {
   const [toast, setToast] = useState('');
   const [copyError, setCopyError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const jobStatusHeadingRef = useRef(null);
+  const formMakerHistoryHeadingRef = useRef(null);
 
   const applyJobs = useCallback((jobs) => {
     setHistory((current) => {
@@ -186,8 +186,8 @@ function App() {
   }, [applyJobs, job, session]);
 
   useEffect(() => {
-    if (job && ['completed', 'partial'].includes(job.state)) jobStatusHeadingRef.current?.focus();
-  }, [job?.state]);
+    if (job && ['completed', 'partial'].includes(job.state) && job.result?.formUrl) formMakerHistoryHeadingRef.current?.focus();
+  }, [job?.state, job?.result?.formUrl]);
 
   const update = (key) => (event) => setInput((current) => ({ ...current, [key]: event.target.value }));
 
@@ -258,6 +258,9 @@ function App() {
   const pendingId = readPendingJobId();
   const accepting = readiness.accepting && readiness.state === 'ready';
   const canSubmit = accepting && !submitting && !pendingId && !job;
+  const hasFinishedForm = ['completed', 'partial'].includes(job?.state);
+  const hasFinishedResult = hasFinishedForm && Boolean(job?.result?.formUrl);
+  const visibleHistory = history.filter((item) => !(hasFinishedResult && ((job.result?.formId && item.formId === job.result.formId) || (job.jobId && item.jobId === job.jobId))));
 
   return <>
     <CarbonTheme as={Header} theme="g100" aria-label="山歩会フォームメーカー">
@@ -277,7 +280,7 @@ function App() {
         {readiness.state === 'paused' && <InlineNotification kind="warning" lowContrast hideCloseButton title="現在、新しいフォームを作成できません" subtitle="時間をおいて、もう一度お試しください。" />}
         {readiness.state === 'unavailable' && <div className="form-maker-readiness-error"><InlineNotification kind="error" lowContrast hideCloseButton title={readiness.errorTitle || 'フォーム作成サービスに接続できません'} subtitle={readiness.errorMessage || '通信を確認して、「接続を再確認」を押してください。'} /><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshReadiness()}>接続を再確認</Button></div>}
 
-        <Tile className="form-maker-panel">
+        {!hasFinishedForm && <Tile className="form-maker-panel">
           <form onSubmit={submit} aria-label="応募フォームの作成">
             <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText="100文字以内" required maxLength={100} value={input.planName} onChange={update('planName')} />
             <TextInput id="editor-email" labelText="メールアドレス（必須）" helperText="作成したGoogleフォームの編集権限を、このアドレスに共有します。" type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
@@ -285,42 +288,53 @@ function App() {
               <Column sm={4} md={4} lg={8}><TextInput id="event-date" labelText="実施日（任意）" type="date" value={input.eventDate} onChange={update('eventDate')} /></Column>
               <Column sm={4} md={4} lg={8}><TextInput id="application-deadline" labelText="応募締切日（任意）" type="date" value={input.deadline} onChange={update('deadline')} /></Column>
             </Grid>
-            <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={5} maxLength={3000} value={input.description} onChange={update('description')} />
+            <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onChange={update('description')} />
             <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
             {!job && <p className="form-maker-submit-note">作成には数分かかることがあります。</p>}
-            <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={Renew}>
+            <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={submitting ? Renew : undefined}>
               {submitting ? '作成を依頼しています…' : '応募フォームを作成'}
             </Button>
           </form>
-        </Tile>
+        </Tile>}
 
-        {job && <section className="form-maker-job" aria-labelledby="job-status-heading">
-          <h2 id="job-status-heading" tabIndex="-1" ref={jobStatusHeadingRef}>フォームの作成状況</h2>
+        {job && !hasFinishedResult && <section className="form-maker-job" aria-labelledby="job-status-heading">
+          <h2 id="job-status-heading">フォームの作成状況</h2>
           <InlineNotification kind={job.state === 'completed' ? 'success' : job.state === 'partial' || job.state === 'unknown' || job.state === 'queued' ? 'warning' : job.state === 'failed' ? 'error' : 'info'} lowContrast hideCloseButton title={job.state === 'queued' ? '作成待ちです' : job.state === 'running' ? '作成中です' : job.state === 'completed' ? 'フォームを作成しました' : job.state === 'partial' ? 'フォームはできましたが、設定が一部残っています' : job.state === 'unknown' ? '作成結果がまだ分かりません' : 'フォームを作成できませんでした'} subtitle={jobMessage(job)} />
           {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
-          {job.result?.formUrl && <div className="form-maker-result-links">
-            <a href={job.result.formUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く <Launch size={16} aria-hidden="true" /></a>
-            <Button kind="ghost" size="sm" renderIcon={Copy} onClick={() => copyLink(job.result.formUrl)}>応募用リンクをコピー</Button>
-            {copyError && <p className="form-maker-error" role="alert">コピーできませんでした。「応募フォームを開く」から開き、アドレス欄のURLをコピーしてください。</p>}
-            {job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画ツールを開く（新しいタブ）">企画ツールを開く <Launch size={16} aria-hidden="true" /></a>}
-          </div>}
           {job.state === 'unknown' && <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}
-          {['completed', 'partial', 'failed'].includes(job.state) && <Button kind="tertiary" size="sm" onClick={startAnotherForm}>新しいフォームを作る</Button>}
+          {['completed', 'partial', 'failed'].includes(job.state) && <Button kind="tertiary" size="sm" onClick={startAnotherForm}>別のフォームを作る</Button>}
         </section>}
 
-        <section className="form-maker-history" aria-labelledby="form-maker-history-heading">
-          <div className="form-maker-section-heading"><h2 id="form-maker-history-heading">このブラウザーで作成したフォーム</h2><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshHistory()}>履歴を再読み込み</Button></div>
+        <section className={`form-maker-history${hasFinishedResult ? ' form-maker-history--with-current' : ''}`} aria-labelledby="form-maker-history-heading">
+          <div className="form-maker-section-heading"><h2 id="form-maker-history-heading" tabIndex={hasFinishedResult ? -1 : undefined} ref={formMakerHistoryHeadingRef}>作成したフォーム</h2><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshHistory()}>履歴を再読み込み</Button></div>
           {historyState === 'loading' && history.length === 0 && <p role="status">作成履歴を読み込んでいます。</p>}
           {historyState === 'unavailable' && <p role="status">作成履歴を読み込めませんでした。「履歴を再読み込み」を押してください。</p>}
-          {history.length === 0 && historyState === 'ready' && <p>まだフォームはありません。作成したフォームはここに表示されます。</p>}
+          {visibleHistory.length === 0 && historyState === 'ready' && !hasFinishedResult && <p>まだフォームはありません。作成したフォームはここに表示されます。</p>}
           <ul className="form-maker-history-list">
-            {history.map((item) => <li key={item.formId}>
+            {hasFinishedResult && <li className="form-maker-current-result">
+              <InlineNotification kind={job.state === 'completed' ? 'success' : 'warning'} lowContrast hideCloseButton title={job.state === 'completed' ? 'フォームを作成しました' : 'フォームはできましたが、設定が一部残っています'} subtitle={jobMessage(job)} />
+              {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
+              <div className="form-maker-result-summary">
+                <strong>{job.result.planName || job.planName || '企画名なし'}</strong>
+                <time>{job.result.createdAt || job.createdAt ? `作成日時：${new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'short' }).format(Number(job.result.createdAt || job.createdAt))}` : '作成日時は不明です'}</time>
+              </div>
+              <div className="form-maker-result-links">
+                <Button kind={job.state === 'completed' ? 'primary' : 'tertiary'} size="lg" renderIcon={Copy} onClick={() => copyLink(job.result.formUrl)}>応募用リンクをコピー</Button>
+                <a href={job.result.formUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く <Launch size={16} aria-hidden="true" /></a>
+                {job.result.editUrl && <a href={job.result.editUrl} target="_blank" rel="noopener noreferrer">フォームを編集する <Launch size={16} aria-hidden="true" /></a>}
+                {job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画ツールを開く（新しいタブ）">企画ツールを開く <Launch size={16} aria-hidden="true" /></a>}
+                {job.result.responseSheetUrl && <a href={job.result.responseSheetUrl} target="_blank" rel="noopener noreferrer">回答シートを開く <Launch size={16} aria-hidden="true" /></a>}
+              </div>
+              {copyError && <p className="form-maker-error" role="alert">コピーできませんでした。「応募フォームを開く」から開き、アドレス欄のURLをコピーしてください。</p>}
+              <Button className="form-maker-another-button" kind="tertiary" size="sm" onClick={startAnotherForm}>別のフォームを作る</Button>
+            </li>}
+            {visibleHistory.map((item) => <li key={item.formId}>
                 <div><strong>{item.planName || '企画名なし'}</strong><time>{item.createdAt ? `作成日時：${new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'short' }).format(Number(item.createdAt))}` : '作成日時は不明です'}</time></div>
               <div className="form-maker-history-actions">
                 {item.responseUrl && <a href={item.responseUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く</a>}
-                {item.editUrl && <a href={item.editUrl} target="_blank" rel="noopener noreferrer">フォームを編集</a>}
-                {item.projectUrl && <a href={projectUrlWithHandoffCapability(item.projectUrl, session.getHandoffToken(item.jobId))} target="_blank" rel="noopener noreferrer">企画ページを開く</a>}
+                {item.editUrl && <a href={item.editUrl} target="_blank" rel="noopener noreferrer">フォームを編集する</a>}
+                {item.projectUrl && <a href={projectUrlWithHandoffCapability(item.projectUrl, session.getHandoffToken(item.jobId))} target="_blank" rel="noopener noreferrer">企画ツールを開く</a>}
                 {item.responseSheetUrl && <a href={item.responseSheetUrl} target="_blank" rel="noopener noreferrer">回答シートを開く</a>}
               </div>
             </li>)}

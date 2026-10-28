@@ -108,16 +108,27 @@ async function run(browser, width) {
   await page.getByLabel('実施日').fill('2026-10-20');
   await page.getByLabel('企画の説明（任意）').fill('合成データです');
   await page.getByRole('button', { name: '応募フォームを作成' }).click();
-  await page.getByText('依頼を受け付けました。').waitFor();
+  await page.getByText('作成が始まるまで数分かかることがあります。').waitFor();
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
-  await page.waitForFunction(() => document.activeElement?.id === 'job-status-heading');
+  await page.waitForFunction(() => document.activeElement?.id === 'form-maker-history-heading');
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
+  if (await page.getByLabel('企画名（必須）').count()) throw new Error(`${width}px: completed result should replace the input form`);
+  if (await page.locator('.form-maker-job').count()) throw new Error(`${width}px: completed status should be part of the history card`);
+  const copyButton = page.getByRole('button', { name: '応募用リンクをコピー' });
+  await copyButton.waitFor();
+  if (!await copyButton.evaluate(node => node.classList.contains('cds--btn--primary'))) throw new Error(`${width}px: copying the application link should be the primary action`);
+  for (const label of ['応募フォームを開く', 'フォームを編集する', '企画ツールを開く', '回答シートを開く']) {
+    await page.getByRole('link', { name: new RegExp(label) }).waitFor();
+  }
+  const matchingHistoryEntries = page.locator('.form-maker-history-list li').filter({ hasText: 'ブラウザ検証企画' });
+  if (await matchingHistoryEntries.count() !== 1) throw new Error(`${width}px: completed result should appear exactly once at the top of history`);
+  if (await matchingHistoryEntries.getByText('フォームを作成しました').count() !== 1) throw new Error(`${width}px: success status should be integrated into the history card`);
   if (await page.getByRole('link', { name: /企画ツールを開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   if (overflow) throw new Error(`${width}px: horizontal overflow detected`);
-  await page.getByRole('button', { name: '新しいフォームを作る' }).waitFor();
+  await page.getByRole('button', { name: '別のフォームを作る' }).waitFor();
   if (errors.length) throw new Error(`${width}px: ${errors.join(' | ')}`);
   await context.close();
 }
