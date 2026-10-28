@@ -89,7 +89,7 @@ async function run(browser, width) {
   });
 
   await page.goto(`${BASE}form-maker/`);
-  await page.getByRole('heading', { name: '応募フォームメーカー' }).waitFor();
+  await page.getByRole('heading', { name: 'フォーム作成' }).waitFor();
   if (await page.locator('iframe').count()) throw new Error(`${width}px: the form-maker page must not wait on an Apps Script iframe`);
   const lightHeader = await page.locator('.cds--header').evaluate(node => getComputedStyle(node).backgroundColor);
   if (lightHeader !== 'rgb(22, 22, 22)') throw new Error(`${width}px: Carbon header is not black in light mode (${lightHeader})`);
@@ -110,7 +110,7 @@ async function run(browser, width) {
   await page.getByRole('button', { name: '応募フォームを作成' }).click();
   await page.getByText('依頼を受け付けました。').waitFor();
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
-  await page.waitForFunction(() => document.activeElement?.textContent?.includes('応募フォームメーカー'));
+  await page.waitForFunction(() => document.activeElement?.id === 'job-status-heading');
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
   if (await page.getByRole('link', { name: /企画ツールを開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);

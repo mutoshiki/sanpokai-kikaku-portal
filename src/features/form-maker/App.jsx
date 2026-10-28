@@ -117,7 +117,7 @@ function App() {
   const [toast, setToast] = useState('');
   const [copyError, setCopyError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const headingRef = useRef(null);
+  const jobStatusHeadingRef = useRef(null);
 
   const applyJobs = useCallback((jobs) => {
     setHistory((current) => {
@@ -186,7 +186,7 @@ function App() {
   }, [applyJobs, job, session]);
 
   useEffect(() => {
-    if (job && ['completed', 'partial'].includes(job.state)) headingRef.current?.focus();
+    if (job && ['completed', 'partial'].includes(job.state)) jobStatusHeadingRef.current?.focus();
   }, [job?.state]);
 
   const update = (key) => (event) => setInput((current) => ({ ...current, [key]: event.target.value }));
@@ -267,8 +267,8 @@ function App() {
     </CarbonTheme>
     <Content id="main-content" className="form-maker-page">
       <div className="form-maker-layout">
+        <h1 className="cds--visually-hidden">フォーム作成</h1>
         <div className="form-maker-heading">
-          <h1 tabIndex="-1" ref={headingRef}>応募フォームメーカー</h1>
           <p>企画の情報を入力すると、参加者向けの応募フォームを作成できます。</p>
         </div>
 
@@ -296,7 +296,7 @@ function App() {
         </Tile>
 
         {job && <section className="form-maker-job" aria-labelledby="job-status-heading">
-          <h2 id="job-status-heading">フォームの作成状況</h2>
+          <h2 id="job-status-heading" tabIndex="-1" ref={jobStatusHeadingRef}>フォームの作成状況</h2>
           <InlineNotification kind={job.state === 'completed' ? 'success' : job.state === 'partial' || job.state === 'unknown' || job.state === 'queued' ? 'warning' : job.state === 'failed' ? 'error' : 'info'} lowContrast hideCloseButton title={job.state === 'queued' ? '作成待ちです' : job.state === 'running' ? '作成中です' : job.state === 'completed' ? 'フォームを作成しました' : job.state === 'partial' ? 'フォームはできましたが、設定が一部残っています' : job.state === 'unknown' ? '作成結果がまだ分かりません' : 'フォームを作成できませんでした'} subtitle={jobMessage(job)} />
           {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
           {job.result?.formUrl && <div className="form-maker-result-links">
