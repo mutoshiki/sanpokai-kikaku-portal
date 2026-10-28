@@ -269,7 +269,7 @@ function App() {
           const editUrl = safeExternalUrl(form.editUrl);
           const projectBaseUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
           const projectUrl = projectUrlWithHandoffCapability(projectBaseUrl, formMakerSession.getHandoffToken(form.jobId));
-          const responseSheetUrl = safeResponseSheetUrl(form.responseSheetUrl);
+          const responseSheetUrl = safeResponseSheetUrl(form.responseSheetUrl) || safeResponseSheetUrl(form.sheetUrl) || safeResponseSheetUrl(form.spreadsheetUrl);
           const createdAt = normalizePortalDate(form.createdAt);
           const errorId = `form-${form.formId}`;
           return (
