@@ -93,7 +93,7 @@ async function waitForAnimations(page) {
   const hostUrl = new URL('form-maker/', LIVE_URL).href;
   await openWithRetry(page, hostUrl, async () => {
     await page.getByRole('heading', { name: '応募フォームを作る', level: 1 }).waitFor({ timeout: 15000 });
-    await page.getByLabel('企画名', { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
+    await page.getByLabel('企画名（必須）', { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
     await page.getByRole('button', { name: /Googleフォームを作成/ }).waitFor({ state: 'visible', timeout: 10000 });
   });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');

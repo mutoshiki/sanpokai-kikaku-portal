@@ -79,6 +79,15 @@ function safeProjectToolUrl(value) {
   } catch { return ''; }
 }
 
+function safeResponseSheetUrl(value) {
+  const url = safeExternalUrl(value);
+  if (!url) return '';
+  try {
+    const candidate = new URL(url);
+    return candidate.hostname === 'docs.google.com' && candidate.pathname.startsWith('/spreadsheets/d/') ? candidate.href : '';
+  } catch { return ''; }
+}
+
 function markProjectOpened(value) {
   const url = safeProjectToolUrl(value);
   if (!url) return;
@@ -259,26 +268,26 @@ function App() {
           const responseUrl = safeExternalUrl(form.responseUrl);
           const editUrl = safeExternalUrl(form.editUrl);
           const projectUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
+          const responseSheetUrl = safeResponseSheetUrl(form.responseSheetUrl);
           const createdAt = normalizePortalDate(form.createdAt);
           const errorId = `form-${form.formId}`;
           return (
             <ContainedListItem
               key={form.formId}
-              className={`project-list__row${editUrl ? ' project-list__row--form-actions' : ''}`}
-              action={editUrl ? <div className="project-list__actions"><OverflowMenu size="lg" aria-label={`「${label}」のフォーム操作`} iconDescription={`「${label}」のフォーム操作`} flipped menuOptionsClass="project-list__form-menu">
-                <OverflowMenuItem itemText="フォームを編集する" onClick={() => window.open(editUrl, '_blank', 'noopener,noreferrer')} />
-                <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />
+              className={`project-list__row${responseUrl || editUrl ? ' project-list__row--form-actions' : ''}`}
+              action={responseUrl || editUrl ? <div className="project-list__actions"><OverflowMenu size="lg" aria-label={`「${label}」のリンクをコピー`} iconDescription={`「${label}」のリンクをコピー`} flipped menuOptionsClass="project-list__form-menu">
+                {responseUrl && <OverflowMenuItem itemText={RESPONSE_LINK_COPY_LABEL} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)} />}
+                {editUrl && <OverflowMenuItem itemText={EDIT_LINK_COPY_LABEL} onClick={() => copyLink(editUrl, `${EDIT_LINK_COPY_LABEL}しました`, errorId)} />}
               </OverflowMenu></div> : undefined}
             >
               <div className="project-list__item">
                 <span className="project-title">{label}</span>
                 <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成日時 ${formatDate(createdAt)}`}</time>
-                {(responseUrl || projectUrl) && <div className="project-list__form-links">
-                  {responseUrl && <>
-                    <Button className="history-response-link" kind="primary" size="sm" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</Button>
-                    <Button className="form-copy-button" kind="ghost" size="sm" aria-label={`「${label}」の応募用リンクをコピー`} onClick={() => copyLink(responseUrl, `${RESPONSE_LINK_COPY_LABEL}しました`, errorId)}>{RESPONSE_LINK_COPY_LABEL}</Button>
-                  </>}
+                {(responseUrl || editUrl || projectUrl || responseSheetUrl) && <div className="project-list__form-links">
+                  {responseUrl && <Button className="history-response-link" kind="primary" size="sm" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</Button>}
+                  {editUrl && <Button className="history-edit-link" kind="tertiary" size="sm" href={editUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」のフォームを編集する（新しいタブ）`}>フォームを編集する</Button>}
                   {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の企画を開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
+                  {responseSheetUrl && <a className="history-sheet-link" href={responseSheetUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の回答シートを開く（新しいタブ）`}>回答シートを開く</a>}
                 </div>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
               </div>

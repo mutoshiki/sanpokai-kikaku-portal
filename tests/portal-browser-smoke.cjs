@@ -42,11 +42,11 @@ async function installIsolatedEnvironment(page, baseUrl) {
       'sanpo-react:v1:ROOM-C:room': JSON.stringify({ roomName: 'React企画', lastUpdatedAt: 3000 }),
       'syawari_history_ROOM-A': JSON.stringify([{ time: 3000, data: { roomName: '春山企画', lastUpdatedAt: 1500 } }]),
       'sanpokai-form-builder-history-v1': JSON.stringify([
-        { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit' },
+        { formId: 'FORM-B', planName: '夏山応募フォーム', title: '夏山応募フォーム', createdAt: '2026-08-02T10:00:00.000Z', projectId: 'PROJECT-B', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B', spreadsheetUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-B&handoff=legacy-token', responseUrl: 'https://docs.google.com/forms/d/FORM-B/viewform', editUrl: 'https://docs.google.com/forms/d/FORM-B/edit', responseSheetUrl: 'https://docs.google.com/spreadsheets/d/SHEET-B/edit' },
         { formId: 'FORM-A', planName: '春山応募フォーム', title: '春山応募フォーム', createdAt: '2026-08-01T10:00:00.000Z', responseUrl: 'https://docs.google.com/forms/d/FORM-A/viewform' },
         { formId: 'FORM-C', planName: '紅葉応募フォーム', createdAt: '2026-07-31T10:00:00.000Z', projectUrl: 'https://mutoshiki.github.io/circle-kikaku-tools/?room=PROJECT-C' },
         { formId: 'FORM-D', planName: '雪山応募フォーム', createdAt: '2026-07-30T10:00:00.000Z', editUrl: 'https://docs.google.com/forms/d/FORM-D/edit' },
-        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: 'invalid date', responseUrl: 'javascript:alert(1)', editUrl: 'data:text/html,unsafe', projectUrl: 'javascript:alert(2)' },
+        { formId: 'FORM-E', planName: '新緑応募フォーム', createdAt: 'invalid date', responseUrl: 'javascript:alert(1)', editUrl: 'data:text/html,unsafe', projectUrl: 'javascript:alert(2)', responseSheetUrl: 'https://example.com/not-a-sheet' },
         { formId: 'FORM-F', planName: 'URLなし応募フォーム', createdAt: '2026-07-29T10:00:00.000Z' },
       ]),
     };
@@ -416,7 +416,7 @@ async function run(browser, name, viewport, baseUrl) {
     throw new Error(`${name}: obsolete history copy or IDs remain`);
   }
   if (initial.nestedInteractiveContent) throw new Error(`${name}: contained list item content nested an interactive element`);
-  if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 1) throw new Error(`${name}: form history action anatomy regression: ${initial.formActionLinks} links, ${initial.formOverflowMenus} menus`);
+  if (initial.formActionLinks !== 0 || initial.formOverflowMenus !== 2) throw new Error(`${name}: form history action anatomy regression: ${initial.formActionLinks} links, ${initial.formOverflowMenus} menus`);
   if (initial.projectActionLinks !== 0 || initial.actionOverflow || initial.clickableRows !== 0) throw new Error(`${name}: project history action geometry regression`);
   if (initial.rowHeights.some(height => height < 48)) throw new Error(`${name}: contained list row is shorter than Carbon lg: ${JSON.stringify(initial.rowHeights)}`);
   if (!initial.text.includes('作成したフォーム')) throw new Error(`${name}: missing form history section`);
@@ -461,6 +461,18 @@ async function run(browser, name, viewport, baseUrl) {
     responseTarget: row.querySelector('.history-response-link')?.getAttribute('target') || '',
     responseRel: row.querySelector('.history-response-link')?.getAttribute('rel') || '',
     responseName: row.querySelector('.history-response-link')?.getAttribute('aria-label') || '',
+    editText: row.querySelector('.history-edit-link')?.textContent.trim() || '',
+    editHref: row.querySelector('.history-edit-link')?.getAttribute('href') || '',
+    editTarget: row.querySelector('.history-edit-link')?.getAttribute('target') || '',
+    editRel: row.querySelector('.history-edit-link')?.getAttribute('rel') || '',
+    editName: row.querySelector('.history-edit-link')?.getAttribute('aria-label') || '',
+    editHeight: row.querySelector('.history-edit-link')?.getBoundingClientRect().height || 0,
+    sheetText: row.querySelector('.history-sheet-link')?.textContent.trim() || '',
+    sheetHref: row.querySelector('.history-sheet-link')?.getAttribute('href') || '',
+    sheetTarget: row.querySelector('.history-sheet-link')?.getAttribute('target') || '',
+    sheetRel: row.querySelector('.history-sheet-link')?.getAttribute('rel') || '',
+    sheetName: row.querySelector('.history-sheet-link')?.getAttribute('aria-label') || '',
+    sheetHeight: row.querySelector('.history-sheet-link')?.getBoundingClientRect().height || 0,
     copyText: row.querySelector('.form-copy-button')?.textContent.trim() || '',
     copyName: row.querySelector('.form-copy-button')?.getAttribute('aria-label') || '',
     copyHeight: row.querySelector('.form-copy-button')?.getBoundingClientRect().height || 0,
@@ -475,8 +487,8 @@ async function run(browser, name, viewport, baseUrl) {
     contentOrder: [...row.querySelector('.project-list__item')?.children || []].map(node => node.tagName),
   })));
   const [fullForm, responseOnlyForm, projectOnlyForm, editOnlyForm, noUrlForm, unsafeForm] = formActionAudit;
-  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '「夏山応募フォーム」の応募フォームを開く（新しいタブ）' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '「夏山応募フォーム」の企画を開く（新しいタブ）' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.copyText !== '応募用リンクをコピー' || fullForm.copyName !== '「夏山応募フォーム」の応募用リンクをコピー' || fullForm.copyHeight < 44 || fullForm.responseHeight < 44 || fullForm.projectHeight < 44 || fullForm.responseFontSize !== fullForm.projectFontSize || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
-  if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.copyText !== '応募用リンクをコピー' || responseOnlyForm.menuCount || responseOnlyForm.projectText || projectOnlyForm.responseText || projectOnlyForm.copyText || projectOnlyForm.menuCount || projectOnlyForm.projectText !== '企画を開く' || noUrlForm.responseText || noUrlForm.copyText || noUrlForm.menuCount || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.copyText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.copyText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
+  if (fullForm.responseText !== '応募フォームを開く' || fullForm.responseName !== '「夏山応募フォーム」の応募フォームを開く（新しいタブ）' || fullForm.responseHref !== 'https://docs.google.com/forms/d/FORM-B/viewform' || fullForm.responseTarget !== '_blank' || !fullForm.responseRel.includes('noopener') || !fullForm.responseRel.includes('noreferrer') || fullForm.editText !== 'フォームを編集する' || fullForm.editHref !== 'https://docs.google.com/forms/d/FORM-B/edit' || fullForm.editName !== '「夏山応募フォーム」のフォームを編集する（新しいタブ）' || fullForm.editTarget !== '_blank' || !fullForm.editRel.includes('noopener') || !fullForm.editRel.includes('noreferrer') || fullForm.sheetText !== '回答シートを開く' || fullForm.sheetHref !== 'https://docs.google.com/spreadsheets/d/SHEET-B/edit' || fullForm.sheetName !== '「夏山応募フォーム」の回答シートを開く（新しいタブ）' || fullForm.sheetTarget !== '_blank' || !fullForm.sheetRel.includes('noopener') || !fullForm.sheetRel.includes('noreferrer') || fullForm.projectText !== '企画を開く' || fullForm.projectName !== '「夏山応募フォーム」の企画を開く（新しいタブ）' || !fullForm.projectHref.includes('?room=PROJECT-B') || fullForm.responseHeight < 44 || fullForm.editHeight < 44 || fullForm.projectHeight < 44 || fullForm.sheetHeight < 44 || fullForm.menuCount !== 1) throw new Error(`${name}: full form action links regression: ${JSON.stringify(fullForm)}`);
+  if (responseOnlyForm.responseText !== '応募フォームを開く' || responseOnlyForm.menuCount !== 1 || responseOnlyForm.editText || responseOnlyForm.sheetText || responseOnlyForm.projectText || projectOnlyForm.responseText || projectOnlyForm.editText || projectOnlyForm.sheetText || projectOnlyForm.menuCount || projectOnlyForm.projectText !== '企画を開く' || noUrlForm.responseText || noUrlForm.editText || noUrlForm.sheetText || noUrlForm.menuCount || noUrlForm.projectText || editOnlyForm.responseText || editOnlyForm.sheetText || editOnlyForm.projectText || unsafeForm.responseText || unsafeForm.editText || unsafeForm.sheetText || unsafeForm.projectText || unsafeForm.menuCount) throw new Error(`${name}: missing/edit-only/unsafe form action regression: ${JSON.stringify(formActionAudit)}`);
   if (editOnlyForm.menuCount !== 1 || editOnlyForm.name !== '雪山応募フォーム') throw new Error(`${name}: edit-only form lost its copy menu: ${JSON.stringify(editOnlyForm)}`);
   if (unsafeForm.createdText !== '作成日時不明' || unsafeForm.createdDateTime) throw new Error(`${name}: invalid form timestamp was not shown as unknown: ${JSON.stringify(unsafeForm)}`);
   if (JSON.stringify(fullForm.contentOrder.slice(0, 3)) !== JSON.stringify(['SPAN', 'TIME', 'DIV']) || !fullForm.contentOrder.includes('SPAN')) throw new Error(`${name}: form name/date/action order regression: ${JSON.stringify(fullForm.contentOrder)}`);
@@ -484,7 +496,7 @@ async function run(browser, name, viewport, baseUrl) {
   await editOnlyRow.locator('.cds--overflow-menu').focus();
   await page.keyboard.press('Enter');
   const editOnlyItems = await page.getByRole('menuitem').allTextContents();
-  if (JSON.stringify(editOnlyItems.map(text => text.trim())) !== JSON.stringify(['フォームを編集する', 'フォームの編集リンクをコピー'])) throw new Error(`${name}: edit-only menu exposed a missing response link: ${JSON.stringify(editOnlyItems)}`);
+  if (JSON.stringify(editOnlyItems.map(text => text.trim())) !== JSON.stringify(['フォームの編集リンクをコピー'])) throw new Error(`${name}: edit-only menu exposed a missing response link: ${JSON.stringify(editOnlyItems)}`);
   await page.keyboard.press('Escape');
   await selectHistoryTab(page, '最近の企画');
   await page.evaluate(() => {
@@ -544,12 +556,12 @@ async function run(browser, name, viewport, baseUrl) {
   if (!(await noRowPopup)) throw new Error(`${name}: opening the OverflowMenu also opened the project`);
   const menuBounds = await page.getByRole('menu').boundingBox();
   if (!menuBounds || menuBounds.left < 0 || menuBounds.right > viewport.width) throw new Error(`${name}: overflow menu escaped viewport: ${JSON.stringify(menuBounds)}`);
-  if (await page.getByRole('menu').getAttribute('aria-label') !== '「夏山応募フォーム」のフォーム操作') throw new Error(`${name}: form menu label regression`);
+  if (await page.getByRole('menu').getAttribute('aria-label') !== '「夏山応募フォーム」のリンクをコピー') throw new Error(`${name}: form menu label regression`);
   const menuItems = await page.getByRole('menuitem').evaluateAll(nodes => nodes.map(node => {
     const content = node.querySelector('.cds--overflow-menu-options__option-content');
     return { text: node.textContent.trim(), scrollWidth: content?.scrollWidth || 0, clientWidth: content?.clientWidth || 0, textOverflow: content ? getComputedStyle(content).textOverflow : '' };
   }));
-  if (JSON.stringify(menuItems.map(item => item.text)) !== JSON.stringify(['フォームを編集する', 'フォームの編集リンクをコピー'])) throw new Error(`${name}: response-copy item remained in the edit menu: ${JSON.stringify(menuItems)}`);
+  if (JSON.stringify(menuItems.map(item => item.text)) !== JSON.stringify(['応募用リンクをコピー', 'フォームの編集リンクをコピー'])) throw new Error(`${name}: copy menu items regressed: ${JSON.stringify(menuItems)}`);
   if (menuItems.some(item => item.scrollWidth > item.clientWidth || item.textOverflow === 'ellipsis')) throw new Error(`${name}: overflow menu item text was truncated: ${JSON.stringify(menuItems)}`);
   if (await page.evaluate(() => document.activeElement?.getAttribute('role')) !== 'menuitem') throw new Error(`${name}: OverflowMenu did not move focus to its first item`);
   await page.screenshot({ path: path.join(OUT, `${name}-menu-open.png`), fullPage: false });
@@ -557,19 +569,22 @@ async function run(browser, name, viewport, baseUrl) {
   if (await page.getByRole('menu').count() !== 0 || await page.evaluate(() => document.activeElement?.classList?.contains('cds--overflow-menu') !== true)) {
     throw new Error(`${name}: Escape did not close OverflowMenu and restore trigger focus`);
   }
-  const directCopy = formRow.locator('.form-copy-button');
+  await formRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  const responseCopyItem = page.getByRole('menuitem', { name: '応募用リンクをコピー' });
   const responseCopyPopup = page.waitForEvent('popup', { timeout: 500 }).then(() => false).catch(() => true);
-  await directCopy.focus();
+  await responseCopyItem.focus();
   await page.keyboard.press('Enter');
   if (!(await responseCopyPopup)) throw new Error(`${name}: response copy opened a new tab`);
   await page.waitForFunction(() => document.body.innerText.includes('応募用リンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-B/viewform') throw new Error(`${name}: response URL copy regression`);
-  if (await directCopy.evaluate(node => node !== document.activeElement)) throw new Error(`${name}: response copy moved focus away from its button`);
 
   await page.locator('.toast-host button').click();
   await page.evaluate(() => { window.__QA_CLIPBOARD_FAIL__ = true; });
   const failedCopyPopup = page.waitForEvent('popup', { timeout: 500 }).then(() => false).catch(() => true);
-  await directCopy.click();
+  await formRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '応募用リンクをコピー' }).click();
   if (!(await failedCopyPopup)) throw new Error(`${name}: failed response copy opened a new tab`);
   await page.getByRole('alert').filter({ hasText: 'コピーできませんでした' }).waitFor();
   if (await page.getByText('応募用リンクをコピーしました').count()) throw new Error(`${name}: clipboard failure showed a success message`);
@@ -584,7 +599,9 @@ async function run(browser, name, viewport, baseUrl) {
 
   const olderFormRow = page.locator('.form-history .cds--contained-list-item').nth(1);
   const olderCopyPopup = page.waitForEvent('popup', { timeout: 500 }).then(() => false).catch(() => true);
-  await olderFormRow.locator('.form-copy-button').click();
+  await olderFormRow.locator('.cds--overflow-menu').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: '応募用リンクをコピー' }).click();
   if (!(await olderCopyPopup)) throw new Error(`${name}: second response copy opened a new tab`);
   await page.waitForFunction(() => document.body.innerText.includes('応募用リンクをコピーしました'));
   if (await page.evaluate(() => window.__QA_COPIED__) !== 'https://docs.google.com/forms/d/FORM-A/viewform') throw new Error(`${name}: second history response URL mix-up`);

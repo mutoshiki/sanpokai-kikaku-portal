@@ -163,6 +163,10 @@ body {
   align-items: center;
   @include type-style('body-compact-01');
 }
+.history-edit-link {
+  min-block-size: 2.75rem;
+  @include type-style('body-compact-01');
+}
 .form-copy-button { min-block-size: 2.75rem; }
 .project-list__form-links {
   display: flex;
@@ -171,7 +175,14 @@ body {
   gap: var(--cds-spacing-03, .5rem) var(--cds-spacing-05, 1rem);
   margin-block-start: var(--cds-spacing-03, .5rem);
 }
-.project-list__form-links a { overflow-wrap: anywhere; }
+.project-list__form-links a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  overflow-wrap: anywhere;
+  color: var(--cds-link-primary);
+  @include type-style('body-compact-01');
+}
 .history-message {
   display: flex;
   flex-wrap: wrap;
