@@ -89,7 +89,7 @@ async function run(browser, width) {
   });
 
   await page.goto(`${BASE}form-maker/`);
-  await page.getByRole('heading', { name: '応募フォームを作る' }).waitFor();
+  await page.getByRole('heading', { name: '応募フォームメーカー' }).waitFor();
   if (await page.locator('iframe').count()) throw new Error(`${width}px: the form-maker page must not wait on an Apps Script iframe`);
   const lightHeader = await page.locator('.cds--header').evaluate(node => getComputedStyle(node).backgroundColor);
   if (lightHeader !== 'rgb(22, 22, 22)') throw new Error(`${width}px: Carbon header is not black in light mode (${lightHeader})`);
@@ -104,13 +104,13 @@ async function run(browser, width) {
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: /表示設定を開く（現在：ダーク）/ }).waitFor({ state: 'visible' });
   await page.getByLabel('企画名').fill('ブラウザ検証企画');
-  await page.getByLabel('編集者のメールアドレス（必須）').fill('tester@example.com');
+  await page.getByLabel('メールアドレス（必須）').fill('tester@example.com');
   await page.getByLabel('実施日').fill('2026-10-20');
   await page.getByLabel('企画の説明（任意）').fill('合成データです');
   await page.getByRole('button', { name: '応募フォームを作成' }).click();
   await page.getByText('依頼を受け付けました。').waitFor();
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
-  await page.waitForFunction(() => document.activeElement?.textContent?.includes('応募フォームを作る'));
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('応募フォームメーカー'));
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
   if (await page.getByRole('link', { name: /企画ツールを開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);
@@ -137,7 +137,7 @@ async function runStorageDenied(browser) {
   try {
     await page.goto(`${BASE}form-maker/`);
     await page.getByLabel('企画名').fill('保存拒否テスト');
-    await page.getByLabel('編集者のメールアドレス（必須）').fill('tester@example.com');
+    await page.getByLabel('メールアドレス（必須）').fill('tester@example.com');
     await page.getByRole('button', { name: '応募フォームを作成' }).click();
     await page.getByText('作成状況を保存できませんでした。').waitFor();
     if (writes !== 0) throw new Error('A form request was sent without a persisted idempotency key');

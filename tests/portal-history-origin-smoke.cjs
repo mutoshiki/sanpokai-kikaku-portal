@@ -68,10 +68,10 @@ const { serveDist } = require('./helpers/serve-dist.cjs');
 
     const formPage = await context.newPage();
     await formPage.goto(`${baseUrl}form-maker/`);
-    await formPage.getByRole('heading', { name: '応募フォームを作る' }).waitFor();
+    await formPage.getByRole('heading', { name: '応募フォームメーカー' }).waitFor();
     if (await formPage.locator('iframe').count()) throw new Error('The same-origin form-maker route still contains an iframe');
     await formPage.getByLabel('企画名').fill('同じ画面の企画');
-    await formPage.getByLabel('編集者のメールアドレス（必須）').fill('tester@example.com');
+    await formPage.getByLabel('メールアドレス（必須）').fill('tester@example.com');
     await formPage.getByRole('button', { name: '応募フォームを作成' }).click();
     await formPage.getByText('依頼を受け付けました。').waitFor();
     await formPage.getByText('フォームを作成しました').waitFor({ timeout: 7000 });

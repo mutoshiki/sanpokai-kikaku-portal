@@ -36,7 +36,7 @@ function canonicalInput(input) {
     description: String(input?.description || ''),
   };
   if (!value.planName || value.planName.length > 100) throw new Error('企画名を入力してください（100文字以内）。');
-  if (!EMAIL_PATTERN.test(value.editorEmail) || value.editorEmail.length > 254) throw new Error('編集者のメールアドレスを正しく入力してください。');
+  if (!EMAIL_PATTERN.test(value.editorEmail) || value.editorEmail.length > 254) throw new Error('メールアドレスを正しく入力してください。');
   if (value.eventDate.length > 40 || value.deadline.length > 40) throw new Error('日付を正しく入力してください。');
   if (value.description.length > 3000) throw new Error('企画の説明は3,000文字以内で入力してください。');
   if (Object.values(value).some((item) => /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(item))) {

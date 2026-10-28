@@ -268,7 +268,7 @@ function App() {
     <Content id="main-content" className="form-maker-page">
       <div className="form-maker-layout">
         <div className="form-maker-heading">
-          <h1 tabIndex="-1" ref={headingRef}>応募フォームを作る</h1>
+          <h1 tabIndex="-1" ref={headingRef}>応募フォームメーカー</h1>
           <p>企画の情報を入力すると、参加者向けの応募フォームを作成できます。</p>
         </div>
 
@@ -279,8 +279,8 @@ function App() {
 
         <Tile className="form-maker-panel">
           <form onSubmit={submit} aria-label="応募フォームの作成">
-            <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：秋の山歩き" helperText="100文字以内" required maxLength={100} value={input.planName} onChange={update('planName')} />
-            <TextInput id="editor-email" labelText="編集者のメールアドレス（必須）" helperText="作成したGoogleフォームの編集権限を、このアドレスに共有します。" type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
+            <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText="100文字以内" required maxLength={100} value={input.planName} onChange={update('planName')} />
+            <TextInput id="editor-email" labelText="メールアドレス（必須）" helperText="作成したGoogleフォームの編集権限を、このアドレスに共有します。" type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
             <Grid narrow className="form-maker-date-grid">
               <Column sm={4} md={4} lg={8}><TextInput id="event-date" labelText="実施日（任意）" type="date" value={input.eventDate} onChange={update('eventDate')} /></Column>
               <Column sm={4} md={4} lg={8}><TextInput id="application-deadline" labelText="応募締切日（任意）" type="date" value={input.deadline} onChange={update('deadline')} /></Column>
@@ -288,7 +288,7 @@ function App() {
             <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={5} maxLength={3000} value={input.description} onChange={update('description')} />
             <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
-            {!job && <p className="form-maker-submit-note">作成には数分かかることがあります。進み具合はこの画面に表示されます。</p>}
+            {!job && <p className="form-maker-submit-note">作成には数分かかることがあります。</p>}
             <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={Renew}>
               {submitting ? '作成を依頼しています…' : '応募フォームを作成'}
             </Button>
