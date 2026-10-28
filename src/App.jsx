@@ -285,10 +285,11 @@ function App() {
                 <span className="project-title">{label}</span>
                 <time dateTime={createdAt === null ? undefined : new Date(createdAt).toISOString()}>{createdAt === null ? '作成日時不明' : `作成日時 ${formatDate(createdAt)}`}</time>
                 {(responseUrl || editUrl || projectUrl || responseSheetUrl) && <div className="project-list__form-links">
-                  {responseUrl && <Button className="history-response-link" kind="primary" size="sm" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</Button>}
-                  {editUrl && <Button className="history-edit-link" kind="tertiary" size="sm" href={editUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」のフォームを編集する（新しいタブ）`}>フォームを編集する</Button>}
+                  {responseUrl && <a className="history-response-link" href={responseUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の応募フォームを開く（新しいタブ）`}>応募フォームを開く</a>}
+                  {editUrl && <a className="history-edit-link" href={editUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」のフォームを編集する（新しいタブ）`}>フォームを編集する</a>}
                   {projectUrl && <a className="history-project-link" href={projectUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の企画を開く（新しいタブ）`} onClick={() => { markProjectOpened(projectUrl); refreshPortalState(); }}>企画を開く</a>}
                   {responseSheetUrl && <a className="history-sheet-link" href={responseSheetUrl} target="_blank" rel="noopener noreferrer" aria-label={`「${label}」の回答シートを開く（新しいタブ）`}>回答シートを開く</a>}
+                  {!responseSheetUrl && (responseUrl || editUrl || projectUrl) && <span className="history-link-unavailable">回答シートのリンクはありません</span>}
                 </div>}
                 {copyErrors[errorId] && <span className="copy-error" role="alert">{copyErrors[errorId]}</span>}
               </div>
