@@ -73,7 +73,7 @@ const { serveDist } = require('./helpers/serve-dist.cjs');
     await formPage.getByLabel('企画名').fill('同じ画面の企画');
     await formPage.getByLabel('メールアドレス（必須）').fill('tester@example.com');
     await formPage.getByRole('button', { name: '応募フォームを作成' }).click();
-    await formPage.getByText('依頼を受け付けました。').waitFor();
+    await formPage.getByText('作成が始まるまで数分かかることがあります。').waitFor();
     await formPage.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
     await page.getByText('同じ画面の企画', { exact: true }).waitFor({ timeout: 5000 });
     if (writes !== 1) throw new Error(`Expected one idempotent job write, got ${writes}`);
