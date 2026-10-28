@@ -34,7 +34,7 @@ import {
 } from './portalHistory.js';
 import { FORM_MAKER_FIREBASE_CONFIG } from './services/firebase-public-config.js';
 import { createFormMakerSession } from './services/form-maker-session.js';
-import { mergeFormMakerJobs, writeCachedFormMakerHistory } from './services/form-maker-history.js';
+import { mergeFormMakerJobs, projectUrlWithHandoffCapability, writeCachedFormMakerHistory } from './services/form-maker-history.js';
 
 const TOOL_URL = 'https://mutoshiki.github.io/circle-kikaku-tools/';
 const FORM_MAKER_URL = `${import.meta.env.BASE_URL}form-maker/`;
@@ -267,7 +267,8 @@ function App() {
           const label = planName || '企画名未設定の応募フォーム';
           const responseUrl = safeExternalUrl(form.responseUrl);
           const editUrl = safeExternalUrl(form.editUrl);
-          const projectUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
+          const projectBaseUrl = safeProjectToolUrl(form.projectUrl) || safeProjectToolUrl(form.spreadsheetUrl);
+          const projectUrl = projectUrlWithHandoffCapability(projectBaseUrl, formMakerSession.getHandoffToken(form.jobId));
           const responseSheetUrl = safeResponseSheetUrl(form.responseSheetUrl);
           const createdAt = normalizePortalDate(form.createdAt);
           const errorId = `form-${form.formId}`;

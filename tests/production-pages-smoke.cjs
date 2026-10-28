@@ -94,7 +94,7 @@ async function waitForAnimations(page) {
   await openWithRetry(page, hostUrl, async () => {
     await page.getByRole('heading', { name: '応募フォームを作る', level: 1 }).waitFor({ timeout: 15000 });
     await page.getByLabel('企画名（必須）', { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
-    await page.getByRole('button', { name: /Googleフォームを作成/ }).waitFor({ state: 'visible', timeout: 10000 });
+    await page.getByRole('button', { name: /応募フォームを作成/ }).waitFor({ state: 'visible', timeout: 10000 });
   });
   await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
   await waitForAnimations(page);
@@ -107,7 +107,7 @@ async function waitForAnimations(page) {
     documentWidth: document.documentElement.scrollWidth,
     headerBackground: getComputedStyle(document.querySelector('.cds--header')).backgroundColor,
     inputCount: document.querySelectorAll('input').length,
-    submitDisabled: [...document.querySelectorAll('button')].find(button => button.innerText.includes('Googleフォームを作成'))?.disabled ?? null,
+    submitDisabled: [...document.querySelectorAll('button')].find(button => button.innerText.includes('応募フォームを作成'))?.disabled ?? null,
   }));
   if (mobile.iframes !== 0) throw new Error(`same-origin form-maker route rendered an iframe: ${mobile.iframes}`);
   if (mobile.theme !== 'g100' || mobile.headerBackground !== 'rgb(22, 22, 22)') throw new Error(`form-maker dark theme or black Carbon header failed: ${JSON.stringify(mobile)}`);
