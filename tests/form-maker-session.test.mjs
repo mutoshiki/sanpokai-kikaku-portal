@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import test from 'node:test';
 import { createFormMakerSession } from '../src/services/form-maker-session.js';
 
@@ -81,6 +81,30 @@ test('prepares an anonymous session and submits one immutable queued request', a
   assert.equal('result' in payload, false);
   assert.equal('updatedAt' in payload, false);
   assert.ok(storage.getItem('sanpokai-form-maker-auth-v1'));
+});
+
+test('existing-project creation uses protocol v2 and queues only a hash of the room capability', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).includes('accounts:signUp')) return response({ localId: 'owner-uid', idToken: 'owner-id-token', refreshToken: 'refresh-token', expiresIn: '3600' });
+    if (String(url).includes('/formMakerV1/status.json')) return response({ accepting: true, state: 'ready' });
+    if (String(url).includes('/jobs/')) return response(null);
+    if (String(url).includes('/admission/slots/')) return response(null);
+    throw new Error(`Unexpected request: ${url}`);
+  };
+  const session = createFormMakerSession({ config, fetchImpl, storage: memoryStorage(), cryptoApi: webcrypto });
+  const capability = `h_${'b'.repeat(64)}`;
+  const jobId = 'a'.repeat(32);
+  const job = await session.enqueue({ planName: '既存企画', editorEmail: 'tester@example.com', targetRoomId: 'ROOM1234', targetRoomJobId: jobId, targetRoomCapability: capability }, { jobId });
+  const payload = JSON.parse(calls.find(call => call.options.method === 'PUT' && call.url.includes('/jobs/')).options.body);
+  assert.equal(payload.protocolVersion, 2);
+  assert.deepEqual(Object.keys(payload.input).sort(), ['description', 'editorEmail', 'eventDate', 'handoffTokenHash', 'planName', 'targetRoomCapabilityHash', 'targetRoomId', 'deadline'].sort());
+  assert.equal(payload.input.targetRoomId, 'ROOM1234');
+  assert.equal(payload.input.targetRoomCapabilityHash, createHash('sha256').update(capability).digest('hex'));
+  assert.equal(JSON.stringify(payload).includes(capability), false);
+  assert.equal(job.handoffToken.startsWith('h_'), true);
+  await assert.rejects(session.enqueue({ planName: '企画', editorEmail: 'tester@example.com', targetRoomId: 'ROOM1234', targetRoomJobId: 'c'.repeat(32), targetRoomCapability: capability }, { jobId }), /予約が一致しません/);
 });
 
 test('does not submit a request while the worker has paused intake', async () => {
