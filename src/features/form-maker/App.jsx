@@ -19,6 +19,7 @@ import { Copy, Launch, Renew } from '@carbon/icons-react';
 import { ThemeHeaderControl } from '../../ThemeToggle.jsx';
 import { FORM_MAKER_FIREBASE_CONFIG } from '../../services/firebase-public-config.js';
 import { canonicalInput, createFormMakerSession } from '../../services/form-maker-session.js';
+import { readFormMakerProjectLink } from '../../services/form-maker-project-link.js';
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from '../../services/form-maker-history.js';
 
 const PENDING_JOB_KEY = 'sanpokai-form-maker-pending-job-v1';
@@ -106,7 +107,12 @@ function App() {
       return { prepare: unavailable, listJobs: unavailable, getJob: unavailable, enqueue: unavailable, getHandoffToken: () => '' };
     }
   }, []);
-  const [input, setInput] = useState(INITIAL_INPUT);
+  const [projectLink, setProjectLink] = useState(() => readFormMakerProjectLink());
+  const [input, setInput] = useState(() => ({
+    ...INITIAL_INPUT,
+    ...(projectLink ? { planName: projectLink.projectName, eventDate: projectLink.eventDate,
+      targetRoomId: projectLink.roomId, targetRoomJobId: projectLink.jobId, targetRoomCapability: projectLink.token } : {}),
+  }));
   const [readiness, setReadiness] = useState({ state: 'checking', accepting: false });
   const [job, setJob] = useState(null);
   const [history, setHistory] = useState(() => mergeFormMakerJobs(readCachedFormMakerHistory(), []));
@@ -202,7 +208,7 @@ function App() {
       setError(userFacingError(failure, '入力内容を確認してください。'));
       return;
     }
-    const jobId = crypto.randomUUID().replaceAll('-', '');
+    const jobId = projectLink?.jobId || crypto.randomUUID().replaceAll('-', '');
     if (!savePendingJobId(jobId)) {
       setErrorTitle('作成状況を保存できません');
       setErrorNeedsRefresh(false);
@@ -249,6 +255,7 @@ function App() {
     savePendingJobId('');
     setJob(null);
     setInput(INITIAL_INPUT);
+    setProjectLink(null);
     setError('');
     setErrorNeedsRefresh(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -272,7 +279,7 @@ function App() {
       <div className="form-maker-layout">
         <h1 className="cds--visually-hidden">フォーム作成</h1>
         <div className="form-maker-heading">
-          <p>企画の情報を入力すると、参加者向けの応募フォームを作成できます。</p>
+          <p>{projectLink ? `「${projectLink.projectName}」に連携する応募フォームを作成します。` : '企画の情報を入力すると、参加者向けの応募フォームを作成できます。'}</p>
         </div>
 
         {readiness.state === 'checking' && <div className="form-maker-status" role="status"><InlineLoading description="作成サービスに接続しています" /></div>}

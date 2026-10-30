@@ -3,6 +3,9 @@ const HANDOFF_TOKEN_KEY_PREFIX = 'sanpokai-form-maker-handoff-capability-v1:';
 const JOB_ID_PATTERN = /^[A-Za-z0-9_-]{16,80}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADMISSION_SLOT_COUNT = 40;
+const TARGET_ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{6,80}$/;
+const TARGET_ROOM_JOB_ID_PATTERN = /^[a-f0-9]{32}$/;
+const TARGET_ROOM_CAPABILITY_PATTERN = /^h_[a-f0-9]{64}$/;
 
 function safeRead(storage, key) {
   try {
@@ -39,6 +42,17 @@ function canonicalInput(input) {
   if (!EMAIL_PATTERN.test(value.editorEmail) || value.editorEmail.length > 254) throw new Error('メールアドレスを正しく入力してください。');
   if (value.eventDate.length > 40 || value.deadline.length > 40) throw new Error('日付を正しく入力してください。');
   if (value.description.length > 3000) throw new Error('企画の説明は3,000文字以内で入力してください。');
+  const targetRoomId = String(input?.targetRoomId || '').trim();
+  const targetRoomJobId = String(input?.targetRoomJobId || '').trim();
+  const targetRoomCapability = String(input?.targetRoomCapability || '').trim();
+  if (targetRoomId || targetRoomJobId || targetRoomCapability) {
+    if (!TARGET_ROOM_ID_PATTERN.test(targetRoomId) || !TARGET_ROOM_JOB_ID_PATTERN.test(targetRoomJobId) || !TARGET_ROOM_CAPABILITY_PATTERN.test(targetRoomCapability)) {
+      throw new Error('連携する企画の情報を確認できません。企画画面からフォームメーカーを開き直してください。');
+    }
+    value.targetRoomId = targetRoomId;
+    value.targetRoomJobId = targetRoomJobId;
+    value.targetRoomCapability = targetRoomCapability;
+  }
   if (Object.values(value).some((item) => /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(item))) {
     throw new Error('入力内容に使えない文字が含まれています。入力した内容を確認してください。');
   }
@@ -291,7 +305,17 @@ export function createFormMakerSession({
         throw new Error('企画を編集するための情報を保存できません。ブラウザーのサイトデータ保存を許可してください。');
       }
     }
+    const targetRoomId = cleanInput.targetRoomId || '';
+    const targetRoomJobId = cleanInput.targetRoomJobId || '';
+    const targetRoomCapability = cleanInput.targetRoomCapability || '';
+    if (targetRoomId && targetRoomJobId !== jobId) throw new Error('企画への連携予約が一致しません。企画画面からフォームメーカーを開き直してください。');
+    delete cleanInput.targetRoomJobId;
+    delete cleanInput.targetRoomCapability;
     const jobInput = { ...cleanInput, handoffTokenHash: await hashHandoffToken(handoffToken, cryptoApi) };
+    if (targetRoomId) {
+      jobInput.targetRoomId = targetRoomId;
+      jobInput.targetRoomCapabilityHash = await hashHandoffToken(targetRoomCapability, cryptoApi);
+    }
     const canonical = JSON.stringify(jobInput);
     const digest = await cryptoApi.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
     const inputHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -308,7 +332,7 @@ export function createFormMakerSession({
     const admission = await reserveAdmissionSlot({ auth, jobId, kind: 'create', requestHash: inputHash, requestedAt: now() });
     const payload = {
       jobId,
-      protocolVersion: 1,
+      protocolVersion: targetRoomId ? 2 : 1,
       admissionSlotId: admission.slotId,
       input: jobInput,
       inputHash,
