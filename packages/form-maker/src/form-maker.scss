@@ -34,6 +34,7 @@
 .form-maker-job h2,
 .form-maker-section-heading h2 { @include type-style('heading-compact-01'); margin: 0; }
 .form-maker-job > .cds--inline-notification { max-inline-size: none; margin-block: var(--cds-spacing-05, 1rem); }
+.form-maker-unknown-actions { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-03, .5rem); }
 .form-maker-history-list li { padding: var(--cds-spacing-05, 1rem); border: 1px solid var(--cds-border-subtle); background: var(--cds-layer-01); }
 .form-maker-result-summary { display: flex; flex-direction: column; gap: var(--cds-spacing-02, .25rem); }
 .form-maker-result-summary strong,

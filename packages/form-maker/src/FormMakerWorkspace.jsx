@@ -16,6 +16,7 @@ import { FORM_MAKER_FIREBASE_CONFIG } from './firebase-public-config.js';
 import { canonicalInput, createFormMakerSession } from './form-maker-session.js';
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from './form-maker-history.js';
 import { createProjectJobStorage, migrateLegacyPendingJob } from './project-job-storage.js';
+import { recoverProjectJob } from './project-job-recovery.js';
 import './form-maker.scss';
 
 const PENDING_JOB_KEY = 'sanpokai-form-maker-pending-job-v1';
@@ -47,7 +48,7 @@ function jobMessage(job) {
       ? 'フォームはできましたが、設定が一部残っています。下の項目と作成履歴を確認してください。'
       : 'フォームはできましたが、設定が一部残っています。作成履歴を確認してください。';
     case 'failed': return '作成履歴を確認してください。フォームが見つかった場合は、重複して作らないようご注意ください。';
-    case 'unknown': return '作成結果がまだ分かりません。重複を避けるため、下の「作成結果を確認」を押してください。';
+    case 'unknown': return '同じ依頼の状態を確認してください。依頼が見つからない場合は、同じ依頼を再開できます。';
     default: return '';
   }
 }
@@ -267,6 +268,27 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     }
   };
 
+  const resumeUnknownJob = async () => {
+    if (submitting || !accepting || !project?.roomId || job?.state !== 'unknown' || !job.jobId) return;
+    setSubmitting(true);
+    setError('');
+    setErrorNeedsRefresh(false);
+    try {
+      const result = await recoverProjectJob({ session, jobId: job.jobId, project, input, createProjectLink, onHandoffReady });
+      setJob(result.job);
+      if (projectStorage) projectStorage.writeInput(INITIAL_INPUT);
+      setInput(projectStorage ? INITIAL_INPUT : input);
+      if (result.resumed) onNotice('同じ依頼を再開しました');
+      await refreshHistory();
+    } catch (failure) {
+      setErrorTitle('同じ依頼を再開できませんでした');
+      setErrorNeedsRefresh(true);
+      setError(userFacingError(failure, '状態を確認して、もう一度お試しください。'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const copyLink = async (value) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -333,7 +355,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
           <h2 id="job-status-heading">フォームの作成状況</h2>
           <InlineNotification kind={job.state === 'completed' ? 'success' : job.state === 'partial' || job.state === 'unknown' || job.state === 'queued' ? 'warning' : job.state === 'failed' ? 'error' : 'info'} lowContrast hideCloseButton title={job.state === 'queued' ? '作成待ちです' : job.state === 'running' ? '作成中です' : job.state === 'completed' ? 'フォームを作成しました' : job.state === 'partial' ? 'フォームはできましたが、設定が一部残っています' : job.state === 'unknown' ? '作成結果がまだ分かりません' : 'フォームを作成できませんでした'} subtitle={jobMessage(job)} />
           {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
-          {job.state === 'unknown' && <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}
+          {job.state === 'unknown' && <div className="form-maker-unknown-actions"><Button kind="tertiary" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>{project?.roomId && <Button kind="primary" size="sm" disabled={!accepting || submitting} onClick={() => void resumeUnknownJob()}>{submitting ? '依頼を確認しています…' : '同じ依頼を再開'}</Button>}</div>}
           {!project && ['completed', 'partial', 'failed'].includes(job.state) && <Button kind="tertiary" size="sm" onClick={startAnotherForm}>別のフォームを作る</Button>}
         </section>}
 
