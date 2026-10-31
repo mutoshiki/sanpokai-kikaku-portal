@@ -3,11 +3,26 @@
 );
 @use '@carbon/styles/scss/type' as *;
 @use '@carbon/grid/scss/breakpoint' as *;
+@use '@carbon/layout' as layout;
 
 .form-maker-page {
   min-height: calc(100vh - 3rem);
   padding: var(--cds-spacing-09, 3rem) var(--cds-spacing-05, 1rem) var(--cds-spacing-10, 4rem);
 }
+
+.form-maker-page--embedded {
+  min-block-size: 0;
+  padding: 0;
+}
+
+.form-maker-page--embedded .form-maker-layout { max-inline-size: none; }
+.form-maker-page--embedded .form-maker-heading { margin-block-end: var(--sanpo-ui-group-gap, #{layout.$spacing-06}); }
+.form-maker-page--embedded .form-maker-panel { padding: 0; border: 0; background: transparent; }
+.form-maker-page--embedded .form-maker-panel form { gap: var(--sanpo-ui-group-gap, #{layout.$spacing-06}); }
+.form-maker-page--embedded .form-maker-job,
+.form-maker-page--embedded .form-maker-history { margin-block-start: var(--sanpo-ui-section-gap, #{layout.$spacing-07}); }
+.form-maker-page--embedded .form-maker-history--with-current { margin-block-start: var(--sanpo-ui-group-gap, #{layout.$spacing-06}); }
+.form-maker-page--embedded .form-maker-section-heading { gap: var(--sanpo-ui-field-gap, #{layout.$spacing-05}); }
 
 .form-maker-layout { max-width: 48rem; margin-inline: auto; }
 .form-maker-heading { margin-block-end: var(--cds-spacing-07, 2rem); }
