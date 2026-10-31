@@ -1,7 +1,6 @@
 @use '@carbon/styles/scss/config' with (
   $css--font-face: false,
 );
-@use '@carbon/react';
 @use '@carbon/styles/scss/type' as *;
 @use '@carbon/grid/scss/breakpoint' as *;
 
