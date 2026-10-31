@@ -6,6 +6,8 @@ export interface FormMakerProject {
   eventDate?: string;
   jobId?: string;
   token?: string;
+  debugSample?: boolean;
+  sampleInput?: Partial<Record<'planName' | 'editorEmail' | 'eventDate' | 'deadline' | 'description', string>>;
 }
 
 export interface FormMakerSession {
@@ -22,6 +24,7 @@ export const FormMakerWorkspace: ComponentType<{
   createProjectLink?: (input: Record<string, string>) => Promise<FormMakerProject | null>;
   linkedForm?: Record<string, unknown> | null;
   active?: boolean;
+  sampleMode?: boolean;
   onNotice?: (message: string) => void;
   onHandoffReady?: (value: { roomId: string; jobId: string; token: string }) => void;
 }>;

@@ -99,8 +99,9 @@ function unfinishedSteps(job) {
   }).filter((label, index, values) => values.indexOf(label) === index);
 }
 
-export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, active = true, onNotice = () => {}, onHandoffReady = () => {} }) {
+export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, active = true, sampleMode: requestedSampleMode = false, onNotice = () => {}, onHandoffReady = () => {} }) {
   const projectStorage = useMemo(() => project?.roomId ? createProjectJobStorage({ roomId: project.roomId }) : null, [project?.roomId]);
+  const sampleMode = requestedSampleMode || project?.debugSample === true;
   const session = useMemo(() => {
     if (providedSession) return providedSession;
     try {
@@ -113,14 +114,17 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const [projectLink, setProjectLink] = useState(project);
   const [input, setInput] = useState(() => ({
     ...INITIAL_INPUT,
+    ...(project?.sampleInput || {}),
     ...(projectStorage?.readInput() || {}),
     ...(projectLink ? { planName: projectLink.projectName, eventDate: projectLink.eventDate,
+      ...(!sampleMode ? {
       targetRoomId: projectLink.roomId, targetRoomJobId: projectLink.jobId, targetRoomCapability: projectLink.token } : {}),
+      } : {}),
   }));
-  const [readiness, setReadiness] = useState({ state: 'checking', accepting: false });
+  const [readiness, setReadiness] = useState(() => sampleMode ? { state: 'ready', accepting: true } : { state: 'checking', accepting: false });
   const [job, setJob] = useState(linkedForm);
   const [history, setHistory] = useState(() => mergeFormMakerJobs(readCachedFormMakerHistory(), []));
-  const [historyState, setHistoryState] = useState('loading');
+  const [historyState, setHistoryState] = useState(() => sampleMode ? 'ready' : 'loading');
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('作成結果を確認できませんでした');
   const [errorNeedsRefresh, setErrorNeedsRefresh] = useState(false);
@@ -186,7 +190,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     await refreshPendingJob();
   }, [refreshHistory, refreshPendingJob, refreshReadiness]);
 
-  useEffect(() => { if (active) void refresh(); }, [active, refresh]);
+  useEffect(() => { if (active && !sampleMode) void refresh(); }, [active, refresh, sampleMode]);
 
   useEffect(() => {
     if (!active || !job || !['queued', 'running'].includes(job.state)) return undefined;
@@ -218,6 +222,12 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
       setErrorTitle('入力内容を確認してください');
       setErrorNeedsRefresh(false);
       setError(userFacingError(failure, '入力内容を確認してください。'));
+      return;
+    }
+    if (sampleMode) {
+      projectStorage?.writeInput(input);
+      setError('');
+      onNotice('入力内容をサンプルとして保存しました。');
       return;
     }
     let link = projectLink;
@@ -324,11 +334,11 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     : history;
   const visibleHistory = projectHistory.filter((item) => !(hasFinishedResult && ((job.result?.formId && item.formId === job.result.formId) || (job.jobId && item.jobId === job.jobId))));
 
-  return <Content ref={workspaceRootRef} id={project?.roomId ? `form-maker-${project.roomId}` : 'main-content'} className="form-maker-page">
+  return <Content ref={workspaceRootRef} id={project?.roomId ? `form-maker-${project.roomId}` : 'main-content'} className={`form-maker-page${project?.roomId ? ' form-maker-page--embedded' : ''}`}>
       <div className="form-maker-layout">
         <h1 className="cds--visually-hidden">フォーム作成</h1>
         <div className="form-maker-heading">
-          <p>{projectLink ? `「${projectLink.projectName}」に連携する応募フォームを作成します。` : '企画の情報を入力すると、参加者向けの応募フォームを作成できます。'}</p>
+          <p>{sampleMode ? '応募フォームの入力例を編集できます。' : projectLink ? `「${projectLink.projectName}」に連携する応募フォームを作成します。` : '企画の情報を入力すると、参加者向けの応募フォームを作成できます。'}</p>
         </div>
 
         {readiness.state === 'checking' && <div className="form-maker-status" role="status"><InlineLoading description="作成サービスに接続しています" /></div>}
@@ -339,7 +349,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
         {!hasFinishedForm && <Tile className="form-maker-panel">
           <form onSubmit={submit} aria-label="応募フォームの作成">
             <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText="100文字以内" required maxLength={100} value={input.planName} onChange={update('planName')} />
-            <TextInput id="editor-email" labelText="メールアドレス（必須）" helperText="作成したGoogleフォームの編集権限を、このアドレスに共有します。" type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
+            <TextInput id="editor-email" labelText="メールアドレス（必須）" helperText={sampleMode ? undefined : '作成したGoogleフォームの編集権限を、このアドレスに共有します。'} type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
             <Grid narrow className="form-maker-date-grid">
               <Column sm={4} md={4} lg={8}><TextInput id="event-date" labelText="実施日（任意）" type="date" value={input.eventDate} onChange={update('eventDate')} /></Column>
               <Column sm={4} md={4} lg={8}><TextInput id="application-deadline" labelText="応募締切日（任意）" type="date" value={input.deadline} onChange={update('deadline')} /></Column>
@@ -347,9 +357,9 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
             <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onChange={update('description')} />
             <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
-            {!job && <p className="form-maker-submit-note">作成には数分かかることがあります。</p>}
+            {!job && !sampleMode && <p className="form-maker-submit-note">作成には数分かかることがあります。</p>}
             <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={submitting ? Renew : undefined}>
-              {submitting ? '作成を依頼しています…' : '応募フォームを作成'}
+              {sampleMode ? '入力内容を保存' : submitting ? '作成を依頼しています…' : '応募フォームを作成'}
             </Button>
           </form>
         </Tile>}
