@@ -3,8 +3,7 @@ export async function recoverProjectJob({ session, jobId, project, input, create
   if (!id) throw new Error('作成状況を確認できません。');
   const existing = await session.getJob(id);
   if (existing) {
-    const token = session.getHandoffToken?.(id) || existing.handoffToken || '';
-    if (token && project?.roomId) onHandoffReady({ roomId: project.roomId, jobId: id, token });
+    notifyProjectHandoff({ session, project, jobId: id, job: existing, onHandoffReady });
     return { job: { ...existing, jobId: id }, resumed: false };
   }
 
@@ -19,4 +18,12 @@ export async function recoverProjectJob({ session, jobId, project, input, create
   const token = accepted?.handoffToken || session.getHandoffToken?.(id) || '';
   if (token && link?.roomId) onHandoffReady({ roomId: link.roomId, jobId: id, token });
   return { job: { ...accepted, jobId: id }, resumed: true };
+}
+
+export function notifyProjectHandoff({ session, project, jobId, job, onHandoffReady = () => {} } = {}) {
+  const id = String(jobId || '');
+  const token = session?.getHandoffToken?.(id) || job?.handoffToken || '';
+  if (!id || !token || !project?.roomId) return false;
+  onHandoffReady({ roomId: project.roomId, jobId: id, token });
+  return true;
 }

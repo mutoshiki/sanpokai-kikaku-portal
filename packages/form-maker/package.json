@@ -1,13 +1,23 @@
 {
   "name": "@sanpokai/form-maker-workspace",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
-  "scripts": { "build": "vite build --config vite.config.js && node scripts/copy-types.js", "test": "node --test test/*.test.mjs" },
-  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "vite build --config vite.config.js && node scripts/copy-types.js",
+    "test": "node --test test/*.test.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "peerDependencies": {

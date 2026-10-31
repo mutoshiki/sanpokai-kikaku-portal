@@ -16,7 +16,7 @@ import { FORM_MAKER_FIREBASE_CONFIG } from './firebase-public-config.js';
 import { canonicalInput, createFormMakerSession } from './form-maker-session.js';
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from './form-maker-history.js';
 import { createProjectJobStorage, migrateLegacyPendingJob } from './project-job-storage.js';
-import { recoverProjectJob } from './project-job-recovery.js';
+import { notifyProjectHandoff, recoverProjectJob } from './project-job-recovery.js';
 import './form-maker.scss';
 
 const PENDING_JOB_KEY = 'sanpokai-form-maker-pending-job-v1';
@@ -129,6 +129,8 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const [submitting, setSubmitting] = useState(false);
   const formMakerHistoryHeadingRef = useRef(null);
   const workspaceRootRef = useRef(null);
+  const onHandoffReadyRef = useRef(onHandoffReady);
+  onHandoffReadyRef.current = onHandoffReady;
 
   useEffect(() => { if (projectStorage) projectStorage.writeInput(input); }, [input, projectStorage]);
   useEffect(() => { if (linkedForm) setJob(linkedForm); }, [linkedForm]);
@@ -169,6 +171,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     if (!pendingId) return;
     try {
       const pendingJob = await session.getJob(pendingId);
+      if (pendingJob) notifyProjectHandoff({ session, project: { roomId: project?.roomId }, jobId: pendingId, job: pendingJob, onHandoffReady: value => onHandoffReadyRef.current(value) });
       setJob(pendingJob ? { ...pendingJob, jobId: pendingId } : { jobId: pendingId, state: 'unknown' });
       setError('');
       setErrorNeedsRefresh(false);
