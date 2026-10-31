@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { recoverProjectJob } from '../src/project-job-recovery.js';
+import { notifyProjectHandoff, recoverProjectJob } from '../src/project-job-recovery.js';
 
 test('recovery checks the same job first and never enqueues when it already exists', async () => {
   const calls = [];
@@ -42,4 +42,18 @@ test('recovery rejects a reservation for another room or job before enqueue', as
     createProjectLink: async () => ({ roomId: 'ROOM-B', jobId: 'd'.repeat(32), token: 'secret' }),
   }), /同じ企画・依頼/);
   assert.equal(enqueued, false);
+});
+
+test('recovered job restores an owner handoff token after reload', () => {
+  const handoffs = [];
+  const token = 'h_recovered_token';
+  const notified = notifyProjectHandoff({
+    session: { getHandoffToken: id => id === 'd'.repeat(32) ? token : '' },
+    project: { roomId: 'ROOM-A' },
+    jobId: 'd'.repeat(32),
+    job: { state: 'completed' },
+    onHandoffReady: value => handoffs.push(value),
+  });
+  assert.equal(notified, true);
+  assert.deepEqual(handoffs, [{ roomId: 'ROOM-A', jobId: 'd'.repeat(32), token }]);
 });
