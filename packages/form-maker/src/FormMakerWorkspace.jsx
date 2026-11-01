@@ -17,6 +17,7 @@ import { canonicalInput, createFormMakerSession } from './form-maker-session.js'
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from './form-maker-history.js';
 import { createProjectJobStorage, migrateLegacyPendingJob } from './project-job-storage.js';
 import { notifyProjectHandoff, recoverProjectJob } from './project-job-recovery.js';
+import { shouldShowProjectToolLink } from './project-tool-link-visibility.js';
 import './form-maker.scss';
 
 const PENDING_JOB_KEY = 'sanpokai-form-maker-pending-job-v1';
@@ -336,10 +337,10 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
 
   return <Content ref={workspaceRootRef} id={project?.roomId ? `form-maker-${project.roomId}` : 'main-content'} className={`form-maker-page${project?.roomId ? ' form-maker-page--embedded' : ''}`}>
       <div className="form-maker-layout">
-        <h1 className="cds--visually-hidden">フォーム作成</h1>
-        <div className="form-maker-heading">
+        <h1 className="cds--visually-hidden">応募フォーム</h1>
+        {!project?.roomId && <div className="form-maker-heading">
           <p>{sampleMode ? '応募フォームの入力例を編集できます。' : projectLink ? `「${projectLink.projectName}」に連携する応募フォームを作成します。` : '企画の情報を入力すると、参加者向けの応募フォームを作成できます。'}</p>
-        </div>
+        </div>}
 
         {readiness.state === 'checking' && <div className="form-maker-status" role="status"><InlineLoading description="作成サービスに接続しています" /></div>}
         {readiness.state === 'maintenance' && <InlineNotification kind="warning" lowContrast hideCloseButton title="ただいまメンテナンス中です" subtitle="時間をおいて、もう一度お試しください。" />}
@@ -389,7 +390,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
                 <Button kind={job.state === 'completed' ? 'primary' : 'tertiary'} size="lg" renderIcon={Copy} onClick={() => copyLink(job.result.formUrl)}>応募用リンクをコピー</Button>
                 <a href={job.result.formUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く <Launch size={16} aria-hidden="true" /></a>
                 {job.result.editUrl && <a href={job.result.editUrl} target="_blank" rel="noopener noreferrer">フォームを編集する <Launch size={16} aria-hidden="true" /></a>}
-                {job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画ツールを開く（新しいタブ）">企画ツールを開く <Launch size={16} aria-hidden="true" /></a>}
+                {shouldShowProjectToolLink(project) && job.result.projectUrl && <a href={projectUrlWithHandoffCapability(job.result.projectUrl, session.getHandoffToken(job.jobId))} target="_blank" rel="noopener noreferrer" aria-label="企画ツールを開く（新しいタブ）">企画ツールを開く <Launch size={16} aria-hidden="true" /></a>}
                 {job.result.responseSheetUrl && <a href={job.result.responseSheetUrl} target="_blank" rel="noopener noreferrer">回答シートを開く <Launch size={16} aria-hidden="true" /></a>}
               </div>
               {copyError && <p className="form-maker-error" role="alert">コピーできませんでした。「応募フォームを開く」から開き、アドレス欄のURLをコピーしてください。</p>}
@@ -400,7 +401,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
               <div className="form-maker-history-actions">
                 {item.responseUrl && <a href={item.responseUrl} target="_blank" rel="noopener noreferrer">応募フォームを開く</a>}
                 {item.editUrl && <a href={item.editUrl} target="_blank" rel="noopener noreferrer">フォームを編集する</a>}
-                {item.projectUrl && <a href={projectUrlWithHandoffCapability(item.projectUrl, session.getHandoffToken(item.jobId))} target="_blank" rel="noopener noreferrer">企画ツールを開く</a>}
+                {shouldShowProjectToolLink(project) && item.projectUrl && <a href={projectUrlWithHandoffCapability(item.projectUrl, session.getHandoffToken(item.jobId))} target="_blank" rel="noopener noreferrer">企画ツールを開く</a>}
                 {item.responseSheetUrl && <a href={item.responseSheetUrl} target="_blank" rel="noopener noreferrer">回答シートを開く</a>}
               </div>
             </li>)}
