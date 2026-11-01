@@ -89,7 +89,7 @@ async function run(browser, width) {
   });
 
   await page.goto(`${BASE}form-maker/`);
-  await page.getByRole('heading', { name: 'フォーム作成' }).waitFor();
+  await page.getByRole('heading', { name: '応募フォーム' }).waitFor();
   if (await page.locator('iframe').count()) throw new Error(`${width}px: the form-maker page must not wait on an Apps Script iframe`);
   const lightHeader = await page.locator('.cds--header').evaluate(node => getComputedStyle(node).backgroundColor);
   if (lightHeader !== 'rgb(22, 22, 22)') throw new Error(`${width}px: Carbon header is not black in light mode (${lightHeader})`);
