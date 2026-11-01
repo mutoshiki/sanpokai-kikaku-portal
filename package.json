@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:form-maker-workspace": "npm --prefix packages/form-maker run build",
+    "test:form-maker-workspace": "npm --prefix packages/form-maker test",
     "preview": "vite preview",
     "test:browser": "node tests/portal-browser-smoke.cjs && node tests/portal-focus-smoke.cjs && node tests/portal-history-origin-smoke.cjs && node tests/form-maker-browser-smoke.cjs",
     "test:history": "node --test tests/portal-history.test.mjs tests/form-history.test.mjs tests/message-origin.test.mjs tests/form-maker-history.test.mjs tests/form-maker-session.test.mjs tests/form-maker-route.test.mjs && node tests/apps-script-client-smoke.cjs"
