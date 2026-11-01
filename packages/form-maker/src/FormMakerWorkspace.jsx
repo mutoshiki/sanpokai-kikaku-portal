@@ -14,6 +14,7 @@ import {
 import { Copy, Launch, Renew } from '@carbon/icons-react';
 import { FORM_MAKER_FIREBASE_CONFIG } from './firebase-public-config.js';
 import { canonicalInput, createFormMakerSession } from './form-maker-session.js';
+import { createInitialFormMakerInput, INITIAL_FORM_MAKER_INPUT } from './form-maker-input.js';
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from './form-maker-history.js';
 import { createProjectJobStorage, migrateLegacyPendingJob } from './project-job-storage.js';
 import { notifyProjectHandoff, recoverProjectJob } from './project-job-recovery.js';
@@ -21,7 +22,6 @@ import { shouldShowProjectToolLink } from './project-tool-link-visibility.js';
 import './form-maker.scss';
 
 const PENDING_JOB_KEY = 'sanpokai-form-maker-pending-job-v1';
-const INITIAL_INPUT = { planName: '', editorEmail: '', eventDate: '', deadline: '', description: '' };
 const POLL_MS = 3000;
 
 function readPendingJobId(projectStorage) {
@@ -113,14 +113,9 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     }
   }, [providedSession]);
   const [projectLink, setProjectLink] = useState(project);
-  const [input, setInput] = useState(() => ({
-    ...INITIAL_INPUT,
-    ...(project?.sampleInput || {}),
-    ...(projectStorage?.readInput() || {}),
-    ...(projectLink ? { planName: projectLink.projectName, eventDate: projectLink.eventDate,
-      ...(!sampleMode ? {
-      targetRoomId: projectLink.roomId, targetRoomJobId: projectLink.jobId, targetRoomCapability: projectLink.token } : {}),
-      } : {}),
+  const [input, setInput] = useState(() => createInitialFormMakerInput({
+    project: projectLink,
+    savedInput: projectStorage?.readInput(),
   }));
   const [readiness, setReadiness] = useState(() => sampleMode ? { state: 'ready', accepting: true } : { state: 'checking', accepting: false });
   const [job, setJob] = useState(linkedForm);
@@ -259,8 +254,8 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
       const jobInput = link?.roomId ? { ...input, targetRoomId: link.roomId, targetRoomJobId: link.jobId, targetRoomCapability: link.token } : input;
       const accepted = await session.enqueue(jobInput, { jobId });
       setJob({ ...accepted, jobId });
-      if (projectStorage) projectStorage.writeInput(INITIAL_INPUT);
-      setInput(projectStorage ? INITIAL_INPUT : input);
+      if (projectStorage) projectStorage.writeInput(INITIAL_FORM_MAKER_INPUT);
+      setInput(projectStorage ? INITIAL_FORM_MAKER_INPUT : input);
       if (accepted.handoffToken && link?.roomId) onHandoffReady({ roomId: link.roomId, jobId, token: accepted.handoffToken });
       onNotice('応募フォームの作成を受け付けました');
       await refreshHistory();
@@ -290,8 +285,8 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     try {
       const result = await recoverProjectJob({ session, jobId: job.jobId, project, input, createProjectLink, onHandoffReady });
       setJob(result.job);
-      if (projectStorage) projectStorage.writeInput(INITIAL_INPUT);
-      setInput(projectStorage ? INITIAL_INPUT : input);
+      if (projectStorage) projectStorage.writeInput(INITIAL_FORM_MAKER_INPUT);
+      setInput(projectStorage ? INITIAL_FORM_MAKER_INPUT : input);
       if (result.resumed) onNotice('同じ依頼を再開しました');
       await refreshHistory();
     } catch (failure) {
@@ -317,7 +312,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     if (project) return;
     savePendingJobId(projectStorage, '');
     setJob(null);
-    setInput(INITIAL_INPUT);
+    setInput(INITIAL_FORM_MAKER_INPUT);
     setProjectLink(null);
     setError('');
     setErrorNeedsRefresh(false);
