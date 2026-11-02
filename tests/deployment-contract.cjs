@@ -15,16 +15,10 @@ if (/\<div\s+id=["']root["']\s*\>\s*\<\/div\>/i.test(source)) {
   fail('source index has an empty #root; branch-source Pages would render a blank page');
 }
 if (!source.includes('static-fallback')) fail('source index is missing the emergency static fallback');
-if (!source.includes('<title>山歩会企画ツール一覧</title>')) fail('source index title does not match the portal name');
-for (const copy of [
-  '山歩会の企画に使うツールをまとめています。',
-  'YAMAPの画像から登山計画書を作成します。',
-  '参加者募集用のGoogleフォームを作成します。',
-  '車割り・班割りと交通費の精算を行います。',
-  '学務に提出する書類を作成します。',
-]) {
-  if (!source.includes(copy)) fail(`static fallback copy is missing: ${copy}`);
-}
+if (!source.includes('<title>山歩会企画ツール</title>')) fail('source index title does not match the redirect page');
+if (!source.includes("const portalRoot = '/sanpokai-kikaku-portal'")) fail('source index is missing the portal root redirect');
+if (!source.includes('https://mutoshiki.github.io/circle-kikaku-tools/')) fail('source index redirect target is incorrect');
+if (!source.includes('destination.search = window.location.search') || !source.includes('destination.hash = window.location.hash')) fail('source index redirect does not preserve room links');
 if (!dist.includes('/sanpokai-kikaku-portal/assets/')) fail('Vite dist does not use the GitHub Pages base path');
 if (dist.includes('/src/main.jsx')) fail('dist still references Vite source instead of built assets');
 if (!/path:\s*\.\/dist/.test(deploy)) fail('Deploy Pages workflow is not publishing ./dist');
