@@ -61,6 +61,7 @@ async function waitForAnimations(page) {
   if (new URL(portal.redirectedTo).pathname !== '/circle-kikaku-tools/') throw new Error(`portal did not redirect to the circle tools: ${JSON.stringify(portal)}`);
   await page.screenshot({ path: `${OUT}/portal-redirect-mobile.png`, fullPage: true });
 
+  await page.evaluate(() => localStorage.setItem('sanpokai-theme-preference-v1', 'dark'));
   const hostUrl = new URL('form-maker/', LIVE_URL).href;
   await openWithRetry(page, hostUrl, async () => {
     await page.getByRole('heading', { name: '応募フォーム', level: 1 }).waitFor({ timeout: 15000 });
