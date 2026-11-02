@@ -55,40 +55,11 @@ async function waitForAnimations(page) {
   });
 
   const response = await openWithRetry(page, LIVE_URL, async () => {
-    await page.getByRole('heading', { name: '山歩会企画ツール一覧', level: 1 }).waitFor({ timeout: 10000 });
-    await page.getByRole('tab', { name: '最近の企画', exact: true }).waitFor({ timeout: 10000 });
+    await page.waitForURL(url => url.origin === 'https://mutoshiki.github.io' && url.pathname === '/circle-kikaku-tools/', { timeout: 10000 });
   });
-  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'white');
-  await waitForAnimations(page);
-
-  const portal = await page.evaluate(() => ({
-    theme: document.documentElement.dataset.carbonTheme,
-    tiles: document.querySelectorAll('.tool-tile').length,
-    bodyTextLength: document.body.innerText.trim().length,
-    viewportWidth: document.documentElement.clientWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    formHref: [...document.querySelectorAll('.tool-tile')].find(node => node.textContent.includes('応募フォームメーカー'))?.getAttribute('href') || '',
-  }));
-  if (portal.tiles !== 4 || portal.bodyTextLength < 100) throw new Error(`portal production app did not render: ${JSON.stringify(portal)}`);
-  if (portal.documentWidth > portal.viewportWidth + 1) throw new Error(`portal mobile overflow: ${portal.documentWidth} > ${portal.viewportWidth}`);
-  if (!portal.formHref.includes('/form-maker/')) throw new Error(`form maker does not route through the same-origin route: ${portal.formHref}`);
-  await page.screenshot({ path: `${OUT}/portal-mobile-light.png`, fullPage: true });
-
-  await page.getByRole('button', { name: /表示設定を開く（現在：端末の設定に合わせる）/ }).click();
-  await page.locator('label[for="theme-dark"]').click();
-  await page.waitForFunction(() => document.documentElement.dataset.carbonTheme === 'g100');
-  await waitForAnimations(page);
-  const portalDark = await page.evaluate(() => ({
-    preference: localStorage.getItem('sanpokai-theme-preference-v1'),
-    theme: document.documentElement.dataset.carbonTheme,
-    bodyBackground: getComputedStyle(document.body).backgroundColor,
-    tileBackground: getComputedStyle(document.querySelector('.tool-tile')).backgroundColor,
-    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  }));
-  if (portalDark.preference !== 'dark' || portalDark.theme !== 'g100') throw new Error(`portal dark theme failed: ${JSON.stringify(portalDark)}`);
-  if ([portalDark.bodyBackground, portalDark.tileBackground].includes('rgb(255, 255, 255)')) throw new Error(`portal white leak in dark mode: ${JSON.stringify(portalDark)}`);
-  if (portalDark.overflow > 1) throw new Error(`portal dark overflow: ${portalDark.overflow}`);
-  await page.screenshot({ path: `${OUT}/portal-mobile-dark.png`, fullPage: true });
+  const portal = { redirectedTo: page.url(), status: response?.status() || null };
+  if (new URL(portal.redirectedTo).pathname !== '/circle-kikaku-tools/') throw new Error(`portal did not redirect to the circle tools: ${JSON.stringify(portal)}`);
+  await page.screenshot({ path: `${OUT}/portal-redirect-mobile.png`, fullPage: true });
 
   const hostUrl = new URL('form-maker/', LIVE_URL).href;
   await openWithRetry(page, hostUrl, async () => {
@@ -127,7 +98,7 @@ async function waitForAnimations(page) {
   if (firebaseWrites.length) throw new Error(`production smoke attempted an external write: ${JSON.stringify(firebaseWrites)}`);
   if (pageErrors.length) throw new Error(`production page errors: ${pageErrors.join(' | ')}`);
 
-  const report = { status: response?.status() || null, liveUrl: LIVE_URL, portal, portalDark, mobile, desktop, firebaseWrites, pageErrors, consoleErrors };
+  const report = { status: response?.status() || null, liveUrl: LIVE_URL, portal, mobile, desktop, firebaseWrites, pageErrors, consoleErrors };
   fs.writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   await browser.close();
