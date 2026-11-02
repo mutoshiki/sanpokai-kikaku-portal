@@ -15,7 +15,7 @@ if (/\<div\s+id=["']root["']\s*\>\s*\<\/div\>/i.test(source)) {
   fail('source index has an empty #root; branch-source Pages would render a blank page');
 }
 if (!source.includes('static-fallback')) fail('source index is missing the emergency static fallback');
-if (!source.includes('<title>山歩会企画ツール</title>')) fail('source index title does not match the redirect page');
+if (!source.includes('<title>山歩会企画ツール一覧</title>')) fail('source index title does not match the portal name');
 if (!source.includes("const portalRoot = '/sanpokai-kikaku-portal'")) fail('source index is missing the portal root redirect');
 if (!source.includes('https://mutoshiki.github.io/circle-kikaku-tools/')) fail('source index redirect target is incorrect');
 if (!source.includes('destination.search = window.location.search') || !source.includes('destination.hash = window.location.hash')) fail('source index redirect does not preserve room links');
