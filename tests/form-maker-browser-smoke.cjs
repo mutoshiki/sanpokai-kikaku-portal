@@ -110,6 +110,7 @@ async function run(browser, width) {
   await page.getByRole('button', { name: '応募フォームを作成' }).click();
   await page.getByText('作成を開始しています。フォームができるとここに表示されます。').waitFor();
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
+  await page.locator('.toast-host').waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.activeElement?.id === 'form-maker-history-heading');
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);
   if (await page.getByLabel('企画名（必須）').count()) throw new Error(`${width}px: completed result should replace the input form`);
@@ -122,7 +123,7 @@ async function run(browser, width) {
   }
   const matchingHistoryEntries = page.locator('.form-maker-history-list li').filter({ hasText: 'ブラウザ検証企画' });
   if (await matchingHistoryEntries.count() !== 1) throw new Error(`${width}px: completed result should appear exactly once at the top of history`);
-  if (await matchingHistoryEntries.getByText('フォームを作成しました').count() !== 1) throw new Error(`${width}px: success status should be integrated into the history card`);
+  if (await matchingHistoryEntries.getByText('フォームを作成しました').count() !== 0) throw new Error(`${width}px: transient success should not be duplicated inside the history card`);
   if (await page.getByRole('link', { name: /企画ツールを開く（新しいタブ）/ }).getAttribute('target') !== '_blank') {
     throw new Error(`${width}px: project link should leave the form-maker tab open`);
   }
