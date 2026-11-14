@@ -14,8 +14,8 @@ function formMakerClaimProjectRoomLink_(job) {
     idToken: job.workerIdToken, headers: { 'X-Firebase-ETag': 'true' },
   });
   const room = roomResult.value;
-  if (!room || Number(room.schemaVersion) !== 6 || !room.allocations || !room.meta || typeof room.meta !== 'object') throw new Error('project_room_invalid');
-  const linked = room.meta.applicationSync;
+  if (!room || Number(room.schemaVersion) !== 6 || !room.allocations) throw new Error('project_room_invalid');
+  const linked = formMakerProjectRoomMeta_(room).applicationSync;
   if (linked) {
     if (linked.kind === 'formApplicationSync' && Number(linked.version) === 2 &&
         linked.projectId === roomId && linked.handoffTokenHash === String(input.handoffTokenHash || '')) {
@@ -62,8 +62,8 @@ function formMakerCompleteProjectRoomLink_(job, state) {
 function formMakerCheckExistingProjectRoom_(metadata, idToken) {
   const projectId = validateManagedProjectId_(metadata && metadata.projectId);
   const room = firebaseGetJson_('rooms/' + projectId, idToken).value;
-  if (!room || Number(room.schemaVersion) !== 6 || !room.allocations || !room.allocations.car || !room.allocations.team || !room.meta) return { state: 'repair-required' };
-  const linked = room.meta.applicationSync;
+  if (!isManagedProjectRoomValid_(room)) return { state: 'repair-required' };
+  const linked = formMakerProjectRoomMeta_(room).applicationSync;
   if (linked && (linked.projectId !== projectId || linked.handoffTokenHash !== String(metadata.handoffTokenHash || ''))) return { state: 'conflict' };
   return { state: 'ready' };
 }
@@ -74,8 +74,8 @@ function formMakerWriteLinkedApplicationSnapshot_(metadata, applicationSync, idT
   if (!link || link.jobId !== metadata.projectLinkJobId || link.tokenHash !== metadata.projectLinkCapabilityHash ||
       (link.state !== 'processing' && link.state !== 'linked')) throw new Error('project_link_invalid');
   const room = firebaseGetJson_('rooms/' + projectId, idToken).value;
-  if (!room || Number(room.schemaVersion) !== 6 || !room.allocations || !room.meta) throw new Error('project_room_invalid');
-  const existing = room.meta.applicationSync;
+  if (!room || Number(room.schemaVersion) !== 6 || !room.allocations) throw new Error('project_room_invalid');
+  const existing = formMakerProjectRoomMeta_(room).applicationSync;
   if (existing && (existing.projectId !== projectId || existing.handoffTokenHash !== String(metadata.handoffTokenHash || ''))) {
     throw new Error('project_room_already_linked');
   }
@@ -1696,7 +1696,14 @@ function buildManagedProjectRoom_(metadata, now) {
 
 function isManagedProjectRoomValid_(room) {
   return Boolean(room && Number(room.schemaVersion) === 6 && room.allocations &&
-    room.allocations.car && room.allocations.team && room.meta && typeof room.meta === 'object');
+    room.allocations.car && room.allocations.team &&
+    (room.meta == null || (typeof room.meta === 'object' && !Array.isArray(room.meta))));
+}
+
+function formMakerProjectRoomMeta_(room) {
+  if (!room || room.meta == null) return {};
+  if (typeof room.meta !== 'object' || Array.isArray(room.meta)) throw new Error('project_room_invalid');
+  return room.meta;
 }
 
 /**
