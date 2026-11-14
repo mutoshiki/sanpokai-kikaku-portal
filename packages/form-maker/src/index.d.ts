@@ -27,6 +27,7 @@ export const FormMakerWorkspace: ComponentType<{
   sampleMode?: boolean;
   onNotice?: (message: string) => void;
   onHandoffReady?: (value: { roomId: string; jobId: string; token: string }) => void;
+  onProjectNameChange?: (name: string) => void;
 }>;
 export function createFormMakerSession(options: Record<string, unknown>): FormMakerSession;
 export function canonicalInput(input: Record<string, unknown>): Record<string, string>;

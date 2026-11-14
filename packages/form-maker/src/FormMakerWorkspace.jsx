@@ -100,7 +100,7 @@ function unfinishedSteps(job) {
   }).filter((label, index, values) => values.indexOf(label) === index);
 }
 
-export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, active = true, sampleMode: requestedSampleMode = false, onNotice = () => {}, onHandoffReady = () => {} }) {
+export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, active = true, sampleMode: requestedSampleMode = false, onNotice = () => {}, onHandoffReady = () => {}, onProjectNameChange = () => {} }) {
   const projectStorage = useMemo(() => project?.roomId ? createProjectJobStorage({ roomId: project.roomId }) : null, [project?.roomId]);
   const sampleMode = requestedSampleMode || project?.debugSample === true;
   const session = useMemo(() => {
@@ -117,6 +117,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     project: projectLink,
     savedInput: projectStorage?.readInput(),
   }));
+  const projectNameDraftRef = useRef(input.planName);
   const [readiness, setReadiness] = useState(() => sampleMode ? { state: 'ready', accepting: true } : { state: 'checking', accepting: false });
   const [job, setJob] = useState(linkedForm);
   const [history, setHistory] = useState(() => mergeFormMakerJobs(readCachedFormMakerHistory(), []));
@@ -130,10 +131,19 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const formMakerHistoryHeadingRef = useRef(null);
   const workspaceRootRef = useRef(null);
   const onHandoffReadyRef = useRef(onHandoffReady);
+  const projectNameDirtyRef = useRef(false);
+  const projectNameComposingRef = useRef(false);
+  const [descriptionFocused, setDescriptionFocused] = useState(false);
   onHandoffReadyRef.current = onHandoffReady;
 
   useEffect(() => { if (projectStorage) projectStorage.writeInput(input); }, [input, projectStorage]);
   useEffect(() => { if (linkedForm) setJob(linkedForm); }, [linkedForm]);
+  useEffect(() => {
+    if (projectNameDirtyRef.current || !project) return;
+    const projectName = String(project.projectName || '');
+    projectNameDraftRef.current = projectName;
+    setInput(current => current.planName === projectName ? current : { ...current, planName: projectName });
+  }, [project?.projectName, project]);
 
   const applyJobs = useCallback((jobs) => {
     setHistory((current) => {
@@ -146,7 +156,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const refreshReadiness = useCallback(async () => {
     try {
       const status = await session.prepare();
-      const state = status.accepting ? 'ready' : status.acceptanceMode === 'test' && !status.testOwner ? 'maintenance' : 'paused';
+      const state = status.accepting ? 'ready' : status.previewOnly ? 'preview' : status.acceptanceMode === 'test' && !status.testOwner ? 'maintenance' : 'paused';
       setReadiness({ ...status, state });
     } catch (error) {
       const detail = readinessError(error);
@@ -207,7 +217,22 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
     if (job && ['completed', 'partial'].includes(job.state) && job.result?.formUrl) formMakerHistoryHeadingRef.current?.focus();
   }, [job?.state, job?.result?.formUrl]);
 
-  const update = (key) => (event) => setInput((current) => ({ ...current, [key]: event.target.value }));
+  const update = (key) => (event) => {
+    if (key === 'planName') {
+      projectNameDirtyRef.current = true;
+      projectNameDraftRef.current = event.target.value;
+    }
+    setInput((current) => ({ ...current, [key]: event.target.value }));
+  };
+
+  const commitProjectName = () => {
+    if (!project || projectNameComposingRef.current || !projectNameDirtyRef.current) return;
+    const next = String(projectNameDraftRef.current || '').trim();
+    const current = String(project.projectName || '').trim();
+    projectNameDirtyRef.current = false;
+    projectNameDraftRef.current = next;
+    if (next && next.length <= 100 && next !== current) onProjectNameChange(next);
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -338,20 +363,21 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
         </div>}
 
         {readiness.state === 'checking' && <div className="form-maker-status" role="status"><InlineLoading description="作成サービスに接続しています" /></div>}
+        {readiness.state === 'preview' && !sampleMode && <InlineNotification kind="info" lowContrast hideCloseButton title="このプレビューではフォームを作成できません。" />}
         {readiness.state === 'maintenance' && <InlineNotification kind="warning" lowContrast hideCloseButton title="ただいまメンテナンス中です" subtitle="時間をおいて、もう一度お試しください。" />}
-        {readiness.state === 'paused' && <InlineNotification kind="warning" lowContrast hideCloseButton title="現在、新しいフォームを作成できません" subtitle="時間をおいて、もう一度お試しください。" />}
+        {readiness.state === 'paused' && <InlineNotification kind="warning" lowContrast hideCloseButton title="現在、新しいフォームを作成できません" subtitle="しばらくしてから、もう一度お試しください。" />}
         {readiness.state === 'unavailable' && <div className="form-maker-readiness-error"><InlineNotification kind="error" lowContrast hideCloseButton title={readiness.errorTitle || 'フォーム作成サービスに接続できません'} subtitle={readiness.errorMessage || '通信を確認して、「接続を再確認」を押してください。'} /><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshReadiness()}>接続を再確認</Button></div>}
 
         {!hasFinishedForm && <Tile className="form-maker-panel">
           <form onSubmit={submit} aria-label="応募フォームの作成">
-            <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText="100文字以内" required maxLength={100} value={input.planName} onChange={update('planName')} />
-            <TextInput id="editor-email" labelText="メールアドレス（必須）" helperText={sampleMode ? undefined : '作成したGoogleフォームの編集権限を、このアドレスに共有します。'} type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
+            <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText={input.planName.length > 100 ? '100文字以内にしてください。' : undefined} invalid={input.planName.length > 100} invalidText="100文字以内にしてください。" required maxLength={100} value={input.planName} onChange={update('planName')} onCompositionStart={() => { projectNameComposingRef.current = true; }} onCompositionEnd={event => { projectNameComposingRef.current = false; update('planName')(event); }} onBlur={commitProjectName} />
+            <TextInput id="editor-email" labelText="編集権限を共有するメールアドレス（必須）" helperText={sampleMode ? undefined : 'Googleフォームの編集に使うアドレスです。'} type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
             <Grid narrow className="form-maker-date-grid">
               <Column sm={4} md={4} lg={8}><TextInput id="event-date" labelText="実施日（任意）" type="date" value={input.eventDate} onChange={update('eventDate')} /></Column>
               <Column sm={4} md={4} lg={8}><TextInput id="application-deadline" labelText="応募締切日（任意）" type="date" value={input.deadline} onChange={update('deadline')} /></Column>
             </Grid>
-            <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onChange={update('description')} />
-            <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>
+            <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onFocus={() => setDescriptionFocused(true)} onBlur={() => setDescriptionFocused(false)} onChange={update('description')} />
+            {(descriptionFocused || input.description.length >= 2700) && <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>}
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
             {!job && !sampleMode && <p className="form-maker-submit-note">フォームの準備ができると、応募用リンクを表示します。</p>}
             <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={submitting ? Renew : undefined}>
