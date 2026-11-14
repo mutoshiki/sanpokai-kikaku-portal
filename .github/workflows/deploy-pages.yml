@@ -25,7 +25,10 @@ jobs:
           node-version: 22
       - run: npm install --package-lock-only
       - run: npm ci
-      - run: npm run build
+      - name: Build portal with the queue intake endpoint
+        run: npm run build
+        env:
+          VITE_FORM_MAKER_INTAKE_URL: https://sanpokai-form-maker-intake.610unko.workers.dev/v1/form-creation-jobs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

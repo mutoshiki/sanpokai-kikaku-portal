@@ -108,7 +108,7 @@ async function run(browser, width) {
   await page.getByLabel('実施日').fill('2026-10-20');
   await page.getByLabel('企画の説明（任意）').fill('合成データです');
   await page.getByRole('button', { name: '応募フォームを作成' }).click();
-  await page.getByText('作成が始まるまで数分かかることがあります。').waitFor();
+  await page.getByText('作成を開始しています。フォームができるとここに表示されます。').waitFor();
   await page.getByText('フォームを作成しました').waitFor({ timeout: 7000 });
   await page.waitForFunction(() => document.activeElement?.id === 'form-maker-history-heading');
   if (writes.length !== 1) throw new Error(`${width}px: expected one job creation, received ${writes.length}`);

@@ -42,7 +42,7 @@ function savePendingJobId(projectStorage, jobId, state = 'queued') {
 
 function jobMessage(job) {
   switch (job?.state) {
-    case 'queued': return '作成が始まるまで数分かかることがあります。完了したフォームは下に表示されます。';
+    case 'queued': return '作成を開始しています。フォームができるとここに表示されます。';
     case 'running': return 'フォームを作成しています。完了したら下に表示します。';
     case 'completed': return '応募用リンクを参加者に共有してください。';
     case 'partial': return unfinishedSteps(job).length
@@ -323,7 +323,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const pendingId = readPendingJobId(projectStorage);
   const accepting = readiness.accepting && readiness.state === 'ready';
   const canSubmit = accepting && !submitting && !pendingId && !job && !project?.jobId;
-  const hasFinishedForm = ['completed', 'partial'].includes(job?.state);
+  const hasFinishedForm = ['completed', 'partial'].includes(job?.state) || (job?.state === 'running' && Boolean(job?.result?.formUrl));
   const hasFinishedResult = hasFinishedForm && Boolean(job?.result?.formUrl);
   const projectHistory = project
     ? history.filter((item) => item.jobId === project.jobId || item.projectId === project.roomId)
@@ -353,7 +353,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
             <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onChange={update('description')} />
             <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
-            {!job && !sampleMode && <p className="form-maker-submit-note">作成には数分かかることがあります。</p>}
+            {!job && !sampleMode && <p className="form-maker-submit-note">フォームの準備ができると、応募用リンクを表示します。</p>}
             <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={submitting ? Renew : undefined}>
               {sampleMode ? '入力内容を保存' : submitting ? '作成を依頼しています…' : '応募フォームを作成'}
             </Button>
@@ -375,7 +375,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
           {visibleHistory.length === 0 && historyState === 'ready' && !hasFinishedResult && <p>まだフォームはありません。作成したフォームはここに表示されます。</p>}
           <ul className="form-maker-history-list">
             {hasFinishedResult && <li className="form-maker-current-result">
-              <InlineNotification kind={job.state === 'completed' ? 'success' : 'warning'} lowContrast hideCloseButton title={job.state === 'completed' ? 'フォームを作成しました' : 'フォームはできましたが、設定が一部残っています'} subtitle={jobMessage(job)} />
+              <InlineNotification kind={job.state === 'completed' ? 'success' : job.state === 'running' ? 'info' : 'warning'} lowContrast hideCloseButton title={job.state === 'completed' ? 'フォームを作成しました' : job.state === 'running' ? 'フォームができました' : 'フォームはできましたが、設定が一部残っています'} subtitle={job.state === 'running' ? '応募用リンクを共有できます。回答の連携設定を続けています。' : jobMessage(job)} />
               {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
               <div className="form-maker-result-summary">
                 <strong>{job.result.planName || job.planName || '企画名なし'}</strong>

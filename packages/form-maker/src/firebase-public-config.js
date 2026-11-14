@@ -2,4 +2,5 @@
 export const FORM_MAKER_FIREBASE_CONFIG = Object.freeze({
   apiKey: 'AIzaSyBdgDzo6C7CG739XvqlD9RtKmiQvHuIXbY',
   databaseURL: 'https://sanpokai-tool-default-rtdb.firebaseio.com',
+  intakeUrl: import.meta.env?.VITE_FORM_MAKER_INTAKE_URL || '',
 });

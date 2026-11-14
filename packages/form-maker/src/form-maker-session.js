@@ -287,6 +287,21 @@ export function createFormMakerSession({
     throw new Error('フォームを作成できませんでした。時間をおいて、もう一度お試しください。');
   }
 
+  async function notifyFastWorker(auth, jobId) {
+    const endpoint = String(config.intakeUrl || '').trim();
+    if (!endpoint) return;
+    try {
+      await fetchImpl(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Authorization: `Bearer ${auth.idToken}` },
+        body: JSON.stringify({ jobId }),
+        mode: 'cors',
+      });
+    } catch {
+      // The existing Apps Script reconciliation trigger remains the recovery path.
+    }
+  }
+
   async function enqueue(input, options = {}) {
     const cleanInput = canonicalInput(input);
     const auth = await getAuth();
@@ -326,6 +341,7 @@ export function createFormMakerSession({
       if (existing.jobId !== jobId || existing.inputHash !== inputHash) {
         throw new Error('前回の作成依頼と入力内容が一致しません。新しく作らず「作成結果を確認」を押してください。');
       }
+      if (existing.state === 'queued') await notifyFastWorker(auth, jobId);
       return { ...existing, jobId, handoffToken };
     }
 
@@ -345,11 +361,15 @@ export function createFormMakerSession({
         headers: { ...authHeaders(auth.idToken), 'if-match': 'null_etag' },
         body: JSON.stringify(payload),
       });
+      await notifyFastWorker(auth, jobId);
       return { ...payload, handoffToken };
     } catch (error) {
       if (error.status !== 412) throw error;
       const raced = await getJob(jobId);
-      if (raced?.jobId === jobId && raced.inputHash === inputHash) return { ...raced, handoffToken };
+      if (raced?.jobId === jobId && raced.inputHash === inputHash) {
+        if (raced.state === 'queued') await notifyFastWorker(auth, jobId);
+        return { ...raced, handoffToken };
+      }
       throw new Error('この作成はすでに受け付けています。新しく作らず「作成結果を確認」を押してください。');
     }
   }

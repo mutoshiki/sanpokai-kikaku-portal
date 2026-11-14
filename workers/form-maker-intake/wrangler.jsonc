@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sanpokai-form-maker-intake",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-14",
+  "workers_dev": true,
+  "preview_urls": false,
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "sanpokai-form-maker-jobs" }],
+    "consumers": [{ "queue": "sanpokai-form-maker-jobs", "max_batch_size": 1, "max_batch_timeout": 0, "max_retries": 3 }]
+  },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "sanpokai-tool",
+    "FIREBASE_DATABASE_URL": "https://sanpokai-tool-default-rtdb.firebaseio.com",
+    "ALLOWED_ORIGINS": "https://mutoshiki.github.io",
+    "APPS_SCRIPT_WEB_APP_URL": "https://script.google.com/macros/s/AKfycbwKnKSGb1LaxOsZJgcBbX1e-QORalakTaY8w65KEkpIwRjOh0-CLoAKy2odYT4PTVY/exec"
+  }
+}
