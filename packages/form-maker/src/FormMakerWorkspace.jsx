@@ -17,6 +17,7 @@ import { canonicalInput, createFormMakerSession } from './form-maker-session.js'
 import { createInitialFormMakerInput, INITIAL_FORM_MAKER_INPUT } from './form-maker-input.js';
 import { mergeFormMakerJobs, projectUrlWithHandoffCapability, readCachedFormMakerHistory, writeCachedFormMakerHistory } from './form-maker-history.js';
 import { createProjectJobStorage, migrateLegacyPendingJob } from './project-job-storage.js';
+import { resolveProjectFormLinks } from './form-maker-project-links.js';
 import { notifyProjectHandoff, recoverProjectJob } from './project-job-recovery.js';
 import { shouldShowProjectToolLink } from './project-tool-link-visibility.js';
 import './form-maker.scss';
@@ -100,7 +101,7 @@ function unfinishedSteps(job) {
   }).filter((label, index, values) => values.indexOf(label) === index);
 }
 
-export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, active = true, sampleMode: requestedSampleMode = false, onNotice = () => {}, onHandoffReady = () => {}, onProjectNameChange = () => {} }) {
+export default function FormMakerWorkspace({ project = null, session: providedSession, createProjectLink, linkedForm = null, applicationSnapshot = null, active = true, sampleMode: requestedSampleMode = false, onNotice = () => {}, onHandoffReady = () => {}, onProjectNameChange = () => {} }) {
   const projectStorage = useMemo(() => project?.roomId ? createProjectJobStorage({ roomId: project.roomId }) : null, [project?.roomId]);
   const sampleMode = requestedSampleMode || project?.debugSample === true;
   const session = useMemo(() => {
@@ -129,6 +130,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   const [copyError, setCopyError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const formMakerHistoryHeadingRef = useRef(null);
+  const previousJobStateRef = useRef({ jobId: '', state: '' });
   const workspaceRootRef = useRef(null);
   const onHandoffReadyRef = useRef(onHandoffReady);
   const projectNameDirtyRef = useRef(false);
@@ -197,6 +199,14 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
   }, [refreshHistory, refreshPendingJob, refreshReadiness]);
 
   useEffect(() => { if (active && !sampleMode) void refresh(); }, [active, refresh, sampleMode]);
+
+  useEffect(() => {
+    const previous = previousJobStateRef.current;
+    if (previous.jobId === job?.jobId && ['queued', 'running'].includes(previous.state) && job?.state === 'completed' && job.result?.formUrl) {
+      setToast('応募フォームを作成しました');
+    }
+    previousJobStateRef.current = { jobId: job?.jobId || '', state: job?.state || '' };
+  }, [job?.jobId, job?.state, job?.result?.formUrl]);
 
   useEffect(() => {
     if (!active || !job || !['queued', 'running'].includes(job.state)) return undefined;
@@ -347,12 +357,26 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
 
   const pendingId = readPendingJobId(projectStorage);
   const accepting = readiness.accepting && readiness.state === 'ready';
-  const canSubmit = accepting && !submitting && !pendingId && !job && !project?.jobId;
+  const alreadyLinked = applicationSnapshot?.linked === true;
+  const canSubmit = accepting && !submitting && !pendingId && !job && !project?.jobId && !alreadyLinked;
   const hasFinishedForm = ['completed', 'partial'].includes(job?.state) || (job?.state === 'running' && Boolean(job?.result?.formUrl));
   const hasFinishedResult = hasFinishedForm && Boolean(job?.result?.formUrl);
   const projectHistory = project
     ? history.filter((item) => item.jobId === project.jobId || item.projectId === project.roomId)
     : history;
+  const resultForCurrentProject = hasFinishedResult ? job.result : null;
+  const historyLinkCandidates = projectHistory.filter(item => item.projectId === project?.roomId && (item.responseUrl || item.formUrl));
+  const distinctHistoryLinks = [...new Set(historyLinkCandidates.map(item => item.responseUrl || item.formUrl))];
+  const historyResult = distinctHistoryLinks.length === 1
+    ? historyLinkCandidates.find(item => (item.responseUrl || item.formUrl) === distinctHistoryLinks[0])
+    : null;
+  const projectFormLinks = resolveProjectFormLinks(applicationSnapshot, resultForCurrentProject || (historyResult ? {
+    formUrl: historyResult.responseUrl || historyResult.formUrl,
+    editUrl: historyResult.editUrl,
+    responseSheetUrl: historyResult.responseSheetUrl,
+  } : null));
+  const projectFormUrl = projectFormLinks.formUrl;
+  const unresolvedProjectForm = alreadyLinked && !projectFormUrl;
   const visibleHistory = projectHistory.filter((item) => !(hasFinishedResult && ((job.result?.formId && item.formId === job.result.formId) || (job.jobId && item.jobId === job.jobId))));
 
   return <Content ref={workspaceRootRef} id={project?.roomId ? `form-maker-${project.roomId}` : 'main-content'} className={`form-maker-page${project?.roomId ? ' form-maker-page--embedded' : ''}`}>
@@ -362,16 +386,33 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
           <p>{sampleMode ? '応募フォームの入力例を編集できます。' : projectLink ? `「${projectLink.projectName}」に連携する応募フォームを作成します。` : '企画の情報を入力すると、参加者向けの応募フォームを作成できます。'}</p>
         </div>}
 
+        {project?.roomId && projectFormUrl && !sampleMode && <section className="form-maker-linked-current" aria-labelledby="current-project-form-heading">
+          <div className="form-maker-linked-current__summary">
+            <h2 id="current-project-form-heading">この企画の応募フォーム</h2>
+            <p>{projectFormLinks.responseCount > 0 ? `回答${projectFormLinks.responseCount}件。参加者タブで確認できます。` : '応募リンクを参加者に共有できます。'}</p>
+          </div>
+          {job?.state === 'running' && job.result?.formUrl === projectFormUrl && <InlineNotification kind="info" lowContrast hideCloseButton title="フォームができました" subtitle="応募リンクは共有できます。回答の連携設定を続けています。" />}
+          {job?.state === 'partial' && job.result?.formUrl === projectFormUrl && <InlineNotification kind="warning" lowContrast hideCloseButton title="フォームはできましたが、設定が一部残っています" subtitle={jobMessage(job)} />}
+          <div className="form-maker-result-links">
+            <Button kind="primary" size="lg" renderIcon={Copy} onClick={() => copyLink(projectFormUrl)}>応募リンクをコピー</Button>
+            <a href={projectFormUrl} target="_blank" rel="noopener noreferrer">応募ページを開く <Launch size={16} aria-hidden="true" /></a>
+            {projectFormLinks.editUrl && <a href={projectFormLinks.editUrl} target="_blank" rel="noopener noreferrer">Googleフォームで編集 <Launch size={16} aria-hidden="true" /></a>}
+            {projectFormLinks.responseSheetUrl && <a href={projectFormLinks.responseSheetUrl} target="_blank" rel="noopener noreferrer">回答シートを開く <Launch size={16} aria-hidden="true" /></a>}
+          </div>
+          {copyError && <p className="form-maker-error" role="alert">コピーできませんでした。「応募ページを開く」からアドレス欄のURLをコピーしてください。</p>}
+        </section>}
+        {project?.roomId && unresolvedProjectForm && !sampleMode && <InlineNotification kind="warning" lowContrast hideCloseButton title="この企画の応募リンクを確認できません" subtitle="応募フォームは連携済みです。重複作成を防ぐため、この画面から新しいフォームは作成できません。" />}
+
         {readiness.state === 'checking' && <div className="form-maker-status" role="status"><InlineLoading description="作成サービスに接続しています" /></div>}
         {readiness.state === 'preview' && !sampleMode && <InlineNotification kind="info" lowContrast hideCloseButton title="このプレビューではフォームを作成できません。" />}
         {readiness.state === 'maintenance' && <InlineNotification kind="warning" lowContrast hideCloseButton title="ただいまメンテナンス中です" subtitle="時間をおいて、もう一度お試しください。" />}
         {readiness.state === 'paused' && <InlineNotification kind="warning" lowContrast hideCloseButton title="現在、新しいフォームを作成できません" subtitle="しばらくしてから、もう一度お試しください。" />}
         {readiness.state === 'unavailable' && <div className="form-maker-readiness-error"><InlineNotification kind="error" lowContrast hideCloseButton title={readiness.errorTitle || 'フォーム作成サービスに接続できません'} subtitle={readiness.errorMessage || '通信を確認して、「接続を再確認」を押してください。'} /><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshReadiness()}>接続を再確認</Button></div>}
 
-        {!hasFinishedForm && <Tile className="form-maker-panel">
+        {!hasFinishedForm && !alreadyLinked && <Tile className="form-maker-panel">
           <form onSubmit={submit} aria-label="応募フォームの作成">
             <TextInput id="plan-name" labelText="企画名（必須）" placeholder="例：妙高山登山企画" helperText={input.planName.length > 100 ? '100文字以内にしてください。' : undefined} invalid={input.planName.length > 100} invalidText="100文字以内にしてください。" required maxLength={100} value={input.planName} onChange={update('planName')} onCompositionStart={() => { projectNameComposingRef.current = true; }} onCompositionEnd={event => { projectNameComposingRef.current = false; update('planName')(event); }} onBlur={commitProjectName} />
-            <TextInput id="editor-email" labelText="編集権限を共有するメールアドレス（必須）" helperText={sampleMode ? undefined : 'Googleフォームの編集に使うアドレスです。'} type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
+            <TextInput id="editor-email" labelText="フォーム編集者のメールアドレス（必須）" helperText={sampleMode ? undefined : 'このアドレスに編集権限を付与します。'} type="email" autoComplete="email" required value={input.editorEmail} onChange={update('editorEmail')} />
             <Grid narrow className="form-maker-date-grid">
               <Column sm={4} md={4} lg={8}><TextInput id="event-date" labelText="実施日（任意）" type="date" value={input.eventDate} onChange={update('eventDate')} /></Column>
               <Column sm={4} md={4} lg={8}><TextInput id="application-deadline" labelText="応募締切日（任意）" type="date" value={input.deadline} onChange={update('deadline')} /></Column>
@@ -379,7 +420,6 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
             <TextArea id="plan-description" labelText="企画の説明（任意）" helperText="集合場所や持ち物、注意事項など" rows={3} maxLength={3000} value={input.description} onFocus={() => setDescriptionFocused(true)} onBlur={() => setDescriptionFocused(false)} onChange={update('description')} />
             {(descriptionFocused || input.description.length >= 2700) && <p className="form-maker-character-count" aria-label={`3,000文字中${input.description.length}文字`}>{input.description.length.toLocaleString('ja-JP')} / 3,000文字</p>}
             {error && <div className="form-maker-submit-error"><InlineNotification kind="error" lowContrast hideCloseButton title={errorTitle} subtitle={error} />{errorNeedsRefresh && <Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refresh()}>作成結果を確認</Button>}</div>}
-            {!job && !sampleMode && <p className="form-maker-submit-note">フォームの準備ができると、応募用リンクを表示します。</p>}
             <Button type="submit" className="form-maker-submit" kind="primary" size="lg" disabled={!canSubmit} renderIcon={submitting ? Renew : undefined}>
               {sampleMode ? '入力内容を保存' : submitting ? '作成を依頼しています…' : '応募フォームを作成'}
             </Button>
@@ -394,14 +434,14 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
           {!project && ['completed', 'partial', 'failed'].includes(job.state) && <Button kind="tertiary" size="sm" onClick={startAnotherForm}>別のフォームを作る</Button>}
         </section>}
 
-        <section className={`form-maker-history${hasFinishedResult ? ' form-maker-history--with-current' : ''}`} aria-labelledby="form-maker-history-heading">
+        {!project && <section className={`form-maker-history${hasFinishedResult ? ' form-maker-history--with-current' : ''}`} aria-labelledby="form-maker-history-heading">
           <div className="form-maker-section-heading"><h2 id="form-maker-history-heading" tabIndex={hasFinishedResult ? -1 : undefined} ref={formMakerHistoryHeadingRef}>作成したフォーム</h2><Button kind="ghost" size="sm" renderIcon={Renew} onClick={() => void refreshHistory()}>履歴を再読み込み</Button></div>
           {historyState === 'loading' && history.length === 0 && <p role="status">作成履歴を読み込んでいます。</p>}
           {historyState === 'unavailable' && <p role="status">作成履歴を読み込めませんでした。「履歴を再読み込み」を押してください。</p>}
           {visibleHistory.length === 0 && historyState === 'ready' && !hasFinishedResult && <p>まだフォームはありません。作成したフォームはここに表示されます。</p>}
           <ul className="form-maker-history-list">
             {hasFinishedResult && <li className="form-maker-current-result">
-              <InlineNotification kind={job.state === 'completed' ? 'success' : job.state === 'running' ? 'info' : 'warning'} lowContrast hideCloseButton title={job.state === 'completed' ? 'フォームを作成しました' : job.state === 'running' ? 'フォームができました' : 'フォームはできましたが、設定が一部残っています'} subtitle={job.state === 'running' ? '応募用リンクを共有できます。回答の連携設定を続けています。' : jobMessage(job)} />
+              {job.state !== 'completed' && <InlineNotification kind={job.state === 'running' ? 'info' : 'warning'} lowContrast hideCloseButton title={job.state === 'running' ? 'フォームができました' : 'フォームはできましたが、設定が一部残っています'} subtitle={job.state === 'running' ? '応募リンクは共有できます。回答の連携設定を続けています。' : jobMessage(job)} />}
               {job.state === 'partial' && unfinishedSteps(job).length > 0 && <ul className="form-maker-incomplete-steps">{unfinishedSteps(job).map((step) => <li key={step}>{step}が完了していません。</li>)}</ul>}
               <div className="form-maker-result-summary">
                 <strong>{job.result.planName || job.planName || '企画名なし'}</strong>
@@ -427,7 +467,7 @@ export default function FormMakerWorkspace({ project = null, session: providedSe
               </div>
             </li>)}
           </ul>
-        </section>
+        </section>}
       </div>
     {toast && <ToastNotification className="toast-host" kind="success" title={toast} timeout={4000} lowContrast onCloseButtonClick={() => setToast('')} />}
   </Content>;

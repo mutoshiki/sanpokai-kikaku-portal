@@ -23,6 +23,7 @@ export const FormMakerWorkspace: ComponentType<{
   session?: FormMakerSession;
   createProjectLink?: (input: Record<string, string>) => Promise<FormMakerProject | null>;
   linkedForm?: Record<string, unknown> | null;
+  applicationSnapshot?: { linked?: boolean; formUrl?: string; responseCount?: number } | null;
   active?: boolean;
   sampleMode?: boolean;
   onNotice?: (message: string) => void;
