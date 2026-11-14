@@ -5,6 +5,11 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../apps-script/form-maker-worker/Code.js', import.meta.url), 'utf8');
 
+test('worker manifest preserves the web app entry point on version updates', () => {
+  const manifest = JSON.parse(fs.readFileSync(new URL('../apps-script/form-maker-worker/appsscript.json', import.meta.url), 'utf8'));
+  assert.deepEqual(manifest.webapp, { access: 'ANYONE_ANONYMOUS', executeAs: 'USER_DEPLOYING' });
+});
+
 function loadWorker(overrides = {}) {
   const sandbox = {
     console,
