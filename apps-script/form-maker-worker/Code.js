@@ -1473,6 +1473,7 @@ function syncManagedFormImportById_(formId, token, force, roomReady) {
   if (!metadata || !metadata.projectId) return false;
 
   const form = FormApp.openById(metadata.formId);
+  const publishedFormUrl = formMakerPublicFormUrl_(form.getPublishedUrl());
   if (typeof form.isAcceptingResponses === 'function' && !form.isAcceptingResponses() && typeof cleanupClosedManagedFormSubmitTrigger_ === 'function') {
     cleanupClosedManagedFormSubmitTrigger_(metadata.formId, form);
   }
@@ -1484,18 +1485,18 @@ function syncManagedFormImportById_(formId, token, force, roomReady) {
     ? form.getResponses()
     : form.getResponses(new Date(Math.max(0, previousCursorMs - FORM_IMPORT_INCREMENTAL_OVERLAP_MS)));
   let applicants = {};
+  let existingSync = null;
   if (!fullRefresh) {
-    if (!responses.length) return false;
-    const existing = firebaseGetJson_(
+    existingSync = firebaseGetJson_(
       'rooms/' + validateManagedProjectId_(metadata.projectId) + '/meta/applicationSync',
       token
     ).value;
-    if (!existing || existing.kind !== FORM_APPLICATION_KIND || !existing.applicants || typeof existing.applicants !== 'object' || Array.isArray(existing.applicants)) {
+    if (!existingSync || existingSync.kind !== FORM_APPLICATION_KIND || !existingSync.applicants || typeof existingSync.applicants !== 'object' || Array.isArray(existingSync.applicants)) {
       fullRefresh = true;
       responses = form.getResponses();
     } else {
-      Object.keys(existing.applicants).forEach(function (key) {
-        const item = existing.applicants[key];
+      Object.keys(existingSync.applicants).forEach(function (key) {
+        const item = existingSync.applicants[key];
         if (!item || typeof item !== 'object') return;
         applicants[key] = {
           id: String(item.id || key),
@@ -1522,7 +1523,7 @@ function syncManagedFormImportById_(formId, token, force, roomReady) {
   const nextCursorMs = fullRefresh
     ? Math.max(latestResponseMs, now)
     : Math.max(previousCursorMs, latestResponseMs);
-  if (!fullRefresh && metadata.lastApplicantsHash === applicantsHash) {
+  if (!fullRefresh && metadata.lastApplicantsHash === applicantsHash && existingSync?.formUrl === publishedFormUrl) {
     metadata.responseCursorMs = nextCursorMs;
     metadata.lastSyncedAtMs = now;
     writeManagedFormImport_(metadata);
@@ -1535,6 +1536,7 @@ function syncManagedFormImportById_(formId, token, force, roomReady) {
     projectId: metadata.projectId,
     title: String(metadata.planName || form.getTitle() || '').slice(0, 200),
     eventDate: cleanText_(metadata.eventDate, 30),
+    formUrl: publishedFormUrl,
     responseCount: Object.keys(applicants).length,
     handoffVersion: Number(metadata.handoffVersion || 0),
     syncedAt: now,
@@ -1616,6 +1618,7 @@ function initializeManagedProjectRoom_(projectId, planName, eventDate, formId, i
         projectId: safeProjectId,
         title: String(planName || '').slice(0, 200),
         eventDate: cleanText_(eventDate, 30),
+        formUrl: formMakerPublicFormUrl_(FormApp.openById(formId).getPublishedUrl()),
         responseCount: 0,
         handoffVersion: Number(metadata.handoffVersion || 0),
         syncedAt: now,
@@ -1686,12 +1689,18 @@ function buildManagedProjectRoom_(metadata, now) {
         projectId,
         title: String(planName).slice(0, 200),
         eventDate: cleanText_(eventDate, 30),
+        formUrl: formMakerPublicFormUrl_(FormApp.openById(metadata.formId).getPublishedUrl()),
         responseCount: 0,
         syncedAt: now,
         applicants: {}
       }
     }
   };
+}
+
+function formMakerPublicFormUrl_(value) {
+  const url = String(value || '').trim();
+  return /^https:\/\/docs\.google\.com\/forms\/d\/(?:e\/)?[A-Za-z0-9_-]+\/viewform\/?(?:\?[^#]*)?(?:#[^\s]*)?$/.test(url) ? url : '';
 }
 
 function isManagedProjectRoomValid_(room) {
